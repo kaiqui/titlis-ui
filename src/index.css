@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+@theme {
+  /* ── Typography ─────────────────────────────── */
+  --font-sans: "Nunito", "system-ui", sans-serif;
+
+  /* ── Jeitto orange palette (replaces default indigo) ── */
+  /* Primary brand color: #f85828 ≈ oklch(0.63 0.22 33) */
+  --color-indigo-50:  oklch(0.97 0.012 40);
+  --color-indigo-100: oklch(0.94 0.04  38);
+  --color-indigo-200: oklch(0.88 0.08  36);
+  --color-indigo-300: oklch(0.79 0.14  35);
+  --color-indigo-400: oklch(0.70 0.20  34);
+  --color-indigo-500: oklch(0.63 0.22  33);
+  --color-indigo-600: oklch(0.55 0.21  32);
+  --color-indigo-700: oklch(0.46 0.18  31);
+  --color-indigo-800: oklch(0.37 0.14  30);
+  --color-indigo-900: oklch(0.27 0.09  29);
+  --color-indigo-950: oklch(0.17 0.06  28);
+
+  /* ── Light mode surfaces ───────────────────── */
+  /* #fffbfa = Jeitto off-white */
+  --color-background:      oklch(0.99 0.005 60);
+  --color-foreground:      oklch(0.20 0.01  35);   /* warm near-black, ≈ #404040 */
+  --color-card:            oklch(1    0     0);
+  --color-card-foreground: oklch(0.20 0.01  35);
+  --color-border:          oklch(0.91 0.008 55);
+  --color-muted:           oklch(0.96 0.008 55);
+  --color-muted-foreground:oklch(0.52 0.01  40);
+  --color-primary:         oklch(0.63 0.22  33);   /* #f85828 */
+  --color-primary-foreground: oklch(1 0 0);
+
+  /* ── Sidebar (always dark-warm) ────────────── */
+  --color-sidebar:         oklch(0.13 0.02  33);
+  --color-sidebar-foreground: oklch(0.90 0.01 40);
+  --color-sidebar-muted:   oklch(0.55 0.01  40);
+  --color-sidebar-border:  oklch(0.22 0.02  33);
+  --color-sidebar-accent:  oklch(0.22 0.03  33);
+
+  /* ── Score semantic colors ──────────────────── */
+  --color-score-excellent: oklch(0.65 0.17 150);
+  --color-score-good:      oklch(0.72 0.16  90);
+  --color-score-warning:   oklch(0.72 0.16  60);
+  --color-score-critical:  oklch(0.60 0.20  25);
+
+  --radius: 0.75rem;
+}
+
+.dark {
+  /* ── Dark mode surfaces (warm-dark) ─────────── */
+  --color-background:      oklch(0.11 0.008 35);
+  --color-foreground:      oklch(0.94 0.005 50);
+  --color-card:            oklch(0.15 0.008 35);
+  --color-card-foreground: oklch(0.94 0.005 50);
+  --color-border:          oklch(0.23 0.01  35);
+  --color-muted:           oklch(0.19 0.01  35);
+  --color-muted-foreground:oklch(0.58 0.005 45);
+  --color-primary:         oklch(0.70 0.22  33);
+  --color-primary-foreground: oklch(0.11 0 0);
+
+  /* sidebar keeps same dark-warm, just slightly darker */
+  --color-sidebar:         oklch(0.09 0.015 33);
+  --color-sidebar-foreground: oklch(0.88 0.01 40);
+  --color-sidebar-muted:   oklch(0.50 0.01  40);
+  --color-sidebar-border:  oklch(0.19 0.015 33);
+  --color-sidebar-accent:  oklch(0.19 0.025 33);
+}
+
+* {
+  border-color: var(--color-border);
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted-foreground);
+}
