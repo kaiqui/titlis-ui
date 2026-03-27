@@ -1,15 +1,16 @@
 import { scoreBgColor, scoreLabel } from '@/lib/utils'
 
 interface ScoreBadgeProps {
-  score: number
+  score: number | null
   size?: 'sm' | 'md'
 }
 
 export function ScoreBadge({ score, size = 'md' }: ScoreBadgeProps) {
   const base = scoreBgColor(score)
-  const sizeClass = size === 'sm' ? 'text-xs px-1.5 py-0.5' : 'text-xs px-2 py-1'
+  const sizeClass = size === 'sm' ? 'px-2 py-1 text-[11px]' : 'px-2.5 py-1 text-xs'
+
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full font-medium ${base} ${sizeClass}`}>
+    <span className={`inline-flex items-center rounded-full font-semibold ${base} ${sizeClass}`}>
       {scoreLabel(score)}
     </span>
   )

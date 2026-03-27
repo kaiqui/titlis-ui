@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
-import { Card } from './Card'
+import { Minus, TrendingDown, TrendingUp } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { Card } from './Card'
 
 interface MetricCardProps {
   label: string
@@ -14,38 +14,48 @@ interface MetricCardProps {
   delay?: number
 }
 
-export function MetricCard({ label, value, sub, icon: Icon, iconColor = 'text-indigo-500', trend, trendValue, delay = 0 }: MetricCardProps) {
+export function MetricCard({
+  label,
+  value,
+  sub,
+  icon: Icon,
+  iconColor = 'text-indigo-500',
+  trend,
+  trendValue,
+  delay = 0,
+}: MetricCardProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay }}
     >
-      <Card>
-        <div className="flex items-start justify-between">
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium mb-1" style={{ color: 'var(--color-muted-foreground)' }}>
+      <Card className="overflow-hidden">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--color-muted-foreground)' }}>
               {label}
             </p>
-            <p className="text-2xl font-bold tracking-tight" style={{ color: 'var(--color-foreground)' }}>
+            <p className="mt-3 text-3xl font-black tracking-tight" style={{ color: 'var(--color-foreground)' }}>
               {value}
             </p>
             {sub && (
-              <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted-foreground)' }}>
+              <p className="mt-1 text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
                 {sub}
               </p>
             )}
             {trend && trendValue && (
-              <div className={`flex items-center gap-1 mt-2 text-xs font-medium ${
-                trend === 'up' ? 'text-emerald-500' : trend === 'down' ? 'text-red-500' : 'text-gray-400'
+              <div className={`mt-4 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                trend === 'up' ? 'bg-emerald-500/10 text-emerald-500' : trend === 'down' ? 'bg-red-500/10 text-red-500' : 'bg-slate-500/10 text-slate-500'
               }`}>
-                {trend === 'up' ? <TrendingUp size={11} /> : trend === 'down' ? <TrendingDown size={11} /> : <Minus size={11} />}
+                {trend === 'up' ? <TrendingUp size={12} /> : trend === 'down' ? <TrendingDown size={12} /> : <Minus size={12} />}
                 {trendValue}
               </div>
             )}
           </div>
-          <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${iconColor} bg-current/10`}>
-            <Icon size={16} className={iconColor} style={{ backgroundColor: 'transparent' }} />
+
+          <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${iconColor} bg-current/10`}>
+            <Icon size={20} className={iconColor} />
           </div>
         </div>
       </Card>

@@ -1,285 +1,324 @@
+import { useState } from 'react'
+import type { FormEvent } from 'react'
 import { motion } from 'framer-motion'
 import {
-  AreaChart, Area, ResponsiveContainer,
-} from 'recharts'
-import { Target, AlertTriangle, CheckCircle2, XCircle, Flame, TrendingUp } from 'lucide-react'
+  Activity,
+  ArrowRight,
+  Database,
+  Layers3,
+  Search,
+  ShieldCheck,
+  Target,
+} from 'lucide-react'
 import { Header } from '@/components/layout/Header'
-import { Card } from '@/components/ui/Card'
-import { PageLoading, PageError } from '@/components/ui/PageState'
-import { useSLOs } from '@/hooks/useApi'
-import type { SLO } from '@/types'
-
-function sloStatusLabel(status: SLO['status']) {
-  switch (status) {
-    case 'healthy': return { label: 'Saudavel', color: 'text-emerald-500', bg: 'bg-emerald-500/10', icon: CheckCircle2 }
-    case 'at_risk': return { label: 'Em Risco', color: 'text-yellow-500', bg: 'bg-yellow-500/10', icon: AlertTriangle }
-    case 'breached': return { label: 'Violado', color: 'text-red-500', bg: 'bg-red-500/10', icon: XCircle }
-    case 'no_data': return { label: 'Sem Dados', color: 'text-gray-400', bg: 'bg-gray-500/10', icon: Target }
-  }
-}
-
-function burnRateColor(rate: number) {
-  if (rate > 5) return 'text-red-500'
-  if (rate > 2) return 'text-orange-500'
-  if (rate > 1) return 'text-yellow-500'
-  return 'text-emerald-500'
-}
-
-function BudgetBar({ value }: { value: number }) {
-  const color = value > 50 ? '#10b981' : value > 20 ? '#eab308' : '#ef4444'
-  return (
-    <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--color-muted)' }}>
-      <motion.div
-        className="h-full rounded-full"
-        style={{ backgroundColor: color }}
-        initial={{ width: 0 }}
-        animate={{ width: `${value}%` }}
-        transition={{ duration: 0.8, ease: 'easeOut' }}
-      />
-    </div>
-  )
-}
-
-function SLOChart({ history }: { history: Array<{ date: string; score: number }> }) {
-  return (
-    <ResponsiveContainer width="100%" height={48}>
-      <AreaChart data={history} margin={{ top: 2, right: 2, bottom: 0, left: 0 }}>
-        <defs>
-          <linearGradient id="sloGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-            <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-          </linearGradient>
-        </defs>
-        <Area type="monotone" dataKey="score" stroke="#6366f1" strokeWidth={1.5}
-          fill="url(#sloGrad)" dot={false} />
-      </AreaChart>
-    </ResponsiveContainer>
-  )
-}
+import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { PageError, PageLoading } from '@/components/ui/PageState'
+import { useSloCatalog, useSloLookup } from '@/hooks/useApi'
+import { formatDate, formatEnum, statusTone } from '@/lib/utils'
+import type { LucideIcon } from 'lucide-react'
 
 export function SLOs() {
-  const { data: slos, isLoading, error, refetch } = useSLOs()
+  const [namespaceInput, setNamespaceInput] = useState('')
+  const [nameInput, setNameInput] = useState('')
+  const [clusterFilter, setClusterFilter] = useState('all')
+  const [query, setQuery] = useState<{ namespace: string; name: string } | null>(null)
 
-  if (isLoading) return <><Header title="SLOs & Confiabilidade" /><PageLoading /></>
-  if (error || !slos) {
-    return (
-      <>
-        <Header title="SLOs & Confiabilidade" />
-        <PageError message={error instanceof Error ? error.message : undefined} onRetry={() => void refetch()} />
-      </>
-    )
+  const sloCatalog = useSloCatalog(undefined, clusterFilter === 'all' ? undefined : clusterFilter)
+  const sloQuery = useSloLookup(query?.namespace ?? '', query?.name ?? '', query !== null)
+
+  const clusters = ['all', ...new Set((sloCatalog.data ?? []).map(item => item.cluster))]
+
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setQuery({
+      namespace: namespaceInput.trim(),
+      name: nameInput.trim(),
+    })
   }
 
-  const healthy = slos.filter(s => s.status === 'healthy').length
-  const atRisk = slos.filter(s => s.status === 'at_risk').length
-  const breached = slos.filter(s => s.status === 'breached').length
-
   return (
-    <div className="flex flex-col min-h-screen">
-      <Header title="SLOs & Confiabilidade" subtitle="Service Level Objectives gerenciados pelo Titlis Operator" />
+    <div className="flex min-h-screen flex-col">
+      <Header
+        title="SLOs reconciliados"
+        subtitle="Catálogo dos SLOs criados pelo operator e persistidos no titlis-api, com inspeção detalhada por namespace e nome."
+      />
 
-      <div className="flex-1 p-6 space-y-5">
-        {/* Summary cards */}
-        <div className="grid grid-cols-4 gap-4">
-          {[
-            { label: 'Total de SLOs', value: slos.length, icon: Target, color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
-            { label: 'Saudaveis', value: healthy, icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-            { label: 'Em Risco', value: atRisk, icon: AlertTriangle, color: 'text-yellow-500', bg: 'bg-yellow-500/10' },
-            { label: 'Violados', value: breached, icon: XCircle, color: 'text-red-500', bg: 'bg-red-500/10' },
-          ].map(({ label, value, icon: Icon, color, bg }, i) => (
-            <motion.div
-              key={label}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.07 }}
-            >
-              <Card>
-                <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-lg ${bg} flex items-center justify-center`}>
-                    <Icon size={16} className={color} />
-                  </div>
-                  <div>
-                    <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>{label}</p>
-                    <p className={`text-2xl font-bold ${color}`}>{value}</p>
-                  </div>
-                </div>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Compliance bar */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <Card>
-            <div className="flex items-center gap-4">
-              <div>
-                <p className="text-sm font-semibold" style={{ color: 'var(--color-foreground)' }}>
-                  Compliance Global de SLOs
-                </p>
-                <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
-                  Percentual de SLOs dentro do target
+      <div className="flex-1 space-y-5 px-4 py-6 lg:px-8">
+        <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+          <Card className="overflow-hidden">
+            <div className="grid gap-6 lg:grid-cols-[1fr_0.85fr] lg:items-center">
+              <div className="space-y-3">
+                <span
+                  className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]"
+                  style={{ backgroundColor: 'var(--color-primary-soft)', color: 'var(--color-primary-strong)' }}
+                >
+                  SLOs do operator
+                </span>
+                <h2 className="text-3xl font-black tracking-tight" style={{ color: 'var(--color-foreground)' }}>
+                  Veja o que ja foi reconciliado e aprofunde quando precisar.
+                </h2>
+                <p className="max-w-2xl text-sm leading-6" style={{ color: 'var(--color-muted-foreground)' }}>
+                  A pagina agora mostra os SLOs que o operator criou e a API persistiu. O lookup detalhado continua disponivel para abrir qualquer item com precisao.
                 </p>
               </div>
-              <div className="flex-1">
-                <div className="flex justify-between text-xs mb-1.5">
-                  <span style={{ color: 'var(--color-muted-foreground)' }}>0%</span>
-                  <span className="font-semibold text-emerald-500">
-                    {((healthy / slos.length) * 100).toFixed(0)}%
+
+              <form onSubmit={onSubmit} className="grid gap-3">
+                <label className="grid gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--color-muted-foreground)' }}>
+                    Namespace
                   </span>
-                  <span style={{ color: 'var(--color-muted-foreground)' }}>100%</span>
-                </div>
-                <div className="h-3 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--color-muted)' }}>
-                  <motion.div
-                    className="h-full rounded-full bg-emerald-500"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${(healthy / slos.length) * 100}%` }}
-                    transition={{ duration: 1, ease: 'easeOut', delay: 0.4 }}
+                  <input
+                    value={namespaceInput}
+                    onChange={event => setNamespaceInput(event.target.value)}
+                    placeholder="ex: payments-prod"
+                    className="rounded-2xl border px-4 py-3 text-sm outline-none"
+                    style={{
+                      borderColor: 'var(--color-border)',
+                      backgroundColor: 'var(--color-muted)',
+                      color: 'var(--color-foreground)',
+                    }}
                   />
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-2xl font-bold text-emerald-500">
-                  {((healthy / slos.length) * 100).toFixed(0)}%
-                </p>
-                <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
-                  {healthy}/{slos.length} saudaveis
-                </p>
-              </div>
+                </label>
+                <label className="grid gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--color-muted-foreground)' }}>
+                    Nome do SLO
+                  </span>
+                  <input
+                    value={nameInput}
+                    onChange={event => setNameInput(event.target.value)}
+                    placeholder="ex: api-availability"
+                    className="rounded-2xl border px-4 py-3 text-sm outline-none"
+                    style={{
+                      borderColor: 'var(--color-border)',
+                      backgroundColor: 'var(--color-muted)',
+                      color: 'var(--color-foreground)',
+                    }}
+                  />
+                </label>
+                <button
+                  type="submit"
+                  disabled={!namespaceInput.trim() || !nameInput.trim()}
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Search size={14} />
+                  Abrir detalhes
+                </button>
+              </form>
             </div>
           </Card>
-        </motion.div>
+        </motion.section>
 
-        {/* SLO list */}
-        <div className="space-y-3">
-          {slos
-            .sort((a, b) => {
-              const order = { breached: 0, at_risk: 1, no_data: 2, healthy: 3 }
-              return order[a.status] - order[b.status]
-            })
-            .map((slo, i) => {
-              const statusInfo = sloStatusLabel(slo.status)
-              const StatusIcon = statusInfo.icon
-              return (
-                <motion.div
-                  key={slo.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 + i * 0.07 }}
-                >
-                  <Card hover>
-                    <div className="flex items-start gap-4">
-                      {/* Status */}
-                      <div className={`w-8 h-8 rounded-lg ${statusInfo.bg} flex items-center justify-center flex-shrink-0 mt-0.5`}>
-                        <StatusIcon size={15} className={statusInfo.color} />
-                      </div>
+        <Card className="overflow-hidden">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--color-muted-foreground)' }}>
+                Catalogo
+              </p>
+              <p className="mt-2 text-2xl font-black tracking-tight" style={{ color: 'var(--color-foreground)' }}>
+                {sloCatalog.data?.length ?? 0} SLOs reconciliados
+              </p>
+              <p className="mt-1 text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
+                Itens persistidos pelo fluxo do operator para Datadog.
+              </p>
+            </div>
 
-                      {/* Main info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="text-sm font-semibold" style={{ color: 'var(--color-foreground)' }}>
-                            {slo.name}
-                          </h3>
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${statusInfo.bg} ${statusInfo.color}`}>
-                            {statusInfo.label}
-                          </span>
-                          <span className="text-[10px] px-1.5 py-0.5 rounded"
-                            style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
-                            {slo.framework}
-                          </span>
-                        </div>
+            <select
+              value={clusterFilter}
+              onChange={event => setClusterFilter(event.target.value)}
+              className="rounded-2xl border px-4 py-3 text-sm outline-none"
+              style={{
+                borderColor: 'var(--color-border)',
+                backgroundColor: 'var(--color-muted)',
+                color: 'var(--color-foreground)',
+              }}
+            >
+              {clusters.map(option => (
+                <option key={option} value={option}>
+                  {option === 'all' ? 'Todos os clusters' : option}
+                </option>
+              ))}
+            </select>
+          </div>
+        </Card>
 
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-3 text-xs"
-                          style={{ color: 'var(--color-muted-foreground)' }}>
-                          <span>{slo.service}</span>
-                          <span>·</span>
-                          <span>{slo.namespace}</span>
-                          <span>·</span>
-                          <span>Squad: <span className="font-medium" style={{ color: 'var(--color-foreground)' }}>{slo.squad}</span></span>
-                        </div>
+        {sloCatalog.isLoading && <PageLoading />}
 
-                        {/* Metrics row */}
-                        <div className="grid grid-cols-3 gap-4">
-                          <div>
-                            <p className="text-[10px] mb-1" style={{ color: 'var(--color-muted-foreground)' }}>
-                              Target vs Atual
-                            </p>
-                            <div className="flex items-baseline gap-1.5">
-                              <span className={`text-sm font-bold ${statusInfo.color}`}>
-                                {slo.current.toFixed(2)}%
-                              </span>
-                              <span className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
-                                / {slo.target}%
-                              </span>
-                            </div>
-                          </div>
-                          <div>
-                            <p className="text-[10px] mb-1" style={{ color: 'var(--color-muted-foreground)' }}>
-                              Error Budget
-                            </p>
-                            <div className="space-y-1">
-                              <div className="flex justify-between text-xs">
-                                <span className={slo.errorBudgetRemaining > 20 ? 'text-emerald-500' : 'text-red-500'}>
-                                  {slo.errorBudgetRemaining.toFixed(1)}% restante
-                                </span>
-                              </div>
-                              <BudgetBar value={slo.errorBudgetRemaining} />
-                            </div>
-                          </div>
-                          <div>
-                            <p className="text-[10px] mb-1" style={{ color: 'var(--color-muted-foreground)' }}>
-                              Burn Rate
-                            </p>
-                            <div className="flex items-center gap-3">
-                              <div className="flex items-center gap-1">
-                                <Flame size={11} className={burnRateColor(slo.burnRate1h)} />
-                                <span className={`text-xs font-medium ${burnRateColor(slo.burnRate1h)}`}>
-                                  {slo.burnRate1h}x <span className="font-normal text-[10px]" style={{ color: 'var(--color-muted-foreground)' }}>1h</span>
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <TrendingUp size={11} className={burnRateColor(slo.burnRate7d)} />
-                                <span className={`text-xs font-medium ${burnRateColor(slo.burnRate7d)}`}>
-                                  {slo.burnRate7d}x <span className="font-normal text-[10px]" style={{ color: 'var(--color-muted-foreground)' }}>7d</span>
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+        {sloCatalog.error && (
+          <PageError message={sloCatalog.error instanceof Error ? sloCatalog.error.message : undefined} onRetry={() => void sloCatalog.refetch()} />
+        )}
 
-                      {/* Mini chart */}
-                      <div className="w-28 flex-shrink-0">
-                        <SLOChart history={slo.history} />
-                        <p className="text-[10px] text-center mt-1" style={{ color: 'var(--color-muted-foreground)' }}>
-                          14 dias
-                        </p>
-                      </div>
+        {!sloCatalog.isLoading && !sloCatalog.error && (sloCatalog.data?.length ?? 0) === 0 && (
+          <Card>
+            <EmptyState
+              icon={Target}
+              title="Nenhum SLO reconciliado"
+              description="Assim que o operator criar e sincronizar SLOs, eles aparecem aqui automaticamente."
+            />
+          </Card>
+        )}
+
+        {(sloCatalog.data?.length ?? 0) > 0 && (
+          <section className="grid gap-4 xl:grid-cols-2">
+            {sloCatalog.data?.map(item => (
+              <Card
+                key={item.sloConfigId}
+                hover
+                onClick={() => {
+                  setNamespaceInput(item.namespace)
+                  setNameInput(item.name)
+                  setQuery({ namespace: item.namespace, name: item.name })
+                }}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="truncate text-lg font-black tracking-tight" style={{ color: 'var(--color-foreground)' }}>
+                        {item.name}
+                      </h3>
+                      <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone(item.datadogSloState)}`}>
+                        {formatEnum(item.datadogSloState)}
+                      </span>
                     </div>
 
-                    {/* Burn rate alert */}
-                    {(slo.status === 'breached' || slo.burnRate1h > 5) && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        className="mt-3 flex items-center gap-2 p-2.5 rounded-lg bg-red-500/10 border border-red-500/20"
-                      >
-                        <Flame size={12} className="text-red-500 flex-shrink-0" />
-                        <p className="text-xs text-red-600 dark:text-red-400">
-                          {slo.status === 'breached'
-                            ? `SLO violado. Budget de erro esgotado. Burn rate critico de ${slo.burnRate1h}x na ultima hora.`
-                            : `Burn rate elevado (${slo.burnRate1h}x). Risco de violacao de SLO nas proximas horas.`}
+                    <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                      <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
+                        {item.namespace}
+                      </span>
+                      <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
+                        {item.cluster}
+                      </span>
+                      <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
+                        {formatEnum(item.environment)}
+                      </span>
+                    </div>
+
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      {(
+                        [
+                          { label: 'Tipo', value: formatEnum(item.sloType), icon: Target },
+                          { label: 'Timeframe', value: item.timeframe, icon: Activity },
+                          { label: 'Target', value: item.target === null ? 'N/D' : `${item.target}%`, icon: ShieldCheck },
+                          { label: 'Framework', value: formatEnum(item.detectedFramework), icon: Layers3 },
+                        ] satisfies Array<{ label: string; value: string; icon: LucideIcon }>
+                      ).map(({ label, value, icon: Icon }) => (
+                        <div key={label} className="rounded-2xl px-4 py-3" style={{ backgroundColor: 'var(--color-muted)' }}>
+                          <div className="flex items-center gap-2">
+                            <Icon size={14} style={{ color: 'var(--color-primary)' }} />
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--color-muted-foreground)' }}>
+                              {label}
+                            </p>
+                          </div>
+                          <p className="mt-2 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={event => {
+                      event.stopPropagation()
+                      setNamespaceInput(item.namespace)
+                      setNameInput(item.name)
+                      setQuery({ namespace: item.namespace, name: item.name })
+                    }}
+                    className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-orange-600"
+                    type="button"
+                  >
+                    Ver detalhe
+                    <ArrowRight size={13} />
+                  </button>
+                </div>
+              </Card>
+            ))}
+          </section>
+        )}
+
+        {sloQuery.error && (
+          <PageError message={sloQuery.error instanceof Error ? sloQuery.error.message : undefined} onRetry={() => void sloQuery.refetch()} />
+        )}
+
+        {query && !sloQuery.isLoading && !sloQuery.error && !sloQuery.data && (
+          <Card>
+            <EmptyState
+              icon={Search}
+              title="SLO não encontrado"
+              description="Confira se o namespace e o nome estão corretos ou se o operator já reconciliou este recurso."
+            />
+          </Card>
+        )}
+
+        {sloQuery.data && (
+          <section className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+            <Card>
+              <CardHeader>
+                <div>
+                  <CardTitle>Estado do SLO no Datadog</CardTitle>
+                  <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
+                    Resultado retornado pelo endpoint `/v1/namespaces/{'{namespace}'}/slos/{'{name}'}`.
+                  </p>
+                </div>
+              </CardHeader>
+
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone(sloQuery.data.datadogSloState)}`}>
+                    {formatEnum(sloQuery.data.datadogSloState)}
+                  </span>
+                  <span className="rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: 'var(--color-card)', color: 'var(--color-muted-foreground)' }}>
+                    {formatEnum(sloQuery.data.sloType)}
+                  </span>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                {[
+                  { label: 'Namespace', value: sloQuery.data.namespace, icon: Database },
+                  { label: 'Nome do SLO', value: sloQuery.data.name, icon: Target },
+                  { label: 'Target', value: sloQuery.data.target === null ? 'N/D' : `${sloQuery.data.target}%`, icon: ShieldCheck },
+                  { label: 'Timeframe', value: sloQuery.data.timeframe, icon: Activity },
+                ].map(({ label, value, icon: Icon }) => (
+                    <div key={label} className="rounded-2xl px-4 py-4" style={{ backgroundColor: 'var(--color-muted)' }}>
+                      <div className="flex items-center gap-2">
+                        <Icon size={15} style={{ color: 'var(--color-primary)' }} />
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--color-muted-foreground)' }}>
+                          {label}
                         </p>
-                      </motion.div>
-                    )}
-                  </Card>
-                </motion.div>
-              )
-            })}
-        </div>
+                      </div>
+                      <p className="mt-3 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{value}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <div>
+                  <CardTitle>Sincronização e detecção</CardTitle>
+                  <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
+                    Metadados adicionais persistidos pela API após a reconciliação do operator.
+                  </p>
+                </div>
+              </CardHeader>
+
+              <div className="space-y-3">
+                {[
+                  ['Framework detectado', formatEnum(sloQuery.data.detectedFramework)],
+                  ['Fonte da detecção', formatEnum(sloQuery.data.detectionSource)],
+                  ['Datadog SLO ID', sloQuery.data.datadogSloId ?? 'Não informado'],
+                  ['Última sincronização', formatDate(sloQuery.data.lastSyncAt)],
+                ].map(([label, value]) => (
+                  <div key={label} className="rounded-2xl px-4 py-4" style={{ backgroundColor: 'var(--color-muted)' }}>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--color-muted-foreground)' }}>
+                      {label}
+                    </p>
+                    <p className="mt-2 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{value}</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </section>
+        )}
       </div>
     </div>
   )

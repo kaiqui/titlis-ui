@@ -1,370 +1,376 @@
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import {
-  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell,
+  Bar,
+  BarChart,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from 'recharts'
 import {
-  Activity, AlertTriangle, GitPullRequest,
-  TrendingDown, DollarSign, Target, Zap, ArrowRight
+  Activity,
+  ArrowRight,
+  GitPullRequest,
+  Layers3,
+  ShieldAlert,
 } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
 import { MetricCard } from '@/components/ui/MetricCard'
-import { ScoreRing } from '@/components/ui/ScoreRing'
+import { PageError, PageLoading } from '@/components/ui/PageState'
 import { ScoreBadge } from '@/components/ui/ScoreBadge'
-import { TrendIcon } from '@/components/ui/TrendIcon'
-import { PageLoading, PageError } from '@/components/ui/PageState'
-import { usePlatformSummary, useApplications } from '@/hooks/useApi'
-import { scoreColor, scoreRingColor } from '@/lib/utils'
-
-const pieColors = ['#10b981', '#eab308', '#f97316', '#ef4444']
-
-const containerVariants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.07 } },
-}
-const itemVariants = {
-  hidden: { opacity: 0, y: 12 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
-}
-
-function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number }>; label?: string }) {
-  if (!active || !payload?.length) return null
-  return (
-    <div className="rounded-lg px-3 py-2 text-xs shadow-xl border"
-      style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)', color: 'var(--color-foreground)' }}>
-      <p className="font-medium mb-1">{label}</p>
-      <p className="text-indigo-400">Score: <span className="font-bold">{payload[0].value.toFixed(1)}</span></p>
-      {payload[1] && <p className="text-red-400">Criticos: <span className="font-bold">{payload[1].value}</span></p>}
-    </div>
-  )
-}
+import { ScoreRing } from '@/components/ui/ScoreRing'
+import { useDashboardWorkloads } from '@/hooks/useApi'
+import {
+  buildClusterSummaries,
+  buildCriticalWorkloads,
+  buildNamespaceSummaries,
+  buildPlatformSummary,
+  buildRemediationQueue,
+  buildScoreBuckets,
+} from '@/lib/insights'
+import { formatEnum, formatNumber } from '@/lib/utils'
 
 export function Dashboard() {
   const navigate = useNavigate()
-  const { data: platformSummary, isLoading: loadingPlatform, error: errorPlatform, refetch: refetchPlatform } = usePlatformSummary()
-  const { data: applications, isLoading: loadingApps, error: errorApps, refetch: refetchApps } = useApplications()
+  const { data: workloads, isLoading, error, refetch } = useDashboardWorkloads()
 
-  const isLoading = loadingPlatform || loadingApps
-  const error = errorPlatform || errorApps
-
-  if (isLoading) return <><Header title="Visao Geral da Plataforma" /><PageLoading /></>
-  if (error || !platformSummary || !applications) {
+  if (isLoading) return <><Header title="Panorama da Operação" /><PageLoading /></>
+  if (error || !workloads) {
     return (
       <>
-        <Header title="Visao Geral da Plataforma" />
-        <PageError message={(error as Error)?.message} onRetry={() => { void refetchPlatform(); void refetchApps() }} />
+        <Header title="Panorama da Operação" />
+        <PageError message={error instanceof Error ? error.message : undefined} onRetry={() => void refetch()} />
       </>
     )
   }
 
-  const criticalApps = applications.filter(a => a.overallScore < 70).sort((a, b) => a.overallScore - b.overallScore)
-
-  const pieData = [
-    { name: 'Excelente', value: platformSummary.excellentApps },
-    { name: 'Bom', value: platformSummary.goodApps },
-    { name: 'Regular', value: platformSummary.warningApps },
-    { name: 'Critico', value: platformSummary.criticalApps },
-  ]
-
-  const totalSlos = Math.round(platformSummary.sloCompliance / 100 * 7)
+  const summary = buildPlatformSummary(workloads)
+  const buckets = buildScoreBuckets(workloads)
+  const clusters = buildClusterSummaries(workloads).slice(0, 5)
+  const namespaces = buildNamespaceSummaries(workloads).slice(0, 5)
+  const criticalWorkloads = buildCriticalWorkloads(workloads).slice(0, 5)
+  const remediationQueue = buildRemediationQueue(workloads).slice(0, 5)
+  const nonCompliantWorkloads = workloads
+    .filter(workload => workload.complianceStatus === 'NON_COMPLIANT')
+    .sort((left, right) => (left.overallScore ?? -1) - (right.overallScore ?? -1))
+    .slice(0, 5)
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <Header title="Visao Geral da Plataforma" subtitle="Score de maturidade e saude dos workloads" />
+    <div className="flex min-h-screen flex-col">
+      <Header
+        title="Panorama da Operação"
+        subtitle="Visão executiva da saúde dos workloads, da fila de remediação e da cobertura que o titlis-api consegue sustentar hoje."
+      />
 
-      <div className="flex-1 p-6 space-y-6">
-        {/* KPI row */}
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="grid grid-cols-2 lg:grid-cols-4 gap-4"
+      <div className="flex-1 space-y-6 px-4 py-6 lg:px-8">
+        <motion.section
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="overflow-hidden rounded-[36px] border p-6 lg:p-8"
+          style={{
+            borderColor: 'var(--hero-border)',
+            background: 'var(--hero-background)',
+          }}
         >
-          <motion.div variants={itemVariants}>
-            <MetricCard
-              label="Score Medio da Plataforma"
-              value={platformSummary.avgScore.toFixed(1)}
-              sub="de 100 pontos"
-              icon={Activity}
-              iconColor="text-indigo-500"
-              trend="up"
-              trendValue="+2.3 nos ultimos 7 dias"
-            />
-          </motion.div>
-          <motion.div variants={itemVariants}>
-            <MetricCard
-              label="Apps em Estado Critico"
-              value={platformSummary.criticalApps}
-              sub={`de ${platformSummary.totalApps} aplicacoes`}
-              icon={AlertTriangle}
-              iconColor="text-red-500"
-              trend="down"
-              trendValue="1 novo nas ultimas 24h"
-            />
-          </motion.div>
-          <motion.div variants={itemVariants}>
-            <MetricCard
-              label="Compliance de SLOs"
-              value={`${platformSummary.sloCompliance.toFixed(0)}%`}
-              sub={`${totalSlos}/7 SLOs saudaveis`}
-              icon={Target}
-              iconColor="text-emerald-500"
-              trend="stable"
-              trendValue="estavel"
-            />
-          </motion.div>
-          <motion.div variants={itemVariants}>
-            <MetricCard
-              label="PRs de Auto-Remediacao"
-              value={platformSummary.openPRs}
-              sub="abertos aguardando merge"
-              icon={GitPullRequest}
-              iconColor="text-purple-500"
-              trend="up"
-              trendValue="2 novos esta semana"
-            />
-          </motion.div>
-        </motion.div>
-
-        {/* Main charts row */}
-        <div className="grid grid-cols-3 gap-4">
-          <motion.div
-            className="col-span-2"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <Card className="h-full">
-              <CardHeader>
-                <CardTitle>Evolucao do Score - 30 dias</CardTitle>
-                <span className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Score medio diario</span>
-              </CardHeader>
-              <ResponsiveContainer width="100%" height={200}>
-                <AreaChart data={platformSummary.scoreHistory} margin={{ top: 5, right: 5, bottom: 0, left: -20 }}>
-                  <defs>
-                    <linearGradient id="scoreGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.25} />
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="critGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#ef4444" stopOpacity={0.2} />
-                      <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--color-muted-foreground)' }}
-                    tickFormatter={d => d.slice(5)} axisLine={false} tickLine={false} interval={5} />
-                  <YAxis tick={{ fontSize: 10, fill: 'var(--color-muted-foreground)' }}
-                    axisLine={false} tickLine={false} domain={[50, 100]} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Area type="monotone" dataKey="score" stroke="#6366f1" strokeWidth={2}
-                    fill="url(#scoreGradient)" dot={false} />
-                  <Area type="monotone" dataKey="critical" stroke="#ef4444" strokeWidth={1.5}
-                    fill="url(#critGradient)" dot={false} yAxisId={0} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </Card>
-          </motion.div>
-
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-            <Card className="h-full">
-              <CardHeader>
-                <CardTitle>Distribuicao de Saude</CardTitle>
-              </CardHeader>
-              <div className="flex flex-col items-center">
-                <PieChart width={140} height={140}>
-                  <Pie data={pieData} cx={65} cy={65} innerRadius={40} outerRadius={65}
-                    dataKey="value" strokeWidth={2} stroke="var(--color-card)">
-                    {pieData.map((_, i) => <Cell key={i} fill={pieColors[i]} />)}
-                  </Pie>
-                </PieChart>
-                <div className="w-full space-y-1.5 mt-1">
-                  {pieData.map((d, i) => (
-                    <div key={d.name} className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: pieColors[i] }} />
-                        <span style={{ color: 'var(--color-muted-foreground)' }}>{d.name}</span>
-                      </div>
-                      <span className="font-semibold" style={{ color: 'var(--color-foreground)' }}>{d.value}</span>
-                    </div>
-                  ))}
-                </div>
+          <div className="grid gap-6 lg:grid-cols-[1.45fr_0.85fr] lg:items-end">
+            <div className="space-y-4">
+              <span
+                className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em]"
+                style={{ backgroundColor: 'rgba(255,255,255,0.72)', color: 'var(--color-primary-strong)' }}
+              >
+                Fluxo profissional
+              </span>
+              <div className="max-w-3xl space-y-3">
+                <h2 className="text-3xl font-black tracking-tight lg:text-5xl" style={{ color: 'var(--color-foreground)' }}>
+                  Nao conformidade precisa aparecer primeiro quando ela impacta a operacao.
+                </h2>
+                <p className="max-w-2xl text-sm leading-6 lg:text-base" style={{ color: 'var(--color-muted-foreground)' }}>
+                  O panorama agora destaca o que esta fora do esperado logo na abertura, sem esconder workloads nao conformes atras de estados secundarios.
+                </p>
               </div>
-            </Card>
-          </motion.div>
-        </div>
-
-        {/* Bottom row */}
-        <div className="grid grid-cols-2 gap-4">
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
-            <Card className="h-full">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <AlertTriangle size={14} className="text-red-500" />
-                  <CardTitle>Aplicacoes que Precisam de Atencao</CardTitle>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={() => navigate('/applications')}
+                  className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-orange-600"
+                  type="button"
+                >
+                  Ver workloads
+                    <ArrowRight size={15} />
+                  </button>
+                <div className="inline-flex items-center gap-3 rounded-full border border-red-500/15 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-600 dark:text-red-400">
+                  <ShieldAlert size={16} />
+                  {summary.nonCompliantCount} workloads nao conformes
                 </div>
-                <button onClick={() => navigate('/applications')}
-                  className="text-xs text-indigo-500 flex items-center gap-1 hover:text-indigo-400 transition-colors">
-                  Ver todas <ArrowRight size={11} />
+                <button
+                  onClick={() => navigate('/recommendations')}
+                  className="inline-flex items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-semibold transition-colors"
+                  style={{ borderColor: 'var(--color-border)', color: 'var(--color-foreground)', backgroundColor: 'var(--color-card)' }}
+                  type="button"
+                >
+                  Abrir fila de remediação
                 </button>
-              </CardHeader>
-              <div className="space-y-3">
-                {criticalApps.slice(0, 4).map((app, i) => (
-                  <motion.div
-                    key={app.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.6 + i * 0.08 }}
-                    onClick={() => navigate(`/applications/${app.id}`)}
-                    className="flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-colors hover:bg-[--color-muted]"
-                  >
-                    <ScoreRing score={app.overallScore} size={44} strokeWidth={4} />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium truncate" style={{ color: 'var(--color-foreground)' }}>{app.name}</p>
-                        <ScoreBadge score={app.overallScore} size="sm" />
-                      </div>
-                      <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
-                        {app.namespace} · {app.squad}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1 justify-end">
-                      {app.issues.critical > 0 && (
-                        <span className="text-[10px] bg-red-500/10 text-red-500 rounded px-1.5 py-0.5">
-                          {app.issues.critical} critico
-                        </span>
-                      )}
-                      <span className="text-[10px] bg-orange-500/10 text-orange-500 rounded px-1.5 py-0.5">
-                        {app.issues.errors} erros
-                      </span>
-                    </div>
-                  </motion.div>
-                ))}
+              </div>
+            </div>
+
+            <Card>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em]" style={{ color: 'var(--color-muted-foreground)' }}>
+                Cobertura atual
+              </p>
+              <div className="mt-4 grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-3xl font-black" style={{ color: 'var(--color-foreground)' }}>
+                    {summary.totalWorkloads}
+                  </p>
+                  <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>workloads ativos</p>
+                </div>
+                <div>
+                  <p className="text-3xl font-black" style={{ color: 'var(--color-foreground)' }}>
+                    {summary.clusters}
+                  </p>
+                  <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>clusters monitorados</p>
+                </div>
+                <div>
+                  <p className="text-3xl font-black" style={{ color: 'var(--color-foreground)' }}>
+                    {summary.nonCompliantCount}
+                  </p>
+                  <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>nao conformes agora</p>
+                </div>
+                <div>
+                  <p className="text-3xl font-black" style={{ color: 'var(--color-foreground)' }}>
+                    {summary.scoredWorkloads}
+                  </p>
+                  <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>com scorecard publicado</p>
+                </div>
               </div>
             </Card>
-          </motion.div>
-
-          <div className="space-y-4">
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <Zap size={14} className="text-yellow-500" />
-                    <CardTitle>Resumo de Problemas</CardTitle>
-                  </div>
-                </CardHeader>
-                <div className="grid grid-cols-3 gap-3">
-                  {[
-                    { label: 'Criticos', value: platformSummary.totalFindings.critical, color: 'text-red-500', bg: 'bg-red-500/10' },
-                    { label: 'Erros', value: platformSummary.totalFindings.errors, color: 'text-orange-500', bg: 'bg-orange-500/10' },
-                    { label: 'Avisos', value: platformSummary.totalFindings.warnings, color: 'text-yellow-500', bg: 'bg-yellow-500/10' },
-                  ].map(item => (
-                    <div key={item.label} className={`rounded-lg p-3 ${item.bg}`}>
-                      <p className={`text-2xl font-bold ${item.color}`}>{item.value}</p>
-                      <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted-foreground)' }}>{item.label}</p>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            </motion.div>
-
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <DollarSign size={14} className="text-emerald-500" />
-                    <CardTitle>Custo Mensal</CardTitle>
-                  </div>
-                </CardHeader>
-                <div className="flex items-end justify-between">
-                  <div>
-                    <p className="text-2xl font-bold" style={{ color: 'var(--color-foreground)' }}>
-                      ${platformSummary.totalMonthlyCost.toLocaleString()}
-                    </p>
-                    <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted-foreground)' }}>total mensal estimado</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold text-red-500">~$3.000 em desperdicio</p>
-                    <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>recursos ociosos detectados</p>
-                  </div>
-                </div>
-              </Card>
-            </motion.div>
-
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.65 }}>
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <TrendingDown size={14} className="text-red-500" />
-                    <CardTitle>Apps com Piora</CardTitle>
-                  </div>
-                </CardHeader>
-                <div className="space-y-2">
-                  {applications.filter(a => a.trend === 'down').slice(0, 3).map(app => (
-                    <div key={app.id}
-                      onClick={() => navigate(`/applications/${app.id}`)}
-                      className="flex items-center justify-between cursor-pointer hover:bg-[--color-muted] rounded-md p-1.5 -mx-1.5 transition-colors"
-                    >
-                      <div className="flex items-center gap-2">
-                        <TrendIcon trend="down" />
-                        <span className="text-sm" style={{ color: 'var(--color-foreground)' }}>{app.name}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`text-sm font-semibold ${scoreColor(app.overallScore)}`}>
-                          {app.overallScore.toFixed(1)}
-                        </span>
-                        <span className="text-xs px-1.5 py-0.5 rounded"
-                          style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
-                          {app.namespace}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            </motion.div>
           </div>
-        </div>
+        </motion.section>
 
-        {/* All apps quick view */}
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }}>
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <MetricCard
+            label="Score médio"
+            value={formatNumber(summary.averageScore)}
+            sub={`${summary.scoredWorkloads} workloads com score`}
+            icon={Activity}
+            iconColor="text-orange-500"
+            trend={summary.averageScore >= 85 ? 'up' : 'stable'}
+            trendValue={summary.averageScore >= 85 ? 'maturidade sólida' : 'há espaço para evolução'}
+          />
+          <MetricCard
+            label="Não conformes"
+            value={summary.nonCompliantCount}
+            sub="workloads abaixo da faixa esperada"
+            icon={ShieldAlert}
+            iconColor="text-red-500"
+            trend={summary.nonCompliantCount > 0 ? 'down' : 'stable'}
+            trendValue={summary.nonCompliantCount > 0 ? 'pedem atenção imediata' : 'ambiente sob controle'}
+            delay={0.05}
+          />
+          <MetricCard
+            label="Fila de remediação"
+            value={summary.remediatedCount}
+            sub="itens com status persistido"
+            icon={GitPullRequest}
+            iconColor="text-amber-500"
+            trend={summary.remediatedCount > 0 ? 'up' : 'stable'}
+            trendValue={summary.remediatedCount > 0 ? 'acompanhe PRs e estados' : 'nenhuma ação em aberto'}
+            delay={0.1}
+          />
+          <MetricCard
+            label="Namespaces"
+            value={summary.namespaces}
+            sub="escopo operacional monitorado"
+            icon={Layers3}
+            iconColor="text-slate-500"
+            trend="stable"
+            trendValue="cobertura distribuída"
+            delay={0.15}
+          />
+        </section>
+
+        <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
           <Card>
             <CardHeader>
-              <CardTitle>Todas as Aplicacoes</CardTitle>
-              <button onClick={() => navigate('/applications')}
-                className="text-xs text-indigo-500 flex items-center gap-1 hover:text-indigo-400 transition-colors">
-                Gerenciar <ArrowRight size={11} />
-              </button>
+              <div>
+                <CardTitle>Distribuição do score operacional</CardTitle>
+                <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
+                  Consolidação dos scorecards que a API já expõe hoje.
+                </p>
+              </div>
             </CardHeader>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {applications.map((app, i) => (
-                <motion.div
-                  key={app.id}
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.75 + i * 0.05 }}
-                  onClick={() => navigate(`/applications/${app.id}`)}
-                  className="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all hover:border-indigo-500/40 hover:shadow-md"
-                  style={{ borderColor: 'var(--color-border)' }}
+
+            <div className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
+              <div className="h-[260px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={buckets} dataKey="value" nameKey="label" innerRadius={62} outerRadius={96} paddingAngle={3}>
+                      {buckets.map(bucket => (
+                        <Cell key={bucket.label} fill={bucket.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className="space-y-3">
+                {buckets.map(bucket => (
+                  <div key={bucket.label} className="flex items-center justify-between rounded-2xl px-4 py-3" style={{ backgroundColor: 'var(--color-muted)' }}>
+                    <div className="flex items-center gap-3">
+                      <span className="h-3 w-3 rounded-full" style={{ backgroundColor: bucket.color }} />
+                      <span className="font-semibold" style={{ color: 'var(--color-foreground)' }}>{bucket.label}</span>
+                    </div>
+                    <span className="text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{bucket.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div>
+                <CardTitle>Clusters em melhor forma</CardTitle>
+                <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
+                  Ranking por score médio e cobertura.
+                </p>
+              </div>
+            </CardHeader>
+
+            <div className="h-[260px]">
+              <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={clusters}>
+                  <XAxis dataKey="cluster" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <Tooltip />
+                  <Bar dataKey="averageScore" radius={[10, 10, 0, 0]} fill="#f45d2d" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+        </section>
+
+        <section className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+          <Card>
+            <CardHeader>
+              <div>
+                <CardTitle>Não conformes agora</CardTitle>
+                <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
+                  Lista priorizada para o que ja esta explicitamente fora de conformidade.
+                </p>
+              </div>
+            </CardHeader>
+
+            <div className="space-y-3">
+              {(nonCompliantWorkloads.length > 0 ? nonCompliantWorkloads : criticalWorkloads).map(workload => (
+                <button
+                  key={workload.id}
+                  onClick={() => navigate(`/applications/${workload.id}`)}
+                  className="flex w-full items-center gap-4 rounded-[24px] border px-4 py-4 text-left transition-transform hover:-translate-y-0.5"
+                  style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-muted)' }}
+                  type="button"
                 >
-                  <div className="w-2 h-8 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: scoreRingColor(app.overallScore) }} />
+                  <ScoreRing score={workload.overallScore} size={58} strokeWidth={5} />
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium truncate" style={{ color: 'var(--color-foreground)' }}>{app.name}</p>
-                    <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>{app.namespace}</p>
-                  </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className={`text-sm font-bold ${scoreColor(app.overallScore)}`}>
-                      {app.overallScore.toFixed(0)}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{workload.name}</p>
+                      <ScoreBadge score={workload.overallScore} size="sm" />
+                    </div>
+                    <p className="mt-1 text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
+                      {workload.namespace} · {workload.cluster} · {formatEnum(workload.environment)}
                     </p>
-                    <TrendIcon trend={app.trend} size={11} />
                   </div>
-                </motion.div>
+                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${workload.complianceStatus === 'COMPLIANT' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'}`}>
+                    {formatEnum(workload.complianceStatus)}
+                  </span>
+                </button>
               ))}
             </div>
           </Card>
-        </motion.div>
+
+          <div className="space-y-4">
+            <Card>
+              <CardHeader>
+                <div>
+                  <CardTitle>Fila de remediação</CardTitle>
+                  <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
+                    O que já tem status ou PR associado.
+                  </p>
+                </div>
+              </CardHeader>
+
+              <div className="space-y-3">
+                {remediationQueue.length === 0 && (
+                  <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
+                    Nenhum workload com remediação ativa neste momento.
+                  </p>
+                )}
+
+                {remediationQueue.map(workload => (
+                  <div key={workload.id} className="rounded-3xl border px-4 py-4" style={{ borderColor: 'var(--color-border)' }}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{workload.name}</p>
+                        <p className="mt-1 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
+                          {workload.namespace} · {workload.cluster}
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-orange-500/10 px-2.5 py-1 text-[11px] font-semibold text-orange-500">
+                        {formatEnum(workload.remediationStatus ?? 'pendente')}
+                      </span>
+                    </div>
+                    {workload.githubPrUrl && (
+                      <a
+                        href={workload.githubPrUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-orange-500"
+                      >
+                        Abrir PR vinculado
+                        <ArrowRight size={13} />
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <div>
+                  <CardTitle>Namespaces com maior volume</CardTitle>
+                  <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
+                    Onde a operação está mais concentrada.
+                  </p>
+                </div>
+              </CardHeader>
+
+              <div className="space-y-3">
+                {namespaces.map(namespace => (
+                  <div key={namespace.key} className="flex items-center justify-between rounded-2xl px-4 py-3" style={{ backgroundColor: 'var(--color-muted)' }}>
+                    <div>
+                      <p className="text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{namespace.namespace}</p>
+                      <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
+                        {namespace.cluster} · {formatEnum(namespace.environment)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{namespace.workloadCount}</p>
+                      <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
+                        score {formatNumber(namespace.averageScore)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        </section>
       </div>
     </div>
   )

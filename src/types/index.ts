@@ -1,114 +1,120 @@
 export type Severity = 'critical' | 'error' | 'warning' | 'info'
-export type ScoreStatus = 'excellent' | 'good' | 'warning' | 'critical'
-export type SLOStatus = 'healthy' | 'at_risk' | 'breached' | 'no_data'
-export type WorkloadKind = 'Deployment' | 'StatefulSet' | 'DaemonSet'
 
 export interface PillarScore {
-  score: number
+  pillar: string
+  score: number | null
   passedChecks: number
-  totalChecks: number
+  failedChecks: number
+  weightedScore: number | null
 }
 
 export interface Finding {
   ruleId: string
   ruleName: string
+  pillar: string
   severity: Severity
-  message: string
-  remediation: string
+  ruleType: string
+  weight: number | null
+  passed: boolean
+  message: string | null
+  actualValue: string | null
   remediable: boolean
+  remediationCategory: string | null
+  evaluatedAt: string | null
 }
 
-export interface RemediationPR {
-  prNumber: number
-  prUrl: string
-  prBranch: string
-  status: 'open' | 'merged' | 'closed'
-  issuesFixed: string[]
-  createdAt: string
-}
-
-export interface Application {
+export interface WorkloadSummary {
   id: string
   name: string
   namespace: string
-  kind: WorkloadKind
-  squad: string
-  product: string
-  domain: string
-  owner: string
-  techLead: string
-  tier: 'tier-1' | 'tier-2' | 'tier-3'
-  overallScore: number
-  pillarScores: Record<string, PillarScore>
-  issues: { critical: number; errors: number; warnings: number }
-  findings: Finding[]
-  remediationPR?: RemediationPR
-  lastEvaluated: string
-  monthlyCostUsd?: number
-  cpuEfficiencyPct?: number
-  memoryEfficiencyPct?: number
-  wasteUsd?: number
-  sloCount?: number
-  sloHealthy?: number
-  trend: 'up' | 'down' | 'stable'
-  scoreHistory: Array<{ date: string; score: number }>
+  cluster: string
+  environment: string
+  overallScore: number | null
+  complianceStatus: string | null
+  remediationStatus: string | null
+  githubPrUrl: string | null
 }
 
-export interface SLO {
-  id: string
+export interface WorkloadDetail extends WorkloadSummary {
+  kind: string | null
+  version: number | null
+  evaluatedAt: string | null
+  totalRules: number
+  passedRules: number
+  failedRules: number
+  criticalFailures: number
+  errorCount: number
+  warningCount: number
+  pillarScores: PillarScore[]
+  validationResults: Finding[]
+}
+
+export interface RemediationDetail {
+  status: string
+  version: number
+  githubPrUrl: string | null
+  githubPrNumber: number | null
+  triggeredAt: string | null
+}
+
+export interface SloLookupResult {
+  namespace: string
   name: string
-  service: string
-  namespace: string
-  squad: string
-  target: number
-  current: number
-  status: SLOStatus
-  errorBudgetRemaining: number
-  framework: 'fastapi' | 'wsgi' | 'aiohttp' | 'custom'
-  lastUpdated: string
-  burnRate7d: number
-  burnRate1h: number
-  history: Array<{ date: string; score: number }>
+  sloConfigId: string
+  sloType: string
+  timeframe: string
+  target: number | null
+  datadogSloId: string | null
+  datadogSloState: string | null
+  detectedFramework: string | null
+  detectionSource: string | null
+  lastSyncAt: string | null
 }
 
-export interface SquadSummary {
-  squad: string
-  product: string
-  domain: string
-  appCount: number
-  avgScore: number
-  criticalApps: number
-  openPRs: number
-  reliabilityScore: number
-  securityScore: number
-  trend: 'up' | 'down' | 'stable'
-}
-
-export interface RecommendationItem {
-  appId: string
-  appName: string
-  namespace: string
-  squad: string
-  ruleId: string
-  ruleName: string
-  severity: Severity
-  message: string
-  remediation: string
-  remediable: boolean
-  hasPR: boolean
-  prUrl?: string
+export interface SloListItem extends SloLookupResult {
+  cluster: string
+  environment: string
+  warning: number | null
 }
 
 export interface PlatformSummary {
-  totalApps: number
-  avgScore: number
-  criticalApps: number
-  excellentApps: number
-  goodApps: number
-  warningApps: number
-  openPRs: number
-  totalFindings: { critical: number; errors: number; warnings: number }
-  sloCompliance: number
-  totalMonthlyCost: number
-  scoreHistory: Array<{ date: string; score: number; critical: number }>
+  totalWorkloads: number
+  averageScore: number
+  scoredWorkloads: number
+  unscoredWorkloads: number
+  compliantCount: number
+  nonCompliantCount: number
+  remediatedCount: number
+  clusters: number
+  namespaces: number
+}
+
+export interface ScoreBucket {
+  label: string
+  value: number
+  color: string
+}
+
+export interface ClusterSummary {
+  key: string
+  cluster: string
+  environment: string
+  workloadCount: number
+  scoredWorkloads: number
+  averageScore: number | null
+  compliantCount: number
+  nonCompliantCount: number
+  remediatedCount: number
+  namespaces: number
+}
+
+export interface NamespaceSummary {
+  key: string
+  namespace: string
+  cluster: string
+  environment: string
+  workloadCount: number
+  averageScore: number | null
+  openRemediations: number
+  nonCompliantCount: number
 }

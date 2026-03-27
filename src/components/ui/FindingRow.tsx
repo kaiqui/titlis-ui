@@ -24,12 +24,18 @@ export function FindingRow({ finding }: FindingRowProps) {
           </span>
         </div>
         <p className="text-xs mb-1" style={{ color: 'var(--color-muted-foreground)' }}>
-          {finding.message}
+          {finding.message ?? 'Sem detalhe adicional para esta regra.'}
         </p>
-        <div className="flex items-start gap-1.5">
-          <Info size={11} className="text-blue-400 flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-blue-500 dark:text-blue-400">{finding.remediation}</p>
-        </div>
+        {(finding.remediationCategory || finding.actualValue) && (
+          <div className="flex items-start gap-1.5">
+            <Info size={11} className="text-blue-400 flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-blue-500 dark:text-blue-400">
+              {finding.remediationCategory
+                ? `Categoria: ${finding.remediationCategory}`
+                : `Valor observado: ${finding.actualValue}`}
+            </p>
+          </div>
+        )}
       </div>
       {finding.remediable && (
         <div className="flex-shrink-0">

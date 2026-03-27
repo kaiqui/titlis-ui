@@ -1,243 +1,274 @@
-import { useState } from 'react'
+import { useDeferredValue, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Filter, ArrowUpDown, Server, GitPullRequest } from 'lucide-react'
+import { motion } from 'framer-motion'
+import { ArrowUpDown, Search } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { Card } from '@/components/ui/Card'
-import { ScoreRing } from '@/components/ui/ScoreRing'
+import { PageError, PageLoading } from '@/components/ui/PageState'
 import { ScoreBadge } from '@/components/ui/ScoreBadge'
-import { TrendIcon } from '@/components/ui/TrendIcon'
-import { PillarBar } from '@/components/ui/PillarBar'
-import { PageLoading, PageError } from '@/components/ui/PageState'
-import { useApplications, useApplicationNamespaces } from '@/hooks/useApi'
+import { ScoreRing } from '@/components/ui/ScoreRing'
+import { useDashboardWorkloads } from '@/hooks/useApi'
+import { formatEnum, statusTone } from '@/lib/utils'
 
-type SortKey = 'score' | 'name' | 'errors'
-type FilterScore = 'all' | 'critical' | 'warning' | 'good' | 'excellent'
+type SortKey = 'score' | 'name' | 'namespace'
+type ComplianceFilter = 'all' | 'non_compliant' | 'compliant' | 'unknown'
 
 export function Applications() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
+  const [cluster, setCluster] = useState('all')
+  const [environment, setEnvironment] = useState('all')
+  const [complianceFilter, setComplianceFilter] = useState<ComplianceFilter>('non_compliant')
   const [sortKey, setSortKey] = useState<SortKey>('score')
-  const [sortAsc, setSortAsc] = useState(true)
-  const [filterScore, setFilterScore] = useState<FilterScore>('all')
-  const [filterNs, setFilterNs] = useState('all')
+  const [descending, setDescending] = useState(false)
 
-  const { data: applications, isLoading, error, refetch } = useApplications()
-  const { data: namespacesData } = useApplicationNamespaces()
+  const deferredSearch = useDeferredValue(search)
+  const { data: workloads, isLoading, error, refetch } = useDashboardWorkloads()
 
-  if (isLoading) return <><Header title="Aplicacoes" /><PageLoading /></>
-  if (error || !applications) {
+  if (isLoading) return <><Header title="Workloads monitorados" /><PageLoading /></>
+  if (error || !workloads) {
     return (
       <>
-        <Header title="Aplicacoes" />
+        <Header title="Workloads monitorados" />
         <PageError message={error instanceof Error ? error.message : undefined} onRetry={() => void refetch()} />
       </>
     )
   }
 
-  const namespaces = ['all', ...(namespacesData ?? Array.from(new Set(applications.map(a => a.namespace))))]
+  const clusters = ['all', ...new Set(workloads.map(workload => workload.cluster))]
+  const environments = ['all', ...new Set(workloads.map(workload => workload.environment))]
 
-  const filtered = applications
-    .filter(a => {
-      const q = search.toLowerCase()
-      const matchSearch = a.name.toLowerCase().includes(q) ||
-        a.squad.toLowerCase().includes(q) ||
-        a.namespace.toLowerCase().includes(q)
-      const matchScore =
-        filterScore === 'all' ? true :
-        filterScore === 'critical' ? a.overallScore < 70 :
-        filterScore === 'warning' ? (a.overallScore >= 70 && a.overallScore < 80) :
-        filterScore === 'good' ? (a.overallScore >= 80 && a.overallScore < 90) :
-        a.overallScore >= 90
-      const matchNs = filterNs === 'all' ? true : a.namespace === filterNs
-      return matchSearch && matchScore && matchNs
+  const filtered = workloads
+    .filter(workload => {
+      const term = deferredSearch.trim().toLowerCase()
+      const matchesSearch = term.length === 0
+        || workload.name.toLowerCase().includes(term)
+        || workload.namespace.toLowerCase().includes(term)
+        || workload.cluster.toLowerCase().includes(term)
+
+      const matchesCluster = cluster === 'all' || workload.cluster === cluster
+      const matchesEnvironment = environment === 'all' || workload.environment === environment
+      const matchesCompliance = complianceFilter === 'all'
+        || (complianceFilter === 'non_compliant' && workload.complianceStatus === 'NON_COMPLIANT')
+        || (complianceFilter === 'compliant' && workload.complianceStatus === 'COMPLIANT')
+        || (complianceFilter === 'unknown' && workload.complianceStatus !== 'COMPLIANT' && workload.complianceStatus !== 'NON_COMPLIANT')
+
+      return matchesSearch && matchesCluster && matchesEnvironment && matchesCompliance
     })
-    .sort((a, b) => {
-      let diff = 0
-      if (sortKey === 'score') diff = a.overallScore - b.overallScore
-      if (sortKey === 'name') diff = a.name.localeCompare(b.name)
-      if (sortKey === 'errors') diff = (a.issues.errors + a.issues.critical) - (b.issues.errors + b.issues.critical)
-      return sortAsc ? diff : -diff
+    .sort((left, right) => {
+      if (sortKey === 'name') {
+        return descending ? right.name.localeCompare(left.name) : left.name.localeCompare(right.name)
+      }
+
+      if (sortKey === 'namespace') {
+        return descending ? right.namespace.localeCompare(left.namespace) : left.namespace.localeCompare(right.namespace)
+      }
+
+      const leftScore = left.overallScore ?? -1
+      const rightScore = right.overallScore ?? -1
+      return descending ? rightScore - leftScore : leftScore - rightScore
     })
 
-  const toggleSort = (key: SortKey) => {
-    if (sortKey === key) setSortAsc(s => !s)
-    else { setSortKey(key); setSortAsc(false) }
-  }
+  const nonCompliantCount = workloads.filter(workload => workload.complianceStatus === 'NON_COMPLIANT').length
+  const compliantCount = workloads.filter(workload => workload.complianceStatus === 'COMPLIANT').length
+  const unknownCount = workloads.length - nonCompliantCount - compliantCount
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <Header title="Aplicacoes" subtitle={`${applications.length} workloads monitorados`} />
+    <div className="flex min-h-screen flex-col">
+      <Header
+        title="Workloads monitorados"
+        subtitle="Catálogo operacional alinhado ao endpoint /v1/dashboard, com foco imediato em não conformidade, cluster, ambiente e namespace."
+      />
 
-      <div className="flex-1 p-6 space-y-5">
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative flex-1 min-w-[200px] max-w-sm">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2"
-              style={{ color: 'var(--color-muted-foreground)' }} />
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Buscar por nome, squad, namespace..."
-              className="w-full pl-9 pr-3 py-2 rounded-lg text-sm outline-none transition-colors"
+      <div className="flex-1 space-y-5 px-4 py-6 lg:px-8">
+        <Card className="overflow-hidden">
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            {[
+              { value: 'non_compliant', label: 'Não conformes', count: nonCompliantCount },
+              { value: 'all', label: 'Todos', count: workloads.length },
+              { value: 'compliant', label: 'Conformes', count: compliantCount },
+              { value: 'unknown', label: 'Sem classificação', count: unknownCount },
+            ].map(option => (
+              <button
+                key={option.value}
+                onClick={() => setComplianceFilter(option.value as ComplianceFilter)}
+                className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition-colors"
+                style={{
+                  borderColor: complianceFilter === option.value ? 'rgba(239, 68, 68, 0.25)' : 'var(--color-border)',
+                  backgroundColor: complianceFilter === option.value ? 'rgba(239, 68, 68, 0.10)' : 'var(--color-card)',
+                  color: complianceFilter === option.value ? 'rgb(220 38 38)' : 'var(--color-foreground)',
+                }}
+                type="button"
+              >
+                {option.label}
+                <span className="rounded-full bg-black/6 px-2 py-0.5 text-xs dark:bg-white/10">{option.count}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-[1.4fr_0.7fr_0.7fr_auto]">
+            <label className="relative">
+              <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-muted-foreground)' }} />
+              <input
+                value={search}
+                onChange={event => setSearch(event.target.value)}
+                placeholder="Buscar por workload, namespace ou cluster"
+                className="w-full rounded-2xl border py-3 pl-11 pr-4 text-sm outline-none"
+                style={{
+                  borderColor: 'var(--color-border)',
+                  backgroundColor: 'var(--color-muted)',
+                  color: 'var(--color-foreground)',
+                }}
+              />
+            </label>
+
+            <select
+              value={cluster}
+              onChange={event => setCluster(event.target.value)}
+              className="rounded-2xl border px-4 py-3 text-sm outline-none"
               style={{
+                borderColor: 'var(--color-border)',
                 backgroundColor: 'var(--color-muted)',
                 color: 'var(--color-foreground)',
-                border: '1px solid var(--color-border)',
               }}
-            />
+            >
+              {clusters.map(option => (
+                <option key={option} value={option}>
+                  {option === 'all' ? 'Todos os clusters' : option}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={environment}
+              onChange={event => setEnvironment(event.target.value)}
+              className="rounded-2xl border px-4 py-3 text-sm outline-none"
+              style={{
+                borderColor: 'var(--color-border)',
+                backgroundColor: 'var(--color-muted)',
+                color: 'var(--color-foreground)',
+              }}
+            >
+              {environments.map(option => (
+                <option key={option} value={option}>
+                  {option === 'all' ? 'Todos os ambientes' : formatEnum(option)}
+                </option>
+              ))}
+            </select>
+
+            <button
+              onClick={() => {
+                setSortKey(current => current === 'score' ? 'name' : current === 'name' ? 'namespace' : 'score')
+                setDescending(current => !current)
+              }}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold"
+              style={{
+                borderColor: 'var(--color-border)',
+                backgroundColor: 'var(--color-card)',
+                color: 'var(--color-foreground)',
+              }}
+              type="button"
+            >
+              <ArrowUpDown size={15} />
+              Ordenar
+            </button>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Filter size={13} style={{ color: 'var(--color-muted-foreground)' }} />
-            {(['all', 'critical', 'warning', 'good', 'excellent'] as FilterScore[]).map(f => (
-              <button
-                key={f}
-                onClick={() => setFilterScore(f)}
-                className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all ${
-                  filterScore === f
-                    ? 'bg-indigo-500 text-white'
-                    : 'hover:bg-[--color-muted] text-[--color-muted-foreground]'
-                }`}
-              >
-                {f === 'all' ? 'Todos' : f === 'critical' ? 'Critico' : f === 'warning' ? 'Regular' : f === 'good' ? 'Bom' : 'Excelente'}
-              </button>
-            ))}
+          <div className="mt-4 flex flex-wrap items-center gap-2 text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
+            <span>{filtered.length} workloads na visualização atual.</span>
+            <span className="rounded-full bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-500">
+              {nonCompliantCount} não conformes no ambiente
+            </span>
+            <span className="rounded-full bg-orange-500/10 px-3 py-1 text-xs font-semibold text-orange-500">
+              ordenação por {sortKey === 'score' ? 'score' : sortKey === 'name' ? 'nome' : 'namespace'}
+            </span>
           </div>
+        </Card>
 
-          <select
-            value={filterNs}
-            onChange={e => setFilterNs(e.target.value)}
-            className="text-xs px-3 py-1.5 rounded-lg outline-none cursor-pointer"
-            style={{
-              backgroundColor: 'var(--color-muted)',
-              color: 'var(--color-foreground)',
-              border: '1px solid var(--color-border)',
-            }}
-          >
-            {namespaces.map(ns => (
-              <option key={ns} value={ns}>{ns === 'all' ? 'Todos namespaces' : ns}</option>
-            ))}
-          </select>
-        </div>
+        <div className="grid gap-4 xl:grid-cols-2">
+          {filtered.map((workload, index) => (
+            <motion.div
+              key={workload.id}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25, delay: index * 0.02 }}
+            >
+              <Card hover onClick={() => navigate(`/applications/${workload.id}`)} className="h-full">
+                <div className="flex items-start gap-4">
+                  <ScoreRing score={workload.overallScore} size={72} strokeWidth={6} showLabel />
 
-        {/* Sort bar */}
-        <div className="flex items-center gap-4 px-1">
-          <span className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
-            {filtered.length} resultados
-          </span>
-          <div className="flex items-center gap-2 ml-auto">
-            {(['score', 'name', 'errors'] as SortKey[]).map(key => (
-              <button
-                key={key}
-                onClick={() => toggleSort(key)}
-                className={`flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors ${
-                  sortKey === key ? 'text-indigo-500' : 'hover:text-[--color-foreground]'
-                }`}
-                style={{ color: sortKey === key ? undefined : 'var(--color-muted-foreground)' }}
-              >
-                <ArrowUpDown size={10} />
-                {key === 'score' ? 'Score' : key === 'name' ? 'Nome' : 'Problemas'}
-              </button>
-            ))}
-          </div>
-        </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="truncate text-lg font-black tracking-tight" style={{ color: 'var(--color-foreground)' }}>
+                        {workload.name}
+                      </h3>
+                      <ScoreBadge score={workload.overallScore} size="sm" />
+                    </div>
 
-        {/* Apps grid */}
-        <AnimatePresence mode="popLayout">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {filtered.map((app, i) => (
-              <motion.div
-                key={app.id}
-                layout
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.3, delay: i * 0.04 }}
-              >
-                <Card
-                  hover
-                  onClick={() => navigate(`/applications/${app.id}`)}
-                  className="group"
-                >
-                  <div className="flex items-start gap-4">
-                    <ScoreRing score={app.overallScore} size={64} strokeWidth={5} showLabel />
+                    <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                      <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
+                        {workload.namespace}
+                      </span>
+                      <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
+                        {workload.cluster}
+                      </span>
+                      <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
+                        {formatEnum(workload.environment)}
+                      </span>
+                    </div>
 
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-sm font-semibold truncate" style={{ color: 'var(--color-foreground)' }}>
-                          {app.name}
-                        </h3>
-                        <ScoreBadge score={app.overallScore} size="sm" />
-                        <TrendIcon trend={app.trend} size={13} />
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-3">
-                        <span className="flex items-center gap-1 text-xs"
-                          style={{ color: 'var(--color-muted-foreground)' }}>
-                          <Server size={10} />
-                          {app.namespace}
-                        </span>
-                        <span className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
-                          {app.kind}
-                        </span>
-                        <span className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
-                          Squad: <span className="font-medium" style={{ color: 'var(--color-foreground)' }}>{app.squad}</span>
-                        </span>
-                        <span className={`text-xs px-1.5 py-0.5 rounded ${
-                          app.tier === 'tier-1' ? 'bg-purple-500/10 text-purple-500' :
-                          app.tier === 'tier-2' ? 'bg-blue-500/10 text-blue-500' :
-                          'bg-gray-500/10 text-gray-500'
-                        }`}>
-                          {app.tier}
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-2xl px-4 py-3" style={{ backgroundColor: 'var(--color-muted)' }}>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--color-muted-foreground)' }}>
+                          Conformidade
+                        </p>
+                        <span className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${statusTone(workload.complianceStatus)}`}>
+                          {formatEnum(workload.complianceStatus)}
                         </span>
                       </div>
-
-                      {/* Pillar mini bars */}
-                      <div className="space-y-1">
-                        {Object.entries(app.pillarScores).slice(0, 3).map(([pillar, data]) => (
-                          <PillarBar key={pillar} pillar={pillar} data={data} />
-                        ))}
+                      <div className="rounded-2xl px-4 py-3" style={{ backgroundColor: 'var(--color-muted)' }}>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--color-muted-foreground)' }}>
+                          Remediação
+                        </p>
+                        <span className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${statusTone(workload.remediationStatus)}`}>
+                          {formatEnum(workload.remediationStatus)}
+                        </span>
                       </div>
                     </div>
 
-                    {/* Right column */}
-                    <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                      <div className="flex items-center gap-1.5">
-                        {app.issues.critical > 0 && (
-                          <span className="text-[10px] bg-red-500/10 text-red-500 rounded px-1.5 py-0.5 font-medium">
-                            {app.issues.critical}C
-                          </span>
-                        )}
-                        {app.issues.errors > 0 && (
-                          <span className="text-[10px] bg-orange-500/10 text-orange-500 rounded px-1.5 py-0.5 font-medium">
-                            {app.issues.errors}E
-                          </span>
-                        )}
-                        {app.issues.warnings > 0 && (
-                          <span className="text-[10px] bg-yellow-500/10 text-yellow-600 rounded px-1.5 py-0.5 font-medium">
-                            {app.issues.warnings}W
-                          </span>
-                        )}
-                      </div>
-                      {app.remediationPR && (
-                        <span className="flex items-center gap-1 text-[10px] bg-indigo-500/10 text-indigo-500 rounded-full px-2 py-0.5">
-                          <GitPullRequest size={9} />
-                          PR #{app.remediationPR.prNumber}
-                        </span>
-                      )}
-                      {app.monthlyCostUsd && (
-                        <span className="text-[10px]" style={{ color: 'var(--color-muted-foreground)' }}>
-                          ${app.monthlyCostUsd}/mo
-                        </span>
-                      )}
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <button
+                        onClick={event => {
+                          event.stopPropagation()
+                          navigate(`/applications/${workload.id}`)
+                        }}
+                        className="inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold transition-colors"
+                        style={{
+                          borderColor: 'var(--color-border)',
+                          backgroundColor: 'var(--color-card)',
+                          color: 'var(--color-foreground)',
+                        }}
+                        type="button"
+                      >
+                        Abrir aplicação
+                      </button>
+                      <button
+                        onClick={event => {
+                          event.stopPropagation()
+                          navigate(`/applications/${workload.id}/scorecard`)
+                        }}
+                        className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-orange-600"
+                        type="button"
+                      >
+                        Abrir scorecard
+                      </button>
                     </div>
                   </div>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        </AnimatePresence>
+                </div>
+              </Card>
+            </motion.div>
+          ))}
+        </div>
       </div>
     </div>
   )

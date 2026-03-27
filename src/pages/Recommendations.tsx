@@ -1,239 +1,192 @@
-import { useState } from 'react'
+import { useDeferredValue, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Lightbulb, GitPullRequest, ExternalLink, Filter, Wrench, Info, AlertTriangle, XCircle, ChevronRight } from 'lucide-react'
+import {
+  ArrowRight,
+  GitPullRequest,
+  Search,
+  ShieldAlert,
+  Sparkles,
+  Wrench,
+} from 'lucide-react'
 import { Header } from '@/components/layout/Header'
-import { Card, CardHeader } from '@/components/ui/Card'
-import { SeverityBadge } from '@/components/ui/SeverityBadge'
-import { PageLoading, PageError } from '@/components/ui/PageState'
-import { useRecommendations } from '@/hooks/useApi'
-import type { Severity, RecommendationItem } from '@/types'
-
-type FilterSev = 'all' | Severity
-
-const sevIcon = (sev: Severity) => {
-  if (sev === 'critical') return <XCircle size={13} className="text-red-500" />
-  if (sev === 'error') return <AlertTriangle size={13} className="text-orange-500" />
-  if (sev === 'warning') return <AlertTriangle size={13} className="text-yellow-500" />
-  return <Info size={13} className="text-blue-500" />
-}
+import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { MetricCard } from '@/components/ui/MetricCard'
+import { PageError, PageLoading } from '@/components/ui/PageState'
+import { useDashboardWorkloads } from '@/hooks/useApi'
+import { buildRemediationQueue } from '@/lib/insights'
+import { formatEnum, statusTone } from '@/lib/utils'
 
 export function Recommendations() {
   const navigate = useNavigate()
-  const [filterSev, setFilterSev] = useState<FilterSev>('all')
-  const [filterRemediable, setFilterRemediable] = useState(false)
+  const [search, setSearch] = useState('')
+  const deferredSearch = useDeferredValue(search)
+  const { data: workloads, isLoading, error, refetch } = useDashboardWorkloads()
 
-  const { data: grouped, isLoading, error, refetch } = useRecommendations()
-
-  if (isLoading) return <><Header title="Recomendacoes de Melhoria" /><PageLoading /></>
-  if (error || !grouped) {
+  if (isLoading) return <><Header title="Remediação & prioridades" /><PageLoading /></>
+  if (error || !workloads) {
     return (
       <>
-        <Header title="Recomendacoes de Melhoria" />
+        <Header title="Remediação & prioridades" />
         <PageError message={error instanceof Error ? error.message : undefined} onRetry={() => void refetch()} />
       </>
     )
   }
 
-  // Flatten all items for counts
-  const items: RecommendationItem[] = Object.values(grouped).flat()
-
-  const counts = {
-    critical: items.filter(i => i.severity === 'critical').length,
-    error: items.filter(i => i.severity === 'error').length,
-    warning: items.filter(i => i.severity === 'warning').length,
-    remediable: items.filter(i => i.remediable).length,
-    withPR: items.filter(i => i.hasPR).length,
-  }
-
-  // Apply filters and re-group
-  const filtered = items.filter(item => {
-    const matchSev = filterSev === 'all' ? true : item.severity === filterSev
-    const matchRem = filterRemediable ? item.remediable : true
-    return matchSev && matchRem
-  }).sort((a, b) => {
-    const order = { critical: 0, error: 1, warning: 2, info: 3 }
-    return order[a.severity] - order[b.severity]
+  const queue = buildRemediationQueue(workloads)
+  const visible = queue.filter(item => {
+    const term = deferredSearch.trim().toLowerCase()
+    if (!term) return true
+    return item.name.toLowerCase().includes(term) || item.namespace.toLowerCase().includes(term) || item.cluster.toLowerCase().includes(term)
   })
 
-  const groupedByApp = filtered.reduce<Record<string, RecommendationItem[]>>((acc, item) => {
-    if (!acc[item.appId]) acc[item.appId] = []
-    acc[item.appId].push(item)
-    return acc
-  }, {})
+  const withPr = visible.filter(item => item.githubPrUrl)
+  const withoutPr = visible.filter(item => !item.githubPrUrl)
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex min-h-screen flex-col">
       <Header
-        title="Recomendacoes de Melhoria"
-        subtitle={`${items.length} problemas detectados em ${Object.keys(grouped).length} aplicacoes`}
+        title="Remediação & prioridades"
+        subtitle="Fila operacional montada com base no dashboard consolidado e no estado de remediação persistido na API."
       />
 
-      <div className="flex-1 p-6 space-y-5">
-        {/* Summary */}
-        <div className="grid grid-cols-5 gap-3">
-          {[
-            { label: 'Criticos', value: counts.critical, color: 'text-red-500', bg: 'bg-red-500/10' },
-            { label: 'Erros', value: counts.error, color: 'text-orange-500', bg: 'bg-orange-500/10' },
-            { label: 'Avisos', value: counts.warning, color: 'text-yellow-500', bg: 'bg-yellow-500/10' },
-            { label: 'Auto-fixaveis', value: counts.remediable, color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
-            { label: 'Com PR Aberto', value: counts.withPR, color: 'text-purple-500', bg: 'bg-purple-500/10' },
-          ].map(({ label, value, color }, i) => (
-            <motion.div key={label} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
-              <Card>
-                <p className={`text-2xl font-bold ${color}`}>{value}</p>
-                <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted-foreground)' }}>{label}</p>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
+      <div className="flex-1 space-y-5 px-4 py-6 lg:px-8">
+        <section className="grid gap-4 md:grid-cols-3">
+          <MetricCard
+            label="Itens priorizados"
+            value={queue.length}
+            sub="não conformes ou com remediação ativa"
+            icon={ShieldAlert}
+            iconColor="text-red-500"
+            trend={queue.length > 0 ? 'down' : 'stable'}
+            trendValue={queue.length > 0 ? 'acompanhar diariamente' : 'nenhuma pendência agora'}
+          />
+          <MetricCard
+            label="Com PR aberto"
+            value={withPr.length}
+            sub="ações rastreáveis no repositório"
+            icon={GitPullRequest}
+            iconColor="text-orange-500"
+            trend={withPr.length > 0 ? 'up' : 'stable'}
+            trendValue={withPr.length > 0 ? 'foco em merge e follow-up' : 'sem PRs vinculados'}
+            delay={0.05}
+          />
+          <MetricCard
+            label="Sem PR"
+            value={withoutPr.length}
+            sub="pedem investigação manual"
+            icon={Wrench}
+            iconColor="text-amber-500"
+            trend={withoutPr.length > 0 ? 'down' : 'stable'}
+            trendValue={withoutPr.length > 0 ? 'avaliar causa raiz' : 'todos os itens têm trilha'}
+            delay={0.1}
+          />
+        </section>
 
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-3">
-          <Filter size={13} style={{ color: 'var(--color-muted-foreground)' }} />
-          {(['all', 'critical', 'error', 'warning', 'info'] as FilterSev[]).map(f => (
-            <button
-              key={f}
-              onClick={() => setFilterSev(f)}
-              className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all ${
-                filterSev === f ? 'bg-indigo-500 text-white' : 'hover:bg-[--color-muted] text-[--color-muted-foreground]'
-              }`}
-            >
-              {f === 'all' ? 'Todos' : f === 'critical' ? 'Criticos' : f === 'error' ? 'Erros' : f === 'warning' ? 'Avisos' : 'Info'}
-            </button>
-          ))}
-          <button
-            onClick={() => setFilterRemediable(r => !r)}
-            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium transition-all ${
-              filterRemediable ? 'bg-indigo-500 text-white' : 'hover:bg-[--color-muted] text-[--color-muted-foreground]'
-            }`}
-          >
-            <Wrench size={11} />
-            Auto-fixaveis
-          </button>
-          <span className="text-xs ml-auto" style={{ color: 'var(--color-muted-foreground)' }}>
-            {filtered.length} recomendacoes
-          </span>
-        </div>
+        <Card>
+          <div className="relative">
+            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-muted-foreground)' }} />
+            <input
+              value={search}
+              onChange={event => setSearch(event.target.value)}
+              placeholder="Buscar por workload, namespace ou cluster"
+              className="w-full rounded-2xl border py-3 pl-11 pr-4 text-sm outline-none"
+              style={{
+                borderColor: 'var(--color-border)',
+                backgroundColor: 'var(--color-muted)',
+                color: 'var(--color-foreground)',
+              }}
+            />
+          </div>
+        </Card>
 
-        {/* Grouped by app */}
-        <div className="space-y-4">
-          {Object.entries(groupedByApp).map(([appId, recs], gi) => {
-            const first = recs[0]
-            const prItem = recs.find(r => r.hasPR)
-            const prNumber = prItem?.prUrl ? prItem.prUrl.split('/').pop() : null
-            return (
-              <motion.div
-                key={appId}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 + gi * 0.08 }}
-              >
-                <Card>
-                  <CardHeader className="mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => navigate(`/applications/${appId}`)}
-                            className="text-sm font-semibold hover:text-indigo-500 transition-colors flex items-center gap-1"
-                            style={{ color: 'var(--color-foreground)' }}
-                          >
-                            {first.appName}
-                            <ChevronRight size={13} />
-                          </button>
-                          <span className="text-xs px-1.5 py-0.5 rounded"
-                            style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
-                            {first.namespace}
-                          </span>
-                          <span className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
-                            {first.squad}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        {recs.filter(r => r.severity === 'critical').length > 0 && (
-                          <span className="text-[10px] bg-red-500/10 text-red-500 rounded px-1.5 py-0.5">
-                            {recs.filter(r => r.severity === 'critical').length} criticos
-                          </span>
-                        )}
-                        {recs.filter(r => r.severity === 'error').length > 0 && (
-                          <span className="text-[10px] bg-orange-500/10 text-orange-500 rounded px-1.5 py-0.5">
-                            {recs.filter(r => r.severity === 'error').length} erros
-                          </span>
-                        )}
-                        {prItem && prItem.prUrl && (
-                          <a
-                            href={prItem.prUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-[10px] bg-indigo-500/10 text-indigo-500 rounded-full px-2 py-0.5 hover:bg-indigo-500/20 transition-colors"
-                          >
-                            <GitPullRequest size={9} />
-                            PR #{prNumber}
-                            <ExternalLink size={8} />
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  </CardHeader>
+        {visible.length === 0 && (
+          <Card>
+            <EmptyState
+              icon={Sparkles}
+              title="Nenhuma prioridade na fila"
+              description="Os dados atuais da API não indicam workloads não conformes nem remediações em andamento."
+            />
+          </Card>
+        )}
 
-                  <div className="divide-y" style={{ borderColor: 'var(--color-border)' }}>
-                    {recs.map((rec, ri) => (
-                      <motion.div
-                        key={`${rec.ruleId}-${ri}`}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.35 + gi * 0.08 + ri * 0.04 }}
-                        className="py-3 flex items-start gap-3"
-                      >
-                        <div className="flex-shrink-0 mt-0.5">
-                          {sevIcon(rec.severity)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-0.5">
-                            <SeverityBadge severity={rec.severity} />
-                            <span className="text-xs font-mono px-1.5 py-0.5 rounded"
-                              style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
-                              {rec.ruleId}
-                            </span>
-                            <span className="text-sm font-medium" style={{ color: 'var(--color-foreground)' }}>
-                              {rec.ruleName}
+        {visible.length > 0 && (
+          <section className="space-y-4">
+            <Card>
+              <CardHeader>
+                <div>
+                  <CardTitle>PRs e ações em andamento</CardTitle>
+                  <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
+                    Itens com rastreabilidade mais clara para conduzir o fluxo de correção.
+                  </p>
+                </div>
+              </CardHeader>
+
+              <div className="space-y-3">
+                {visible.map((item, index) => (
+                  <motion.div
+                    key={item.id}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.25, delay: index * 0.02 }}
+                  >
+                    <Card className="border-transparent" >
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              onClick={() => navigate(`/applications/${item.id}`)}
+                              className="truncate text-left text-lg font-black tracking-tight transition-colors hover:text-orange-500"
+                              style={{ color: 'var(--color-foreground)' }}
+                              type="button"
+                            >
+                              {item.name}
+                            </button>
+                            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone(item.remediationStatus ?? item.complianceStatus)}`}>
+                              {formatEnum(item.remediationStatus ?? item.complianceStatus)}
                             </span>
                           </div>
-                          <p className="text-xs mb-1.5" style={{ color: 'var(--color-muted-foreground)' }}>
-                            {rec.message}
+                          <p className="mt-2 text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
+                            {item.namespace} · {item.cluster} · {formatEnum(item.environment)}
                           </p>
-                          <div className="flex items-start gap-1.5 p-2 rounded-md"
-                            style={{ backgroundColor: 'var(--color-muted)' }}>
-                            <Lightbulb size={11} className="text-yellow-500 flex-shrink-0 mt-0.5" />
-                            <p className="text-xs" style={{ color: 'var(--color-foreground)' }}>
-                              {rec.remediation}
-                            </p>
-                          </div>
                         </div>
-                        <div className="flex-shrink-0 flex flex-col items-end gap-1.5">
-                          {rec.remediable && (
-                            <span className="flex items-center gap-1 text-[10px] bg-indigo-500/10 text-indigo-500 rounded-full px-2 py-0.5 font-medium">
-                              <Wrench size={9} />
-                              Auto-fix
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          {item.githubPrUrl ? (
+                            <a
+                              href={item.githubPrUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-orange-600"
+                            >
+                              Abrir PR
+                              <GitPullRequest size={14} />
+                            </a>
+                          ) : (
+                            <span className="rounded-full px-4 py-2 text-sm font-semibold" style={{ backgroundColor: 'var(--color-card)', color: 'var(--color-muted-foreground)' }}>
+                              Sem PR publicado
                             </span>
                           )}
-                          {rec.hasPR && (
-                            <span className="flex items-center gap-1 text-[10px] bg-purple-500/10 text-purple-500 rounded-full px-2 py-0.5">
-                              <GitPullRequest size={9} />
-                              Em PR
-                            </span>
-                          )}
+
+                          <button
+                            onClick={() => navigate(`/applications/${item.id}`)}
+                            className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition-colors"
+                            style={{ borderColor: 'var(--color-border)', color: 'var(--color-foreground)', backgroundColor: 'var(--color-card)' }}
+                            type="button"
+                          >
+                            Ver detalhe
+                            <ArrowRight size={14} />
+                          </button>
                         </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                </Card>
-              </motion.div>
-            )
-          })}
-        </div>
+                      </div>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
+            </Card>
+          </section>
+        )}
       </div>
     </div>
   )

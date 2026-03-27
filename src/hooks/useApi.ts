@@ -1,61 +1,41 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import type { SLOStatus } from '@/types'
 
-export function usePlatformSummary() {
+export function useDashboardWorkloads(cluster?: string) {
   return useQuery({
-    queryKey: ['platform', 'summary'],
-    queryFn: () => api.platform.summary(),
+    queryKey: ['dashboard', cluster],
+    queryFn: () => api.dashboard.list(cluster),
   })
 }
 
-export function useApplications(params?: {
-  search?: string
-  namespace?: string
-  scoreFilter?: string
-  squad?: string
-  sortBy?: string
-  sortAsc?: boolean
-}) {
+export function useWorkloadScorecard(id: string) {
   return useQuery({
-    queryKey: ['applications', params],
-    queryFn: () => api.applications.list(params),
+    queryKey: ['workload', id, 'scorecard'],
+    queryFn: () => api.workloads.scorecard(id),
+    enabled: Boolean(id),
   })
 }
 
-export function useApplication(id: string) {
+export function useWorkloadRemediation(id: string) {
   return useQuery({
-    queryKey: ['applications', id],
-    queryFn: () => api.applications.getById(id),
-    enabled: !!id,
+    queryKey: ['workload', id, 'remediation'],
+    queryFn: () => api.workloads.remediation(id),
+    enabled: Boolean(id),
   })
 }
 
-export function useApplicationNamespaces() {
+export function useSloLookup(namespace: string, name: string, enabled: boolean) {
   return useQuery({
-    queryKey: ['applications', 'namespaces'],
-    queryFn: () => api.applications.namespaces(),
-    staleTime: 60_000,
+    queryKey: ['slo', namespace, name],
+    queryFn: () => api.slos.lookup(namespace, name),
+    enabled,
+    retry: false,
   })
 }
 
-export function useSLOs(status?: SLOStatus) {
+export function useSloCatalog(namespace?: string, cluster?: string) {
   return useQuery({
-    queryKey: ['slos', status],
-    queryFn: () => api.slos.list(status),
-  })
-}
-
-export function useRecommendations(params?: { severity?: string; remediableOnly?: boolean }) {
-  return useQuery({
-    queryKey: ['recommendations', params],
-    queryFn: () => api.recommendations.grouped(params),
-  })
-}
-
-export function useSquads() {
-  return useQuery({
-    queryKey: ['squads'],
-    queryFn: () => api.squads.list(),
+    queryKey: ['slos', namespace ?? '', cluster ?? ''],
+    queryFn: () => api.slos.list({ namespace, cluster }),
   })
 }

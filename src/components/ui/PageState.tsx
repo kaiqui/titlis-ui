@@ -3,24 +3,33 @@ import { AlertTriangle, RefreshCw } from 'lucide-react'
 
 export function PageLoading() {
   return (
-    <div className="flex-1 flex items-center justify-center min-h-[60vh]">
+    <div className="flex min-h-[60vh] flex-1 items-center justify-center px-6">
       <motion.div
-        className="flex flex-col items-center gap-3"
+        className="flex flex-col items-center gap-4 rounded-[32px] border px-10 py-10 text-center"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3 }}
+        style={{
+          borderColor: 'var(--color-border)',
+          backgroundColor: 'var(--color-card)',
+        }}
       >
-        <div className="relative w-10 h-10">
-          <div className="absolute inset-0 rounded-full border-2 border-indigo-500/20" />
+        <div className="relative h-12 w-12">
+          <div className="absolute inset-0 rounded-full border-2 border-orange-500/20" />
           <motion.div
-            className="absolute inset-0 rounded-full border-2 border-t-indigo-500 border-r-transparent border-b-transparent border-l-transparent"
+            className="absolute inset-0 rounded-full border-2 border-l-transparent border-r-transparent border-t-orange-500 border-b-transparent"
             animate={{ rotate: 360 }}
             transition={{ duration: 0.9, repeat: Infinity, ease: 'linear' }}
           />
         </div>
-        <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
-          Carregando...
-        </p>
+        <div>
+          <p className="text-sm font-semibold" style={{ color: 'var(--color-foreground)' }}>
+            Sincronizando visão operacional
+          </p>
+          <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
+            A UI está carregando os dados reais da API.
+          </p>
+        </div>
       </motion.div>
     </div>
   )
@@ -33,29 +42,34 @@ interface PageErrorProps {
 
 export function PageError({ message, onRetry }: PageErrorProps) {
   return (
-    <div className="flex-1 flex items-center justify-center min-h-[60vh]">
+    <div className="flex min-h-[60vh] flex-1 items-center justify-center px-6">
       <motion.div
-        className="flex flex-col items-center gap-4 max-w-sm text-center"
+        className="flex max-w-md flex-col items-center gap-4 rounded-[32px] border px-8 py-10 text-center"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
+        style={{
+          borderColor: 'var(--color-border)',
+          backgroundColor: 'var(--color-card)',
+        }}
       >
-        <div className="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center">
-          <AlertTriangle size={20} className="text-red-500" />
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/10">
+          <AlertTriangle size={24} className="text-red-500" />
         </div>
         <div>
-          <p className="text-sm font-medium mb-1" style={{ color: 'var(--color-foreground)' }}>
-            Erro ao carregar dados
+          <p className="text-base font-black" style={{ color: 'var(--color-foreground)' }}>
+            Não foi possível carregar esta área
           </p>
-          <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
-            {message ?? 'Nao foi possivel conectar com a API. Verifique se o servidor esta rodando.'}
+          <p className="mt-1 text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
+            {message ?? 'A conexão com a API falhou. Verifique se o titlis-api está em execução e tente novamente.'}
           </p>
         </div>
         {onRetry && (
           <button
             onClick={onRetry}
-            className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-indigo-500 text-white hover:bg-indigo-600 transition-colors"
+            className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-orange-600"
+            type="button"
           >
-            <RefreshCw size={12} />
+            <RefreshCw size={14} />
             Tentar novamente
           </button>
         )}

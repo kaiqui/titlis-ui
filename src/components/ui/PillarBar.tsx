@@ -11,6 +11,8 @@ interface PillarBarProps {
 export function PillarBar({ pillar, data, delay = 0 }: PillarBarProps) {
   const color = scoreRingColor(data.score)
   const weight = pillarWeight(pillar)
+  const totalChecks = data.passedChecks + data.failedChecks
+  const safeScore = data.score ?? 0
 
   return (
     <div className="space-y-1.5">
@@ -26,10 +28,10 @@ export function PillarBar({ pillar, data, delay = 0 }: PillarBarProps) {
         </div>
         <div className="flex items-center gap-2">
           <span style={{ color: 'var(--color-muted-foreground)' }}>
-            {data.passedChecks}/{data.totalChecks}
+            {data.passedChecks}/{totalChecks}
           </span>
           <span className="font-semibold w-8 text-right" style={{ color }}>
-            {Math.round(data.score)}
+            {Math.round(safeScore)}
           </span>
         </div>
       </div>
@@ -38,7 +40,7 @@ export function PillarBar({ pillar, data, delay = 0 }: PillarBarProps) {
           className="h-full rounded-full"
           style={{ backgroundColor: color }}
           initial={{ width: 0 }}
-          animate={{ width: `${data.score}%` }}
+          animate={{ width: `${safeScore}%` }}
           transition={{ duration: 0.8, delay, ease: 'easeOut' }}
         />
       </div>
