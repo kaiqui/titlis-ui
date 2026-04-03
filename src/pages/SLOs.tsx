@@ -1,137 +1,141 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { motion } from 'framer-motion'
-import {
-  Activity,
-  ArrowRight,
-  Database,
-  Layers3,
-  Search,
-  ShieldCheck,
-  Target,
-} from 'lucide-react'
+import { Activity, Database, Layers3, Search, ShieldCheck, Target } from 'lucide-react'
+import { Card } from '@/components/jeitto/Card'
+import { EmptyState } from '@/components/jeitto/EmptyState'
+import { Input } from '@/components/jeitto/Input'
+import { PageError, PageLoading } from '@/components/jeitto/PageState'
 import { Header } from '@/components/layout/Header'
-import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
-import { EmptyState } from '@/components/ui/EmptyState'
-import { PageError, PageLoading } from '@/components/ui/PageState'
+import { DetailPanel } from '@/components/sre/DetailPanel'
+import { FocusTabs } from '@/components/sre/FocusTabs'
+import { InlineAccordion } from '@/components/sre/InlineAccordion'
+import { SelectionList } from '@/components/sre/SelectionList'
+import { SummaryStrip } from '@/components/sre/SummaryStrip'
 import { useSloCatalog, useSloLookup } from '@/hooks/useApi'
 import { formatDate, formatEnum, statusTone } from '@/lib/utils'
-import type { LucideIcon } from 'lucide-react'
+
+type SloFilter = 'all' | 'healthy' | 'attention' | 'unsynced'
+type SloFocus = 'overview' | 'sync' | 'lookup'
+
+function isHealthy(state: string | null) {
+  return state === 'OK'
+}
 
 export function SLOs() {
   const [namespaceInput, setNamespaceInput] = useState('')
   const [nameInput, setNameInput] = useState('')
+  const [search, setSearch] = useState('')
   const [clusterFilter, setClusterFilter] = useState('all')
-  const [query, setQuery] = useState<{ namespace: string; name: string } | null>(null)
+  const [stateFilter, setStateFilter] = useState<SloFilter>('all')
+  const [selectedKey, setSelectedKey] = useState<string | null>(null)
+  const [manualQuery, setManualQuery] = useState<{ namespace: string; name: string } | null>(null)
+  const [focus, setFocus] = useState<SloFocus>('overview')
 
   const sloCatalog = useSloCatalog(undefined, clusterFilter === 'all' ? undefined : clusterFilter)
-  const sloQuery = useSloLookup(query?.namespace ?? '', query?.name ?? '', query !== null)
+  const catalog = sloCatalog.data ?? []
+  const clusters = ['all', ...new Set(catalog.map(item => item.cluster))]
 
-  const clusters = ['all', ...new Set((sloCatalog.data ?? []).map(item => item.cluster))]
+  const filtered = catalog.filter(item => {
+    const term = search.trim().toLowerCase()
+    const matchesSearch = term.length === 0
+      || item.name.toLowerCase().includes(term)
+      || item.namespace.toLowerCase().includes(term)
+      || item.cluster.toLowerCase().includes(term)
+
+    const matchesState = stateFilter === 'all'
+      || (stateFilter === 'healthy' && isHealthy(item.datadogSloState))
+      || (stateFilter === 'attention' && !isHealthy(item.datadogSloState) && item.lastSyncAt !== null)
+      || (stateFilter === 'unsynced' && item.lastSyncAt === null)
+
+    return matchesSearch && matchesState
+  })
+
+  useEffect(() => {
+    if (filtered.length === 0) {
+      if (selectedKey !== null && !manualQuery) setSelectedKey(null)
+      return
+    }
+
+    if (!selectedKey || !filtered.some(item => `${item.namespace}:${item.name}` === selectedKey)) {
+      const next = `${filtered[0].namespace}:${filtered[0].name}`
+      setSelectedKey(next)
+      setNamespaceInput(filtered[0].namespace)
+      setNameInput(filtered[0].name)
+      setManualQuery(null)
+      setFocus('overview')
+    }
+  }, [filtered, selectedKey, manualQuery])
+
+  const selectedCatalogItem = filtered.find(item => `${item.namespace}:${item.name}` === selectedKey)
+    ?? catalog.find(item => `${item.namespace}:${item.name}` === selectedKey)
+    ?? null
+
+  const lookupTarget = selectedCatalogItem
+    ? { namespace: selectedCatalogItem.namespace, name: selectedCatalogItem.name }
+    : manualQuery
+
+  const sloQuery = useSloLookup(
+    lookupTarget?.namespace ?? '',
+    lookupTarget?.name ?? '',
+    lookupTarget !== null,
+  )
+
+  const summary = useMemo(() => ({
+    total: catalog.length,
+    healthy: catalog.filter(item => isHealthy(item.datadogSloState)).length,
+    attention: catalog.filter(item => !isHealthy(item.datadogSloState) && item.lastSyncAt !== null).length,
+    unsynced: catalog.filter(item => item.lastSyncAt === null).length,
+  }), [catalog])
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setQuery({
-      namespace: namespaceInput.trim(),
-      name: nameInput.trim(),
-    })
+    const namespace = namespaceInput.trim()
+    const name = nameInput.trim()
+
+    if (!namespace || !name) return
+
+    setSelectedKey(null)
+    setManualQuery({ namespace, name })
+    setFocus('lookup')
+  }
+
+  if (sloCatalog.isLoading) return <><Header title="SLOs" /><PageLoading /></>
+  if (sloCatalog.error) {
+    return (
+      <>
+        <Header title="SLOs" />
+        <PageError message={sloCatalog.error instanceof Error ? sloCatalog.error.message : undefined} onRetry={() => void sloCatalog.refetch()} />
+      </>
+    )
   }
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Header
-        title="SLOs reconciliados"
-        subtitle="Catálogo dos SLOs criados pelo operator e persistidos no titlis-api, com inspeção detalhada por namespace e nome."
-      />
+      <Header title="SLOs" subtitle="Catálogo, lookup e detalhe na mesma página, com um SLO em foco por vez." />
 
       <div className="flex-1 space-y-5 px-4 py-6 lg:px-8">
-        <motion.section initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-          <Card className="overflow-hidden">
-            <div className="grid gap-6 lg:grid-cols-[1fr_0.85fr] lg:items-center">
-              <div className="space-y-3">
-                <span
-                  className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]"
-                  style={{ backgroundColor: 'var(--color-primary-soft)', color: 'var(--color-primary-strong)' }}
-                >
-                  SLOs do operator
-                </span>
-                <h2 className="text-3xl font-black tracking-tight" style={{ color: 'var(--color-foreground)' }}>
-                  Veja o que ja foi reconciliado e aprofunde quando precisar.
-                </h2>
-                <p className="max-w-2xl text-sm leading-6" style={{ color: 'var(--color-muted-foreground)' }}>
-                  A pagina agora mostra os SLOs que o operator criou e a API persistiu. O lookup detalhado continua disponivel para abrir qualquer item com precisao.
-                </p>
-              </div>
+        <SummaryStrip
+          items={[
+            { label: 'Catálogo', value: summary.total, helper: 'SLOs reconciliados' },
+            { label: 'Saudáveis', value: summary.healthy, helper: 'estado OK no Datadog' },
+            { label: 'Atenção', value: summary.attention, helper: 'pedem revisão' },
+            { label: 'Sem sync', value: summary.unsynced, helper: 'ainda sem sincronização' },
+          ]}
+        />
 
-              <form onSubmit={onSubmit} className="grid gap-3">
-                <label className="grid gap-2">
-                  <span className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--color-muted-foreground)' }}>
-                    Namespace
-                  </span>
-                  <input
-                    value={namespaceInput}
-                    onChange={event => setNamespaceInput(event.target.value)}
-                    placeholder="ex: payments-prod"
-                    className="rounded-2xl border px-4 py-3 text-sm outline-none"
-                    style={{
-                      borderColor: 'var(--color-border)',
-                      backgroundColor: 'var(--color-muted)',
-                      color: 'var(--color-foreground)',
-                    }}
-                  />
-                </label>
-                <label className="grid gap-2">
-                  <span className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--color-muted-foreground)' }}>
-                    Nome do SLO
-                  </span>
-                  <input
-                    value={nameInput}
-                    onChange={event => setNameInput(event.target.value)}
-                    placeholder="ex: api-availability"
-                    className="rounded-2xl border px-4 py-3 text-sm outline-none"
-                    style={{
-                      borderColor: 'var(--color-border)',
-                      backgroundColor: 'var(--color-muted)',
-                      color: 'var(--color-foreground)',
-                    }}
-                  />
-                </label>
-                <button
-                  type="submit"
-                  disabled={!namespaceInput.trim() || !nameInput.trim()}
-                  className="inline-flex items-center justify-center gap-2 rounded-full bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <Search size={14} />
-                  Abrir detalhes
-                </button>
-              </form>
-            </div>
-          </Card>
-        </motion.section>
-
-        <Card className="overflow-hidden">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--color-muted-foreground)' }}>
-                Catalogo
-              </p>
-              <p className="mt-2 text-2xl font-black tracking-tight" style={{ color: 'var(--color-foreground)' }}>
-                {sloCatalog.data?.length ?? 0} SLOs reconciliados
-              </p>
-              <p className="mt-1 text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
-                Itens persistidos pelo fluxo do operator para Datadog.
-              </p>
-            </div>
+        <Card>
+          <div className="grid gap-4 xl:grid-cols-[1.2fr_0.7fr_auto]">
+            <Input
+              value={search}
+              onChange={event => setSearch(event.target.value)}
+              placeholder="Buscar por nome, namespace ou cluster"
+              icon={Search}
+            />
 
             <select
               value={clusterFilter}
               onChange={event => setClusterFilter(event.target.value)}
-              className="rounded-2xl border px-4 py-3 text-sm outline-none"
-              style={{
-                borderColor: 'var(--color-border)',
-                backgroundColor: 'var(--color-muted)',
-                color: 'var(--color-foreground)',
-              }}
+              className="jc-select px-4 py-3 text-sm outline-none"
             >
               {clusters.map(option => (
                 <option key={option} value={option}>
@@ -139,184 +143,225 @@ export function SLOs() {
                 </option>
               ))}
             </select>
+
+            <FocusTabs
+              active={stateFilter}
+              onChange={id => setStateFilter(id as SloFilter)}
+              items={[
+                { id: 'all', label: 'Todos', count: summary.total },
+                { id: 'healthy', label: 'Saudáveis', count: summary.healthy },
+                { id: 'attention', label: 'Atenção', count: summary.attention },
+                { id: 'unsynced', label: 'Sem sync', count: summary.unsynced },
+              ]}
+            />
           </div>
+
+          <form onSubmit={onSubmit} className="mt-4 grid gap-4 xl:grid-cols-[1fr_1fr_auto]">
+            <Input
+              value={namespaceInput}
+              onChange={event => setNamespaceInput(event.target.value)}
+              placeholder="Namespace para lookup"
+              icon={Database}
+            />
+            <Input
+              value={nameInput}
+              onChange={event => setNameInput(event.target.value)}
+              placeholder="Nome do SLO"
+              icon={Target}
+            />
+            <button
+              type="submit"
+              disabled={!namespaceInput.trim() || !nameInput.trim()}
+              className="jc-primary-button inline-flex items-center justify-center gap-2 px-4 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Search size={14} />
+              Abrir lookup
+            </button>
+          </form>
         </Card>
 
-        {sloCatalog.isLoading && <PageLoading />}
-
-        {sloCatalog.error && (
-          <PageError message={sloCatalog.error instanceof Error ? sloCatalog.error.message : undefined} onRetry={() => void sloCatalog.refetch()} />
-        )}
-
-        {!sloCatalog.isLoading && !sloCatalog.error && (sloCatalog.data?.length ?? 0) === 0 && (
+        {catalog.length === 0 ? (
           <Card>
             <EmptyState
               icon={Target}
               title="Nenhum SLO reconciliado"
-              description="Assim que o operator criar e sincronizar SLOs, eles aparecem aqui automaticamente."
+              description="Assim que o operator sincronizar SLOs, eles aparecem aqui automaticamente."
             />
           </Card>
-        )}
-
-        {(sloCatalog.data?.length ?? 0) > 0 && (
-          <section className="grid gap-4 xl:grid-cols-2">
-            {sloCatalog.data?.map(item => (
-              <Card
-                key={item.sloConfigId}
-                hover
-                onClick={() => {
-                  setNamespaceInput(item.namespace)
-                  setNameInput(item.name)
-                  setQuery({ namespace: item.namespace, name: item.name })
-                }}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="truncate text-lg font-black tracking-tight" style={{ color: 'var(--color-foreground)' }}>
-                        {item.name}
-                      </h3>
-                      <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone(item.datadogSloState)}`}>
-                        {formatEnum(item.datadogSloState)}
-                      </span>
-                    </div>
-
-                    <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                      <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
-                        {item.namespace}
-                      </span>
-                      <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
-                        {item.cluster}
-                      </span>
-                      <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
-                        {formatEnum(item.environment)}
-                      </span>
-                    </div>
-
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                      {(
-                        [
-                          { label: 'Tipo', value: formatEnum(item.sloType), icon: Target },
-                          { label: 'Timeframe', value: item.timeframe, icon: Activity },
-                          { label: 'Target', value: item.target === null ? 'N/D' : `${item.target}%`, icon: ShieldCheck },
-                          { label: 'Framework', value: formatEnum(item.detectedFramework), icon: Layers3 },
-                        ] satisfies Array<{ label: string; value: string; icon: LucideIcon }>
-                      ).map(({ label, value, icon: Icon }) => (
-                        <div key={label} className="rounded-2xl px-4 py-3" style={{ backgroundColor: 'var(--color-muted)' }}>
-                          <div className="flex items-center gap-2">
-                            <Icon size={14} style={{ color: 'var(--color-primary)' }} />
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--color-muted-foreground)' }}>
-                              {label}
-                            </p>
-                          </div>
-                          <p className="mt-2 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{value}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={event => {
-                      event.stopPropagation()
-                      setNamespaceInput(item.namespace)
-                      setNameInput(item.name)
-                      setQuery({ namespace: item.namespace, name: item.name })
-                    }}
-                    className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-orange-600"
-                    type="button"
-                  >
-                    Ver detalhe
-                    <ArrowRight size={13} />
-                  </button>
-                </div>
-              </Card>
-            ))}
-          </section>
-        )}
-
-        {sloQuery.error && (
-          <PageError message={sloQuery.error instanceof Error ? sloQuery.error.message : undefined} onRetry={() => void sloQuery.refetch()} />
-        )}
-
-        {query && !sloQuery.isLoading && !sloQuery.error && !sloQuery.data && (
-          <Card>
-            <EmptyState
-              icon={Search}
-              title="SLO não encontrado"
-              description="Confira se o namespace e o nome estão corretos ou se o operator já reconciliou este recurso."
-            />
-          </Card>
-        )}
-
-        {sloQuery.data && (
-          <section className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
-            <Card>
-              <CardHeader>
+        ) : (
+          <section className="grid gap-4 xl:grid-cols-[23rem_minmax(0,1fr)]">
+            <Card className="h-full">
+              <div className="flex items-center justify-between gap-3">
                 <div>
-                  <CardTitle>Estado do SLO no Datadog</CardTitle>
-                  <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
-                    Resultado retornado pelo endpoint `/v1/namespaces/{'{namespace}'}/slos/{'{name}'}`.
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--color-muted-foreground)' }}>
+                    Catálogo ativo
+                  </p>
+                  <p className="mt-1 text-sm font-semibold" style={{ color: 'var(--color-foreground)' }}>
+                    {filtered.length} SLOs
                   </p>
                 </div>
-              </CardHeader>
+                <span className="rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
+                  {clusterFilter === 'all' ? 'Todos os clusters' : clusterFilter}
+                </span>
+              </div>
 
+              <div className="mt-4">
+                <SelectionList
+                  items={filtered.map(item => ({
+                    id: `${item.namespace}:${item.name}`,
+                    title: item.name,
+                    subtitle: `${item.namespace} · ${item.cluster} · ${formatEnum(item.environment)}`,
+                    badges: (
+                      <>
+                        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone(item.datadogSloState)}`}>
+                          {formatEnum(item.datadogSloState)}
+                        </span>
+                        <span className="rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
+                          {formatEnum(item.sloType)}
+                        </span>
+                      </>
+                    ),
+                    meta: (
+                      <span className="text-xs font-semibold" style={{ color: 'var(--color-muted-foreground)' }}>
+                        {item.target === null ? 'N/D' : `${item.target}%`}
+                      </span>
+                    ),
+                  }))}
+                  activeId={selectedCatalogItem ? `${selectedCatalogItem.namespace}:${selectedCatalogItem.name}` : null}
+                  onSelect={id => {
+                    const next = catalog.find(item => `${item.namespace}:${item.name}` === id)
+                    if (!next) return
+                    setSelectedKey(id)
+                    setNamespaceInput(next.namespace)
+                    setNameInput(next.name)
+                    setManualQuery(null)
+                    setFocus('overview')
+                  }}
+                />
+              </div>
+            </Card>
+
+            {lookupTarget && (
               <div className="space-y-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone(sloQuery.data.datadogSloState)}`}>
-                    {formatEnum(sloQuery.data.datadogSloState)}
-                  </span>
-                  <span className="rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: 'var(--color-card)', color: 'var(--color-muted-foreground)' }}>
-                    {formatEnum(sloQuery.data.sloType)}
-                  </span>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                {[
-                  { label: 'Namespace', value: sloQuery.data.namespace, icon: Database },
-                  { label: 'Nome do SLO', value: sloQuery.data.name, icon: Target },
-                  { label: 'Target', value: sloQuery.data.target === null ? 'N/D' : `${sloQuery.data.target}%`, icon: ShieldCheck },
-                  { label: 'Timeframe', value: sloQuery.data.timeframe, icon: Activity },
-                ].map(({ label, value, icon: Icon }) => (
-                    <div key={label} className="rounded-2xl px-4 py-4" style={{ backgroundColor: 'var(--color-muted)' }}>
-                      <div className="flex items-center gap-2">
-                        <Icon size={15} style={{ color: 'var(--color-primary)' }} />
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--color-muted-foreground)' }}>
-                          {label}
+                <Card>
+                  <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-lg font-black tracking-tight" style={{ color: 'var(--color-foreground)' }}>
+                          {lookupTarget.name}
                         </p>
+                        {sloQuery.data?.datadogSloState && (
+                          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone(sloQuery.data.datadogSloState)}`}>
+                            {formatEnum(sloQuery.data.datadogSloState)}
+                          </span>
+                        )}
                       </div>
-                      <p className="mt-3 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{value}</p>
+                      <p className="mt-2 text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
+                        {lookupTarget.namespace}
+                        {selectedCatalogItem ? ` · ${selectedCatalogItem.cluster}` : ' · lookup manual'}
+                      </p>
                     </div>
-                  ))}
-                </div>
-              </div>
-            </Card>
 
-            <Card>
-              <CardHeader>
-                <div>
-                  <CardTitle>Sincronização e detecção</CardTitle>
-                  <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
-                    Metadados adicionais persistidos pela API após a reconciliação do operator.
-                  </p>
-                </div>
-              </CardHeader>
-
-              <div className="space-y-3">
-                {[
-                  ['Framework detectado', formatEnum(sloQuery.data.detectedFramework)],
-                  ['Fonte da detecção', formatEnum(sloQuery.data.detectionSource)],
-                  ['Datadog SLO ID', sloQuery.data.datadogSloId ?? 'Não informado'],
-                  ['Última sincronização', formatDate(sloQuery.data.lastSyncAt)],
-                ].map(([label, value]) => (
-                  <div key={label} className="rounded-2xl px-4 py-4" style={{ backgroundColor: 'var(--color-muted)' }}>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--color-muted-foreground)' }}>
-                      {label}
-                    </p>
-                    <p className="mt-2 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{value}</p>
+                    <FocusTabs
+                      active={focus}
+                      onChange={id => setFocus(id as SloFocus)}
+                      items={[
+                        { id: 'overview', label: 'Resumo' },
+                        { id: 'sync', label: 'Sync' },
+                        { id: 'lookup', label: 'Lookup' },
+                      ]}
+                    />
                   </div>
-                ))}
+                </Card>
+
+                {sloQuery.isLoading ? (
+                  <Card>
+                    <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
+                      Carregando detalhe do SLO selecionado.
+                    </p>
+                  </Card>
+                ) : sloQuery.error ? (
+                  <PageError message={sloQuery.error instanceof Error ? sloQuery.error.message : undefined} onRetry={() => void sloQuery.refetch()} />
+                ) : !sloQuery.data ? (
+                  <Card>
+                    <EmptyState
+                      icon={Search}
+                      title="SLO não encontrado"
+                      description="Confira se o namespace e o nome estão corretos ou se o operator já reconciliou este recurso."
+                    />
+                  </Card>
+                ) : (
+                  <>
+                    {focus === 'overview' && (
+                      <DetailPanel
+                        title="Resumo do SLO"
+                        subtitle="Leitura rápida do estado reconciliado."
+                        headerMeta={<span className="rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>{formatEnum(sloQuery.data.sloType)}</span>}
+                      >
+                        <div className="grid gap-3 md:grid-cols-4">
+                          <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Namespace</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{sloQuery.data.namespace}</p></Card>
+                          <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Target</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{sloQuery.data.target === null ? 'N/D' : `${sloQuery.data.target}%`}</p></Card>
+                          <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Timeframe</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{sloQuery.data.timeframe}</p></Card>
+                          <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Estado</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{formatEnum(sloQuery.data.datadogSloState)}</p></Card>
+                        </div>
+
+                        <InlineAccordion title="Resumo" defaultOpen>
+                          <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
+                            Use esta visão para confirmar rapidamente se o SLO foi reconciliado, qual meta está aplicada e se o estado atual exige investigação.
+                          </p>
+                        </InlineAccordion>
+                      </DetailPanel>
+                    )}
+
+                    {focus === 'sync' && (
+                      <DetailPanel title="Sincronização e detecção" subtitle="Metadados persistidos após a reconciliação do operator.">
+                        <InlineAccordion title="Metadados" defaultOpen>
+                          <div className="grid gap-3 md:grid-cols-2">
+                            {[
+                              ['Framework detectado', formatEnum(sloQuery.data.detectedFramework)],
+                              ['Fonte da detecção', formatEnum(sloQuery.data.detectionSource)],
+                              ['Datadog SLO ID', sloQuery.data.datadogSloId ?? 'Não informado'],
+                              ['Última sincronização', formatDate(sloQuery.data.lastSyncAt)],
+                            ].map(([label, value]) => (
+                              <Card key={label}>
+                                <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>{label}</p>
+                                <p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{value}</p>
+                              </Card>
+                            ))}
+                          </div>
+                        </InlineAccordion>
+                      </DetailPanel>
+                    )}
+
+                    {focus === 'lookup' && (
+                      <DetailPanel title="Lookup direto" subtitle="Campos retornados pelo endpoint de consulta do SLO.">
+                        <InlineAccordion title="Campos do lookup" defaultOpen>
+                          <div className="grid gap-3 md:grid-cols-2">
+                            {[
+                              { label: 'Namespace', value: sloQuery.data.namespace, icon: Database },
+                              { label: 'Nome do SLO', value: sloQuery.data.name, icon: Target },
+                              { label: 'Target', value: sloQuery.data.target === null ? 'N/D' : `${sloQuery.data.target}%`, icon: ShieldCheck },
+                              { label: 'Timeframe', value: sloQuery.data.timeframe, icon: Activity },
+                              { label: 'Framework', value: formatEnum(sloQuery.data.detectedFramework), icon: Layers3 },
+                            ].map(({ label, value, icon: Icon }) => (
+                              <div key={label} className="rounded-2xl px-4 py-4" style={{ backgroundColor: 'var(--color-muted)' }}>
+                                <div className="flex items-center gap-2">
+                                  <Icon size={15} style={{ color: 'var(--color-primary)' }} />
+                                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--color-muted-foreground)' }}>
+                                    {label}
+                                  </p>
+                                </div>
+                                <p className="mt-3 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{value}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </InlineAccordion>
+                      </DetailPanel>
+                    )}
+                  </>
+                )}
               </div>
-            </Card>
+            )}
           </section>
         )}
       </div>

@@ -28,15 +28,18 @@ export function ScoreRing({
 
   return (
     <div className={`relative inline-flex items-center justify-center ${className}`}>
+      <div
+        className="absolute inset-[9%] rounded-full"
+        style={{ backgroundColor: 'var(--color-muted)' }}
+      />
       <svg width={size} height={size} className="-rotate-90">
         <circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="currentColor"
+          stroke="var(--color-border)"
           strokeWidth={strokeWidth}
-          className="text-slate-200 dark:text-slate-800"
         />
         <motion.circle
           cx={size / 2}
@@ -55,7 +58,7 @@ export function ScoreRing({
       {showScore && (
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <motion.span
-            className={`font-black leading-none ${fontSize}`}
+            className={`family-neighbor font-black leading-none ${fontSize}`}
             style={{ color }}
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -64,7 +67,7 @@ export function ScoreRing({
             {score === null ? 'N/D' : Math.round(clampedScore)}
           </motion.span>
           {showLabel && (
-            <span className="mt-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+            <span className="mt-1 text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--color-muted-foreground)' }}>
               {scoreLabel(score)}
             </span>
           )}

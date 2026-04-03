@@ -5,7 +5,7 @@ type ProbeState = 'checking' | 'ok' | 'error'
 
 export function ApiStatus() {
   const [status, setStatus] = useState<ProbeState>('checking')
-  const [message, setMessage] = useState('Verificando conectividade com a API')
+  const [message, setMessage] = useState('API')
 
   useEffect(() => {
     let cancelled = false
@@ -19,13 +19,12 @@ export function ApiStatus() {
 
         if (!cancelled) {
           setStatus('ok')
-          setMessage('API acessível pelo proxy local')
+          setMessage('API OK')
         }
       } catch (error) {
         if (!cancelled) {
-          const reason = error instanceof Error ? error.message : 'falha desconhecida'
           setStatus('error')
-          setMessage(`API indisponível: ${reason}`)
+          setMessage(error instanceof Error ? 'API offline' : 'API indisponível')
         }
       }
     }
@@ -45,7 +44,7 @@ export function ApiStatus() {
   const Icon = status === 'ok' ? Wifi : WifiOff
 
   return (
-    <div className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold ${tone}`}>
+    <div className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold ${tone}`} title={message}>
       <Icon size={13} />
       {message}
     </div>

@@ -19,7 +19,7 @@ export function MetricCard({
   value,
   sub,
   icon: Icon,
-  iconColor = 'text-indigo-500',
+  iconColor = 'text-orange-500',
   trend,
   trendValue,
   delay = 0,
@@ -28,15 +28,15 @@ export function MetricCard({
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay }}
+      transition={{ duration: 0.35, delay }}
     >
-      <Card className="overflow-hidden">
+      <Card className="jeitto-stat-band">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--color-muted-foreground)' }}>
+            <p className="family-neighbor text-[11px] font-extrabold uppercase tracking-[0.18em]" style={{ color: 'var(--color-muted-foreground)' }}>
               {label}
             </p>
-            <p className="mt-3 text-3xl font-black tracking-tight" style={{ color: 'var(--color-foreground)' }}>
+            <p className="family-neighbor mt-3 text-[1.8rem] font-black tracking-tight lg:text-[1.95rem]" style={{ color: 'var(--color-foreground)' }}>
               {value}
             </p>
             {sub && (
@@ -54,7 +54,7 @@ export function MetricCard({
             )}
           </div>
 
-          <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${iconColor} bg-current/10`}>
+          <div className={`flex h-12 w-12 items-center justify-center rounded-[1.35rem] ${iconColor} bg-current/10`}>
             <Icon size={20} className={iconColor} />
           </div>
         </div>

@@ -118,3 +118,25 @@ export interface NamespaceSummary {
   openRemediations: number
   nonCompliantCount: number
 }
+
+export interface IncidentItem {
+  id: string
+  workloadId: string
+  title: string
+  severity: 'critical' | 'high' | 'medium' | 'low'
+  status: 'active' | 'investigating' | 'mitigated'
+  service: string
+  cluster: string
+  namespace: string
+  environment: string
+  score: number | null
+  summary: string
+  impact: string
+  owner: string
+  startedAt: string
+  source: 'scorecard' | 'remediation'
+  runbookUrl: string | null
+  githubPrUrl: string | null
+  evidence: string[]
+  actions: string[]
+}

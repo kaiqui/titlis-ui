@@ -7,10 +7,10 @@ interface ScoreBadgeProps {
 
 export function ScoreBadge({ score, size = 'md' }: ScoreBadgeProps) {
   const base = scoreBgColor(score)
-  const sizeClass = size === 'sm' ? 'px-2 py-1 text-[11px]' : 'px-2.5 py-1 text-xs'
+  const sizeClass = size === 'sm' ? 'px-2.5 py-1 text-[11px]' : 'px-3 py-1 text-xs'
 
   return (
-    <span className={`inline-flex items-center rounded-full font-semibold ${base} ${sizeClass}`}>
+    <span className={`family-neighbor inline-flex items-center rounded-full font-black uppercase tracking-[0.08em] ${base} ${sizeClass}`}>
       {scoreLabel(score)}
     </span>
   )

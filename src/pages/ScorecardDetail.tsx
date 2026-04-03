@@ -1,28 +1,29 @@
+import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import {
-  Activity,
-  ArrowLeft,
-  ArrowRight,
-  CheckCircle2,
-  Layers3,
-  Target,
-  XCircle,
-} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import { Activity, ArrowLeft, ArrowRight, CheckCircle2, Layers3, Target, XCircle } from 'lucide-react'
+import { ButtonDefault } from '@/components/jeitto/ButtonDefault'
+import { Card } from '@/components/jeitto/Card'
+import { EmptyState } from '@/components/jeitto/EmptyState'
+import { PageError, PageLoading } from '@/components/jeitto/PageState'
+import { ScoreBadge } from '@/components/jeitto/ScoreBadge'
+import { ScoreRing } from '@/components/jeitto/ScoreRing'
 import { Header } from '@/components/layout/Header'
-import { Card, CardHeader, CardTitle } from '@/components/ui/Card'
-import { EmptyState } from '@/components/ui/EmptyState'
-import { PageError, PageLoading } from '@/components/ui/PageState'
-import { ScoreBadge } from '@/components/ui/ScoreBadge'
-import { ScoreRing } from '@/components/ui/ScoreRing'
+import { DetailPanel } from '@/components/sre/DetailPanel'
+import { FocusTabs } from '@/components/sre/FocusTabs'
+import { InlineAccordion } from '@/components/sre/InlineAccordion'
+import { SummaryStrip } from '@/components/sre/SummaryStrip'
 import { useWorkloadScorecard } from '@/hooks/useApi'
 import { formatDate, formatEnum, statusTone } from '@/lib/utils'
-import type { LucideIcon } from 'lucide-react'
+
+type ScorecardFocus = 'overview' | 'pillars' | 'executive'
+type OverviewMetric = { label: string; value: string | number; icon: LucideIcon }
 
 export function ScorecardDetail() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
   const scorecardQuery = useWorkloadScorecard(id)
+  const [focus, setFocus] = useState<ScorecardFocus>('overview')
 
   if (scorecardQuery.isLoading) return <><Header title="Scorecard da aplicação" /><PageLoading /></>
   if (scorecardQuery.error) {
@@ -49,7 +50,7 @@ export function ScorecardDetail() {
 
   const workload = scorecardQuery.data
   const adherence = workload.totalRules > 0 ? Math.round((workload.passedRules / workload.totalRules) * 100) : 0
-  const overviewCards: Array<{ label: string; value: string | number; icon: LucideIcon }> = [
+  const overviewMetrics: OverviewMetric[] = [
     { label: 'Aderência geral', value: `${adherence}%`, icon: Target },
     { label: 'Regras totais', value: workload.totalRules, icon: Layers3 },
     { label: 'Aprovadas', value: workload.passedRules, icon: CheckCircle2 },
@@ -58,213 +59,143 @@ export function ScorecardDetail() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Header
-        title={`Scorecard · ${workload.name}`}
-        subtitle={`${workload.namespace} · ${workload.cluster} · ${formatEnum(workload.environment)}`}
-      />
+      <Header title={`Scorecard · ${workload.name}`} subtitle={`${workload.namespace} · ${workload.cluster} · ${formatEnum(workload.environment)}`} />
 
       <div className="flex-1 space-y-5 px-4 py-6 lg:px-8">
         <div className="flex flex-wrap gap-3">
-          <button
-            onClick={() => navigate('/applications')}
-            className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition-colors"
-            style={{ borderColor: 'var(--color-border)', color: 'var(--color-foreground)', backgroundColor: 'var(--color-card)' }}
-            type="button"
-          >
-            <ArrowLeft size={14} />
-            Voltar para workloads
-          </button>
-
-          <button
-            onClick={() => navigate(`/applications/${workload.id}`)}
-            className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-orange-600"
-            type="button"
-          >
-            Abrir página da aplicação
-            <ArrowRight size={14} />
-          </button>
+          <ButtonDefault label="Voltar para workloads" visual="secondary" icon={ArrowLeft} onClick={() => navigate('/applications')} />
+          <ButtonDefault label="Abrir aplicação" icon={ArrowRight} onClick={() => navigate(`/applications/${workload.id}`)} />
         </div>
 
-        <section className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-            <Card className="h-full overflow-hidden">
-              <div className="grid gap-6 lg:grid-cols-[auto_1fr] lg:items-center">
-                <ScoreRing score={workload.overallScore} size={132} strokeWidth={9} showLabel />
-                <div className="space-y-4">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <ScoreBadge score={workload.overallScore} />
-                    <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone(workload.complianceStatus)}`}>
-                      {formatEnum(workload.complianceStatus)}
-                    </span>
-                    <span className="rounded-full bg-orange-500/10 px-3 py-1 text-xs font-semibold text-orange-500">
-                      versão {workload.version ?? 'N/D'}
-                    </span>
-                  </div>
-                  <div>
-                    <h2 className="text-3xl font-black tracking-tight" style={{ color: 'var(--color-foreground)' }}>
-                      Aderência geral e pilares do scorecard
-                    </h2>
-                    <p className="mt-2 max-w-2xl text-sm leading-6" style={{ color: 'var(--color-muted-foreground)' }}>
-                      Esta página concentra a visão geral do scorecard: aderência, score consolidado, distribuição por pilar e resumo da avaliação atual.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          </motion.div>
+        <SummaryStrip
+          items={[
+            { label: 'Aderência', value: `${adherence}%`, helper: 'regras aprovadas' },
+            { label: 'Score', value: workload.overallScore === null ? 'N/D' : workload.overallScore.toFixed(1), helper: 'score geral' },
+            { label: 'Falhas', value: workload.failedRules, helper: 'regras com falha' },
+            { label: 'Pilares', value: workload.pillarScores.length, helper: 'dimensões avaliadas' },
+          ]}
+        />
 
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
-            <Card className="h-full">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--color-muted-foreground)' }}>
-                Contexto da última avaliação
-              </p>
-              <div className="mt-4 grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm font-semibold" style={{ color: 'var(--color-muted-foreground)' }}>Avaliado em</p>
-                  <p className="mt-1 text-base font-black" style={{ color: 'var(--color-foreground)' }}>{formatDate(workload.evaluatedAt)}</p>
+        <Card>
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex items-center gap-4">
+              <ScoreRing score={workload.overallScore} size={88} strokeWidth={7} showLabel />
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <ScoreBadge score={workload.overallScore} />
+                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone(workload.complianceStatus)}`}>
+                    {formatEnum(workload.complianceStatus)}
+                  </span>
+                  <span className="rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
+                    versão {workload.version ?? 'N/D'}
+                  </span>
                 </div>
-                <div>
-                  <p className="text-sm font-semibold" style={{ color: 'var(--color-muted-foreground)' }}>Tipo Kubernetes</p>
-                  <p className="mt-1 text-base font-black" style={{ color: 'var(--color-foreground)' }}>{formatEnum(workload.kind)}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold" style={{ color: 'var(--color-muted-foreground)' }}>Namespace</p>
-                  <p className="mt-1 text-base font-black" style={{ color: 'var(--color-foreground)' }}>{workload.namespace}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold" style={{ color: 'var(--color-muted-foreground)' }}>Cluster</p>
-                  <p className="mt-1 text-base font-black" style={{ color: 'var(--color-foreground)' }}>{workload.cluster}</p>
-                </div>
-              </div>
-            </Card>
-          </motion.div>
-        </section>
-
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {overviewCards.map(({ label, value, icon: Icon }) => (
-            <Card key={label}>
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--color-muted-foreground)' }}>
-                    {label}
-                  </p>
-                  <p className="mt-3 text-3xl font-black tracking-tight" style={{ color: 'var(--color-foreground)' }}>
-                    {value}
-                  </p>
-                </div>
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl" style={{ backgroundColor: 'var(--color-muted)' }}>
-                  <Icon size={20} style={{ color: 'var(--color-primary)' }} />
-                </div>
-              </div>
-            </Card>
-          ))}
-        </section>
-
-        <section className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
-          <Card>
-            <CardHeader>
-              <div>
-                <CardTitle>Pilares</CardTitle>
                 <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
-                  Como o score geral se distribui entre os pilares avaliados.
+                  Use o foco abaixo para abrir só a camada que quiser analisar.
                 </p>
               </div>
-            </CardHeader>
+            </div>
 
-            {workload.pillarScores.length === 0 && (
-              <EmptyState
-                icon={Layers3}
-                title="Sem pilares publicados"
-                description="A API ainda não retornou os pilares desta avaliação."
-              />
-            )}
+            <FocusTabs
+              active={focus}
+              onChange={id => setFocus(id as ScorecardFocus)}
+              items={[
+                { id: 'overview', label: 'Resumo' },
+                { id: 'pillars', label: 'Pilares', count: workload.pillarScores.length },
+                { id: 'executive', label: 'Executivo' },
+              ]}
+            />
+          </div>
+        </Card>
 
-            {workload.pillarScores.length > 0 && (
-              <div className="space-y-3">
-                {workload.pillarScores.map(pillar => (
-                  <div key={pillar.pillar} className="rounded-3xl border px-4 py-4" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-muted)' }}>
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-base font-black" style={{ color: 'var(--color-foreground)' }}>
-                          {formatEnum(pillar.pillar)}
-                        </p>
-                        <p className="mt-1 text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
-                          {pillar.passedChecks} checks aprovados · {pillar.failedChecks} falhas
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-2xl font-black" style={{ color: 'var(--color-foreground)' }}>
-                          {pillar.score ?? 'N/D'}
-                        </p>
-                        <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
-                          weighted {pillar.weightedScore ?? 'N/D'}
-                        </p>
-                      </div>
+        {focus === 'overview' && (
+          <DetailPanel title="Resumo do scorecard" subtitle="Contexto e leitura rápida da última avaliação.">
+            <div className="grid gap-3 md:grid-cols-4">
+              {[
+                ['Avaliado em', formatDate(workload.evaluatedAt)],
+                ['Kind', formatEnum(workload.kind)],
+                ['Namespace', workload.namespace],
+                ['Cluster', workload.cluster],
+              ].map(([label, value]) => (
+                <Card key={label}>
+                  <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>{label}</p>
+                  <p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{value}</p>
+                </Card>
+              ))}
+            </div>
+
+            <InlineAccordion title="Contagem da avaliação" defaultOpen>
+              <div className="grid gap-3 md:grid-cols-4">
+                {overviewMetrics.map(({ label, value, icon: Icon }) => (
+                  <div key={label} className="flex items-center justify-between rounded-2xl px-4 py-3" style={{ backgroundColor: 'var(--color-muted)' }}>
+                    <div>
+                      <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>{label}</p>
+                      <p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{value}</p>
                     </div>
-
-                    <div className="mt-4 h-2 overflow-hidden rounded-full" style={{ backgroundColor: 'var(--color-card)' }}>
-                      <div
-                        className="h-full rounded-full"
-                        style={{ width: `${pillar.score ?? 0}%`, backgroundColor: 'var(--color-primary)' }}
-                      />
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl" style={{ backgroundColor: 'var(--color-card)' }}>
+                      <Icon size={16} style={{ color: 'var(--color-primary)' }} />
                     </div>
                   </div>
                 ))}
               </div>
-            )}
-          </Card>
+            </InlineAccordion>
+          </DetailPanel>
+        )}
 
-          <Card>
-            <CardHeader>
-              <div>
-                <CardTitle>Leitura executiva</CardTitle>
-                <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
-                  Resumo rápido para entender a posição geral do workload.
-                </p>
+        {focus === 'pillars' && (
+          <DetailPanel title="Pilares" subtitle="Abra apenas o pilar necessário.">
+            {workload.pillarScores.length === 0 ? (
+              <EmptyState icon={Layers3} title="Sem pilares publicados" description="A API ainda não retornou os pilares desta avaliação." />
+            ) : (
+              <div className="space-y-3">
+                {workload.pillarScores.map(pillar => (
+                  <InlineAccordion key={pillar.pillar} title={`${formatEnum(pillar.pillar)} · score ${pillar.score ?? 'N/D'}`} defaultOpen={pillar.failedChecks > 0}>
+                    <div className="grid gap-3 md:grid-cols-3">
+                      <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Aprovados</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{pillar.passedChecks}</p></Card>
+                      <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Falhas</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{pillar.failedChecks}</p></Card>
+                      <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Peso aplicado</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{pillar.weightedScore ?? 'N/D'}</p></Card>
+                    </div>
+                  </InlineAccordion>
+                ))}
               </div>
-            </CardHeader>
+            )}
+          </DetailPanel>
+        )}
 
-            <div className="space-y-3">
+        {focus === 'executive' && (
+          <DetailPanel title="Leitura executiva" subtitle="Resumo curto para decisão rápida.">
+            <div className="grid gap-3 md:grid-cols-4">
               {[
                 ['Score geral', workload.overallScore === null ? 'N/D' : workload.overallScore.toFixed(1)],
                 ['Aderência', `${adherence}%`],
                 ['Falhas críticas', String(workload.criticalFailures)],
                 ['Itens detalhados', String(workload.validationResults.length)],
               ].map(([label, value]) => (
-                <div key={label} className="rounded-2xl px-4 py-3" style={{ backgroundColor: 'var(--color-muted)' }}>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--color-muted-foreground)' }}>
-                    {label}
-                  </p>
-                  <p className="mt-2 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{value}</p>
-                </div>
+                <Card key={label}>
+                  <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>{label}</p>
+                  <p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{value}</p>
+                </Card>
               ))}
             </div>
 
-            <div className="mt-4 rounded-3xl border px-4 py-4" style={{ borderColor: 'var(--color-border)' }}>
-              <div className="flex items-start gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-500">
+            <InlineAccordion title="Ação recomendada" defaultOpen>
+              <div className="flex items-start gap-3 rounded-3xl border px-4 py-4" style={{ borderColor: 'var(--color-border)' }}>
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-primary)' }}>
                   <Activity size={18} />
                 </div>
                 <div>
                   <p className="text-sm font-black" style={{ color: 'var(--color-foreground)' }}>
-                    Página da aplicação
+                    Abrir página da aplicação
                   </p>
                   <p className="mt-1 text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
-                    Use a página da aplicação para abrir todos os itens do scorecard, ver as falhas uma a uma e acompanhar remediação.
+                    Use a página da aplicação para ver as falhas uma a uma e acompanhar a remediação.
                   </p>
-                  <button
-                    onClick={() => navigate(`/applications/${workload.id}`)}
-                    className="mt-3 inline-flex items-center gap-2 rounded-full bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-orange-600"
-                    type="button"
-                  >
-                    Ir para a aplicação
-                    <ArrowRight size={14} />
-                  </button>
+                  <ButtonDefault label="Ir para a aplicação" icon={ArrowRight} className="mt-3" onClick={() => navigate(`/applications/${workload.id}`)} />
                 </div>
               </div>
-            </div>
-          </Card>
-        </section>
+            </InlineAccordion>
+          </DetailPanel>
+        )}
       </div>
     </div>
   )

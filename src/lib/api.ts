@@ -7,6 +7,19 @@ import type {
   WorkloadDetail,
   WorkloadSummary,
 } from '@/types'
+import {
+  getAuthMode,
+  getDevAuthConfig,
+  getStoredAccessToken,
+  type AuthMeResponse,
+  type AuthSession,
+  type BootstrapSetupPayload,
+  type BootstrapStatus,
+  type LocalLoginPayload,
+  type TenantAuthIntegration,
+  type UpsertTenantAuthIntegrationPayload,
+  type VerifyTenantAuthIntegrationResult,
+} from '@/lib/auth'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/v1'
 
@@ -91,6 +104,31 @@ interface ApiSloItem {
   last_sync_at: string | null
 }
 
+interface ApiTenantAuthIntegration {
+  id: number
+  providerType: string
+  integrationKind: string
+  integrationName: string
+  isEnabled: boolean
+  isPrimary: boolean
+  issuerUrl: string | null
+  clientId: string | null
+  audience: string | null
+  scopes: string[]
+  redirectUri: string | null
+  postLogoutRedirectUri: string | null
+  verifiedAt: string | null
+  activatedAt: string | null
+  configuredByUserId: number | null
+  updatedAt: string
+}
+
+interface ApiVerifyTenantAuthIntegrationResult {
+  status: string
+  message: string
+  integration: ApiTenantAuthIntegration
+}
+
 function parseNumber(value: number | string | null | undefined): number | null {
   if (value === null || value === undefined || value === '') return null
   const numeric = typeof value === 'number' ? value : Number(value)
@@ -107,18 +145,66 @@ function buildUrl(path: string): URL {
   return new URL(target, window.location.origin)
 }
 
-async function request<T>(path: string, options?: { params?: Record<string, string | undefined>; optional?: boolean }): Promise<T | null> {
+function mapAuthErrorMessage(code: string): string {
+  switch (code) {
+    case 'tenant_slug_taken':
+      return 'Esse identificador de tenant já está em uso. Escolha outro slug para continuar.'
+    case 'bootstrap_already_configured':
+      return 'A configuração inicial já foi concluída neste ambiente. Use a tela de login ou crie outro tenant.'
+    case 'invalid_credentials':
+      return 'Tenant, email ou senha inválidos.'
+    default:
+      return code
+    }
+}
+
+async function request<T>(
+  path: string,
+  options?: {
+    params?: Record<string, string | undefined>
+    optional?: boolean
+    method?: 'GET' | 'POST'
+    body?: unknown
+  },
+): Promise<T | null> {
   const url = buildUrl(path)
 
   Object.entries(options?.params ?? {}).forEach(([key, value]) => {
     if (value) url.searchParams.set(key, value)
   })
 
-  const response = await fetch(url.toString())
+  const token = getStoredAccessToken()
+  const authMode = getAuthMode()
+  const devAuth = getDevAuthConfig()
+  const response = await fetch(url.toString(), {
+    method: options?.method ?? 'GET',
+    headers: {
+      ...(options?.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(authMode === 'mock'
+        ? {
+            'X-Dev-Auth': 'true',
+            'X-Dev-Tenant-Id': String(devAuth.tenantId),
+            'X-Dev-User': devAuth.email,
+            'X-Dev-Roles': devAuth.roles.join(','),
+          }
+        : {}),
+      ...(authMode !== 'mock' && token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    ...(options?.body ? { body: JSON.stringify(options.body) } : {}),
+  })
   if (options?.optional && response.status === 404) return null
 
   if (!response.ok) {
-    throw new Error(`API error ${response.status}: ${await response.text()}`)
+    const message = await response.text()
+    const parsedError = (() => {
+      try {
+        const decoded = JSON.parse(message) as { error?: string }
+        return decoded.error
+      } catch {
+        return null
+      }
+    })()
+    throw new Error(parsedError || message || `API error ${response.status}`)
   }
 
   return response.json() as Promise<T>
@@ -135,6 +221,53 @@ function mapDashboardItem(item: ApiDashboardItem): WorkloadSummary {
     complianceStatus: item.compliance_status,
     remediationStatus: item.remediation_status,
     githubPrUrl: item.github_pr_url,
+  }
+}
+
+function mapAuthSettingsError(code: string): string {
+  switch (code) {
+    case 'forbidden':
+      return 'Somente administradores podem alterar a autenticacao do tenant.'
+    case 'provider_type_unsupported':
+      return 'Tipo de provedor nao suportado por enquanto.'
+    case 'integration_name_required':
+      return 'Informe um nome para a integracao.'
+    case 'integration_name_taken':
+      return 'Ja existe uma integracao com esse nome no tenant.'
+    case 'issuer_required':
+      return 'Informe o issuer do provedor OIDC.'
+    case 'issuer_invalid':
+      return 'Issuer invalido. Use uma URL completa, como https://empresa.okta.com/oauth2/default.'
+    case 'oidc_discovery_invalid_url':
+      return 'Nao foi possivel montar a URL de discovery para este issuer.'
+    case 'oidc_discovery_unreachable':
+      return 'Falha ao acessar o endpoint de discovery do provider. Verifique URL e conectividade.'
+    case 'oidc_discovery_http_error':
+      return 'O endpoint de discovery respondeu com erro HTTP.'
+    case 'oidc_discovery_invalid_json':
+      return 'O endpoint de discovery retornou um payload invalido.'
+    case 'oidc_discovery_missing_issuer':
+      return 'O discovery nao retornou a claim issuer.'
+    case 'oidc_discovery_issuer_mismatch':
+      return 'O issuer retornado no discovery nao corresponde ao issuer configurado.'
+    case 'oidc_discovery_missing_jwks_uri':
+      return 'O discovery nao retornou jwks_uri.'
+    case 'oidc_discovery_invalid_jwks_uri':
+      return 'O jwks_uri retornado pelo discovery e invalido.'
+    case 'client_id_required':
+      return 'Informe o client id da aplicacao no provedor.'
+    case 'audience_required':
+      return 'Informe a audience esperada no token.'
+    case 'integration_not_verified':
+      return 'Valide a integracao antes de ativar como provider principal.'
+    case 'integration_not_found':
+      return 'Integracao nao encontrada para este tenant.'
+    case 'invalid_integration_id':
+      return 'Identificador da integracao invalido.'
+    case 'local_provider_cannot_be_disabled':
+      return 'O login local de emergencia nao pode ser desativado.'
+    default:
+      return code
   }
 }
 
@@ -243,7 +376,142 @@ function mapSloListItem(item: ApiSloItem): SloListItem {
   }
 }
 
+function mapTenantAuthIntegration(item: ApiTenantAuthIntegration): TenantAuthIntegration {
+  return {
+    id: item.id,
+    providerType: item.providerType,
+    integrationKind: item.integrationKind,
+    integrationName: item.integrationName,
+    isEnabled: item.isEnabled,
+    isPrimary: item.isPrimary,
+    issuerUrl: item.issuerUrl,
+    clientId: item.clientId,
+    audience: item.audience,
+    scopes: item.scopes ?? [],
+    redirectUri: item.redirectUri,
+    postLogoutRedirectUri: item.postLogoutRedirectUri,
+    verifiedAt: item.verifiedAt,
+    activatedAt: item.activatedAt,
+    configuredByUserId: item.configuredByUserId,
+    updatedAt: item.updatedAt,
+  }
+}
+
 export const api = {
+  auth: {
+    bootstrapStatus: async () => {
+      const response = await request<BootstrapStatus>('/auth/bootstrap/status')
+      return response ?? {
+        bootstrapRequired: true,
+        localLoginEnabled: true,
+        oktaConfigured: false,
+        primaryProvider: null,
+      }
+    },
+    bootstrapSetup: async (payload: BootstrapSetupPayload) => {
+      try {
+        const response = await request<AuthSession>('/auth/bootstrap/setup', {
+          method: 'POST',
+          body: payload,
+        })
+        if (!response) throw new Error('Não foi possível criar a sessão inicial.')
+        return response
+      } catch (cause) {
+        if (cause instanceof Error) {
+          throw new Error(mapAuthErrorMessage(cause.message))
+        }
+        throw cause
+      }
+    },
+    loginLocal: async (payload: LocalLoginPayload) => {
+      try {
+        const response = await request<AuthSession>('/auth/local/login', {
+          method: 'POST',
+          body: payload,
+        })
+        if (!response) throw new Error('Não foi possível criar a sessão.')
+        return response
+      } catch (cause) {
+        if (cause instanceof Error) {
+          throw new Error(mapAuthErrorMessage(cause.message))
+        }
+        throw cause
+      }
+    },
+    me: async () => {
+      const response = await request<AuthMeResponse>('/auth/me')
+      if (!response) throw new Error('Sessão indisponível.')
+      return response
+    },
+  },
+  authSettings: {
+    listProviders: async () => {
+      const response = await request<ApiTenantAuthIntegration[]>('/settings/auth/providers')
+      return (response ?? []).map(mapTenantAuthIntegration)
+    },
+    upsertProvider: async (payload: UpsertTenantAuthIntegrationPayload) => {
+      try {
+        const response = await request<ApiTenantAuthIntegration>('/settings/auth/providers', {
+          method: 'POST',
+          body: payload,
+        })
+        if (!response) throw new Error('Nao foi possivel salvar a integracao.')
+        return mapTenantAuthIntegration(response)
+      } catch (cause) {
+        if (cause instanceof Error) {
+          throw new Error(mapAuthSettingsError(cause.message))
+        }
+        throw cause
+      }
+    },
+    verifyProvider: async (integrationId: number) => {
+      try {
+        const response = await request<ApiVerifyTenantAuthIntegrationResult>(`/settings/auth/providers/${integrationId}/verify`, {
+          method: 'POST',
+        })
+        if (!response) throw new Error('Nao foi possivel validar a integracao.')
+        const result: VerifyTenantAuthIntegrationResult = {
+          status: response.status,
+          message: response.message,
+          integration: mapTenantAuthIntegration(response.integration),
+        }
+        return result
+      } catch (cause) {
+        if (cause instanceof Error) {
+          throw new Error(mapAuthSettingsError(cause.message))
+        }
+        throw cause
+      }
+    },
+    activateProvider: async (integrationId: number) => {
+      try {
+        const response = await request<ApiTenantAuthIntegration>(`/settings/auth/providers/${integrationId}/activate`, {
+          method: 'POST',
+        })
+        if (!response) throw new Error('Nao foi possivel ativar a integracao.')
+        return mapTenantAuthIntegration(response)
+      } catch (cause) {
+        if (cause instanceof Error) {
+          throw new Error(mapAuthSettingsError(cause.message))
+        }
+        throw cause
+      }
+    },
+    deactivateProvider: async (integrationId: number) => {
+      try {
+        const response = await request<ApiTenantAuthIntegration>(`/settings/auth/providers/${integrationId}/deactivate`, {
+          method: 'POST',
+        })
+        if (!response) throw new Error('Nao foi possivel desativar a integracao.')
+        return mapTenantAuthIntegration(response)
+      } catch (cause) {
+        if (cause instanceof Error) {
+          throw new Error(mapAuthSettingsError(cause.message))
+        }
+        throw cause
+      }
+    },
+  },
   dashboard: {
     list: async (cluster?: string) => {
       const response = await request<ApiDashboardItem[]>('/dashboard', {

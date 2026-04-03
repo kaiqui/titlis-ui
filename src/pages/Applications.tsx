@@ -1,17 +1,25 @@
-import { useDeferredValue, useState } from 'react'
+import { useDeferredValue, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { ArrowUpDown, Search } from 'lucide-react'
+import { AlertTriangle, ArrowRight, GitPullRequest, Layers3, Search, XCircle } from 'lucide-react'
+import { ButtonDefault } from '@/components/jeitto/ButtonDefault'
+import { Card } from '@/components/jeitto/Card'
+import { EmptyState } from '@/components/jeitto/EmptyState'
+import { Input } from '@/components/jeitto/Input'
+import { PageError, PageLoading } from '@/components/jeitto/PageState'
+import { ScoreBadge } from '@/components/jeitto/ScoreBadge'
+import { ScoreRing } from '@/components/jeitto/ScoreRing'
 import { Header } from '@/components/layout/Header'
-import { Card } from '@/components/ui/Card'
-import { PageError, PageLoading } from '@/components/ui/PageState'
-import { ScoreBadge } from '@/components/ui/ScoreBadge'
-import { ScoreRing } from '@/components/ui/ScoreRing'
-import { useDashboardWorkloads } from '@/hooks/useApi'
-import { formatEnum, statusTone } from '@/lib/utils'
+import { DetailPanel } from '@/components/sre/DetailPanel'
+import { FocusTabs } from '@/components/sre/FocusTabs'
+import { InlineAccordion } from '@/components/sre/InlineAccordion'
+import { SelectionList } from '@/components/sre/SelectionList'
+import { SummaryStrip } from '@/components/sre/SummaryStrip'
+import { useDashboardWorkloads, useWorkloadRemediation, useWorkloadScorecard } from '@/hooks/useApi'
+import { formatDate, formatEnum, statusTone } from '@/lib/utils'
 
 type SortKey = 'score' | 'name' | 'namespace'
 type ComplianceFilter = 'all' | 'non_compliant' | 'compliant' | 'unknown'
+type WorkspaceFocus = 'overview' | 'findings' | 'pillars' | 'remediation'
 
 export function Applications() {
   const navigate = useNavigate()
@@ -21,24 +29,16 @@ export function Applications() {
   const [complianceFilter, setComplianceFilter] = useState<ComplianceFilter>('non_compliant')
   const [sortKey, setSortKey] = useState<SortKey>('score')
   const [descending, setDescending] = useState(false)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [focus, setFocus] = useState<WorkspaceFocus>('overview')
 
   const deferredSearch = useDeferredValue(search)
   const { data: workloads, isLoading, error, refetch } = useDashboardWorkloads()
+  const workloadList = workloads ?? []
+  const clusters = ['all', ...new Set(workloadList.map(workload => workload.cluster))]
+  const environments = ['all', ...new Set(workloadList.map(workload => workload.environment))]
 
-  if (isLoading) return <><Header title="Workloads monitorados" /><PageLoading /></>
-  if (error || !workloads) {
-    return (
-      <>
-        <Header title="Workloads monitorados" />
-        <PageError message={error instanceof Error ? error.message : undefined} onRetry={() => void refetch()} />
-      </>
-    )
-  }
-
-  const clusters = ['all', ...new Set(workloads.map(workload => workload.cluster))]
-  const environments = ['all', ...new Set(workloads.map(workload => workload.environment))]
-
-  const filtered = workloads
+  const filtered = workloadList
     .filter(workload => {
       const term = deferredSearch.trim().toLowerCase()
       const matchesSearch = term.length === 0
@@ -69,68 +69,66 @@ export function Applications() {
       return descending ? rightScore - leftScore : leftScore - rightScore
     })
 
-  const nonCompliantCount = workloads.filter(workload => workload.complianceStatus === 'NON_COMPLIANT').length
-  const compliantCount = workloads.filter(workload => workload.complianceStatus === 'COMPLIANT').length
-  const unknownCount = workloads.length - nonCompliantCount - compliantCount
+  useEffect(() => {
+    if (filtered.length === 0) {
+      if (selectedId !== null) setSelectedId(null)
+      return
+    }
+
+    if (!selectedId || !filtered.some(workload => workload.id === selectedId)) {
+      setSelectedId(filtered[0].id)
+      setFocus('overview')
+    }
+  }, [filtered, selectedId])
+
+  const selectedWorkload = filtered.find(workload => workload.id === selectedId) ?? null
+  const scorecardQuery = useWorkloadScorecard(selectedWorkload?.id ?? '')
+  const remediationQuery = useWorkloadRemediation(selectedWorkload?.id ?? '')
+  const detail = scorecardQuery.data
+  const remediation = remediationQuery.data
+  const failedFindings = detail?.validationResults.filter(item => !item.passed) ?? []
+  const nonCompliantCount = workloadList.filter(workload => workload.complianceStatus === 'NON_COMPLIANT').length
+  const compliantCount = workloadList.filter(workload => workload.complianceStatus === 'COMPLIANT').length
+  const unknownCount = workloadList.length - nonCompliantCount - compliantCount
+  const sortLabel = sortKey === 'score' ? 'Score' : sortKey === 'name' ? 'Nome' : 'Namespace'
+
+  if (isLoading) return <><Header title="Workloads" /><PageLoading /></>
+  if (error || !workloads) {
+    return (
+      <>
+        <Header title="Workloads" />
+        <PageError message={error instanceof Error ? error.message : undefined} onRetry={() => void refetch()} />
+      </>
+    )
+  }
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Header
-        title="Workloads monitorados"
-        subtitle="Catálogo operacional alinhado ao endpoint /v1/dashboard, com foco imediato em não conformidade, cluster, ambiente e namespace."
-      />
+      <Header title="Workloads" subtitle="Selecione um workload e abra só a camada de detalhe que precisar." />
 
       <div className="flex-1 space-y-5 px-4 py-6 lg:px-8">
-        <Card className="overflow-hidden">
-          <div className="mb-4 flex flex-wrap items-center gap-2">
-            {[
-              { value: 'non_compliant', label: 'Não conformes', count: nonCompliantCount },
-              { value: 'all', label: 'Todos', count: workloads.length },
-              { value: 'compliant', label: 'Conformes', count: compliantCount },
-              { value: 'unknown', label: 'Sem classificação', count: unknownCount },
-            ].map(option => (
-              <button
-                key={option.value}
-                onClick={() => setComplianceFilter(option.value as ComplianceFilter)}
-                className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition-colors"
-                style={{
-                  borderColor: complianceFilter === option.value ? 'rgba(239, 68, 68, 0.25)' : 'var(--color-border)',
-                  backgroundColor: complianceFilter === option.value ? 'rgba(239, 68, 68, 0.10)' : 'var(--color-card)',
-                  color: complianceFilter === option.value ? 'rgb(220 38 38)' : 'var(--color-foreground)',
-                }}
-                type="button"
-              >
-                {option.label}
-                <span className="rounded-full bg-black/6 px-2 py-0.5 text-xs dark:bg-white/10">{option.count}</span>
-              </button>
-            ))}
-          </div>
+        <SummaryStrip
+          items={[
+            { label: 'Na fila', value: filtered.length, helper: 'workloads no recorte atual' },
+            { label: 'Não conformes', value: nonCompliantCount, helper: 'pedem ação imediata' },
+            { label: 'Conformes', value: compliantCount, helper: 'sem risco imediato' },
+            { label: 'Sem classificação', value: unknownCount, helper: 'aguardando leitura completa' },
+          ]}
+        />
 
-          <div className="grid gap-4 lg:grid-cols-[1.4fr_0.7fr_0.7fr_auto]">
-            <label className="relative">
-              <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-muted-foreground)' }} />
-              <input
-                value={search}
-                onChange={event => setSearch(event.target.value)}
-                placeholder="Buscar por workload, namespace ou cluster"
-                className="w-full rounded-2xl border py-3 pl-11 pr-4 text-sm outline-none"
-                style={{
-                  borderColor: 'var(--color-border)',
-                  backgroundColor: 'var(--color-muted)',
-                  color: 'var(--color-foreground)',
-                }}
-              />
-            </label>
+        <Card>
+          <div className="grid gap-4 xl:grid-cols-[1.4fr_0.8fr_0.8fr_auto]">
+            <Input
+              value={search}
+              onChange={event => setSearch(event.target.value)}
+              placeholder="Buscar por workload, namespace ou cluster"
+              icon={Search}
+            />
 
             <select
               value={cluster}
               onChange={event => setCluster(event.target.value)}
-              className="rounded-2xl border px-4 py-3 text-sm outline-none"
-              style={{
-                borderColor: 'var(--color-border)',
-                backgroundColor: 'var(--color-muted)',
-                color: 'var(--color-foreground)',
-              }}
+              className="jc-select px-4 py-3 text-sm outline-none"
             >
               {clusters.map(option => (
                 <option key={option} value={option}>
@@ -142,12 +140,7 @@ export function Applications() {
             <select
               value={environment}
               onChange={event => setEnvironment(event.target.value)}
-              className="rounded-2xl border px-4 py-3 text-sm outline-none"
-              style={{
-                borderColor: 'var(--color-border)',
-                backgroundColor: 'var(--color-muted)',
-                color: 'var(--color-foreground)',
-              }}
+              className="jc-select px-4 py-3 text-sm outline-none"
             >
               {environments.map(option => (
                 <option key={option} value={option}>
@@ -161,114 +154,294 @@ export function Applications() {
                 setSortKey(current => current === 'score' ? 'name' : current === 'name' ? 'namespace' : 'score')
                 setDescending(current => !current)
               }}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold"
-              style={{
-                borderColor: 'var(--color-border)',
-                backgroundColor: 'var(--color-card)',
-                color: 'var(--color-foreground)',
-              }}
+              className="jc-secondary-button inline-flex items-center justify-center gap-2 px-4 py-3 text-sm"
               type="button"
             >
-              <ArrowUpDown size={15} />
-              Ordenar
+              {sortLabel}
             </button>
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center gap-2 text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
-            <span>{filtered.length} workloads na visualização atual.</span>
-            <span className="rounded-full bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-500">
-              {nonCompliantCount} não conformes no ambiente
-            </span>
-            <span className="rounded-full bg-orange-500/10 px-3 py-1 text-xs font-semibold text-orange-500">
-              ordenação por {sortKey === 'score' ? 'score' : sortKey === 'name' ? 'nome' : 'namespace'}
-            </span>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <FocusTabs
+              active={complianceFilter}
+              onChange={id => setComplianceFilter(id as ComplianceFilter)}
+              items={[
+                { id: 'non_compliant', label: 'Não conformes', count: nonCompliantCount },
+                { id: 'all', label: 'Todos', count: workloadList.length },
+                { id: 'compliant', label: 'Conformes', count: compliantCount },
+                { id: 'unknown', label: 'Sem classificação', count: unknownCount },
+              ]}
+            />
+            <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
+              Ordenação: {sortLabel} · {descending ? 'desc' : 'asc'}
+            </p>
           </div>
         </Card>
 
-        <div className="grid gap-4 xl:grid-cols-2">
-          {filtered.map((workload, index) => (
-            <motion.div
-              key={workload.id}
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.25, delay: index * 0.02 }}
-            >
-              <Card hover onClick={() => navigate(`/applications/${workload.id}`)} className="h-full">
-                <div className="flex items-start gap-4">
-                  <ScoreRing score={workload.overallScore} size={72} strokeWidth={6} showLabel />
+        {filtered.length === 0 ? (
+          <Card>
+            <EmptyState
+              icon={Layers3}
+              title="Nenhum workload encontrado"
+              description="Ajuste os filtros ou a busca para ampliar a lista."
+            />
+          </Card>
+        ) : (
+          <section className="grid gap-4 xl:grid-cols-[23rem_minmax(0,1fr)]">
+            <Card className="h-full">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--color-muted-foreground)' }}>
+                    Fila atual
+                  </p>
+                  <p className="mt-1 text-sm font-semibold" style={{ color: 'var(--color-foreground)' }}>
+                    {filtered.length} workloads
+                  </p>
+                </div>
+                <span className="rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
+                  {cluster === 'all' ? 'Todos os clusters' : cluster}
+                </span>
+              </div>
 
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="truncate text-lg font-black tracking-tight" style={{ color: 'var(--color-foreground)' }}>
-                        {workload.name}
-                      </h3>
-                      <ScoreBadge score={workload.overallScore} size="sm" />
-                    </div>
-
-                    <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                      <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
-                        {workload.namespace}
-                      </span>
-                      <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
-                        {workload.cluster}
-                      </span>
-                      <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
-                        {formatEnum(workload.environment)}
-                      </span>
-                    </div>
-
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                      <div className="rounded-2xl px-4 py-3" style={{ backgroundColor: 'var(--color-muted)' }}>
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--color-muted-foreground)' }}>
-                          Conformidade
-                        </p>
-                        <span className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${statusTone(workload.complianceStatus)}`}>
+              <div className="mt-4">
+                <SelectionList
+                  items={filtered.map(workload => ({
+                    id: workload.id,
+                    title: workload.name,
+                    subtitle: `${workload.namespace} · ${workload.cluster} · ${formatEnum(workload.environment)}`,
+                    badges: (
+                      <>
+                        <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${statusTone(workload.complianceStatus)}`}>
                           {formatEnum(workload.complianceStatus)}
                         </span>
-                      </div>
-                      <div className="rounded-2xl px-4 py-3" style={{ backgroundColor: 'var(--color-muted)' }}>
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--color-muted-foreground)' }}>
-                          Remediação
-                        </p>
-                        <span className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-semibold ${statusTone(workload.remediationStatus)}`}>
+                        <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${statusTone(workload.remediationStatus)}`}>
                           {formatEnum(workload.remediationStatus)}
                         </span>
+                      </>
+                    ),
+                    meta: <ScoreBadge score={workload.overallScore} size="sm" />,
+                  }))}
+                  activeId={selectedId}
+                  onSelect={id => {
+                    setSelectedId(id)
+                    setFocus('overview')
+                  }}
+                />
+              </div>
+            </Card>
+
+            {selectedWorkload && (
+              <div className="space-y-4">
+                <Card>
+                  <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                    <div className="flex items-center gap-4">
+                      <ScoreRing score={selectedWorkload.overallScore} size={82} strokeWidth={7} showLabel />
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-lg font-black tracking-tight" style={{ color: 'var(--color-foreground)' }}>
+                            {selectedWorkload.name}
+                          </p>
+                          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone(selectedWorkload.complianceStatus)}`}>
+                            {formatEnum(selectedWorkload.complianceStatus)}
+                          </span>
+                          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone(remediation?.status ?? selectedWorkload.remediationStatus)}`}>
+                            {formatEnum(remediation?.status ?? selectedWorkload.remediationStatus)}
+                          </span>
+                        </div>
+                        <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
+                          {selectedWorkload.namespace} · {selectedWorkload.cluster} · {formatEnum(selectedWorkload.environment)}
+                        </p>
                       </div>
                     </div>
 
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <button
-                        onClick={event => {
-                          event.stopPropagation()
-                          navigate(`/applications/${workload.id}`)
-                        }}
-                        className="inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold transition-colors"
-                        style={{
-                          borderColor: 'var(--color-border)',
-                          backgroundColor: 'var(--color-card)',
-                          color: 'var(--color-foreground)',
-                        }}
-                        type="button"
-                      >
-                        Abrir aplicação
-                      </button>
-                      <button
-                        onClick={event => {
-                          event.stopPropagation()
-                          navigate(`/applications/${workload.id}/scorecard`)
-                        }}
-                        className="inline-flex items-center gap-2 rounded-full bg-orange-500 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-orange-600"
-                        type="button"
-                      >
-                        Abrir scorecard
-                      </button>
-                    </div>
+                    <FocusTabs
+                      active={focus}
+                      onChange={id => setFocus(id as WorkspaceFocus)}
+                      items={[
+                        { id: 'overview', label: 'Resumo' },
+                        { id: 'findings', label: 'Falhas', count: detail ? failedFindings.length : undefined },
+                        { id: 'pillars', label: 'Pilares', count: detail?.pillarScores.length },
+                        { id: 'remediation', label: 'Remediação' },
+                      ]}
+                    />
                   </div>
-                </div>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
+                </Card>
+
+                {scorecardQuery.isLoading ? (
+                  <Card>
+                    <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
+                      Carregando detalhe do workload selecionado.
+                    </p>
+                  </Card>
+                ) : scorecardQuery.error || !detail ? (
+                  <DetailPanel
+                    title="Detalhe indisponível"
+                    subtitle="O resumo continua visível na fila, mas o scorecard detalhado ainda não está disponível."
+                    headerMeta={
+                      <ButtonDefault
+                        label="Abrir tela completa"
+                        visual="secondary"
+                        icon={ArrowRight}
+                        onClick={() => navigate(`/applications/${selectedWorkload.id}`)}
+                      />
+                    }
+                  >
+                    <EmptyState
+                      icon={AlertTriangle}
+                      title="Não foi possível abrir o detalhe"
+                      description={scorecardQuery.error instanceof Error ? scorecardQuery.error.message : 'Verifique se o operator já publicou o scorecard deste workload.'}
+                    />
+                  </DetailPanel>
+                ) : (
+                  <>
+                    {focus === 'overview' && (
+                      <DetailPanel
+                        title="Resumo do workload"
+                        subtitle="Leitura rápida da avaliação atual."
+                        headerMeta={
+                          <ButtonDefault
+                            label="Tela completa"
+                            visual="secondary"
+                            icon={ArrowRight}
+                            onClick={() => navigate(`/applications/${selectedWorkload.id}`)}
+                          />
+                        }
+                      >
+                        <div className="grid gap-3 md:grid-cols-4">
+                          {[
+                            ['Última avaliação', formatDate(detail.evaluatedAt)],
+                            ['Kind', formatEnum(detail.kind)],
+                            ['Score', detail.overallScore === null ? 'N/D' : detail.overallScore.toFixed(1)],
+                            ['Versão', detail.version ?? 'N/D'],
+                          ].map(([label, value]) => (
+                            <Card key={label}>
+                              <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>{label}</p>
+                              <p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{value}</p>
+                            </Card>
+                          ))}
+                        </div>
+
+                        <InlineAccordion title="Contagem da avaliação" defaultOpen>
+                          <div className="grid gap-3 md:grid-cols-4">
+                            {[
+                              ['Regras', detail.totalRules],
+                              ['Aprovadas', detail.passedRules],
+                              ['Falhas', detail.failedRules],
+                              ['Críticas', detail.criticalFailures],
+                            ].map(([label, value]) => (
+                              <Card key={label}>
+                                <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>{label}</p>
+                                <p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{value}</p>
+                              </Card>
+                            ))}
+                          </div>
+                        </InlineAccordion>
+                      </DetailPanel>
+                    )}
+
+                    {focus === 'findings' && (
+                      <DetailPanel title="Falhas ativas" subtitle="Abra os itens reprovados sem sair da fila principal.">
+                        <InlineAccordion title={`Itens não conformes (${failedFindings.length})`} defaultOpen>
+                          <div className="space-y-3">
+                            {failedFindings.length === 0 && (
+                              <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
+                                Nenhuma falha ativa para este workload.
+                              </p>
+                            )}
+
+                            {failedFindings.map(finding => (
+                              <div key={finding.ruleId} className="rounded-3xl border px-4 py-4" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-muted)' }}>
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <p className="text-sm font-black" style={{ color: 'var(--color-foreground)' }}>
+                                        {finding.ruleName}
+                                      </p>
+                                      <span className="rounded-full px-2.5 py-1 text-[11px] font-semibold" style={{ backgroundColor: 'rgba(239,68,68,0.1)', color: '#dc2626' }}>
+                                        {formatEnum(finding.severity)}
+                                      </span>
+                                    </div>
+                                    <p className="mt-2 text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
+                                      {finding.message ?? 'Sem detalhe adicional para esta regra.'}
+                                    </p>
+                                  </div>
+                                  <XCircle size={16} className="text-red-500" />
+                                </div>
+                                <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                                  <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--color-card)', color: 'var(--color-muted-foreground)' }}>
+                                    {formatEnum(finding.pillar)}
+                                  </span>
+                                  <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--color-card)', color: 'var(--color-muted-foreground)' }}>
+                                    {finding.ruleId}
+                                  </span>
+                                  {finding.remediable && (
+                                    <span className="rounded-full px-3 py-1 font-semibold" style={{ backgroundColor: 'rgba(249,115,22,0.1)', color: '#ea580c' }}>
+                                      Remediável
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </InlineAccordion>
+                      </DetailPanel>
+                    )}
+
+                    {focus === 'pillars' && (
+                      <DetailPanel title="Pilares" subtitle="Abra apenas o pilar que precisa de análise.">
+                        {detail.pillarScores.length === 0 ? (
+                          <EmptyState icon={Layers3} title="Sem pilares publicados" description="A avaliação existe, mas a API ainda não retornou o recorte por pilar." />
+                        ) : (
+                          <div className="space-y-3">
+                            {detail.pillarScores.map(pillar => (
+                              <InlineAccordion key={pillar.pillar} title={`${formatEnum(pillar.pillar)} · score ${pillar.score ?? 'N/D'}`} defaultOpen={pillar.failedChecks > 0}>
+                                <div className="grid gap-3 md:grid-cols-3">
+                                  <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Aprovados</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{pillar.passedChecks}</p></Card>
+                                  <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Falhas</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{pillar.failedChecks}</p></Card>
+                                  <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Peso aplicado</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{pillar.weightedScore ?? 'N/D'}</p></Card>
+                                </div>
+                              </InlineAccordion>
+                            ))}
+                          </div>
+                        )}
+                      </DetailPanel>
+                    )}
+
+                    {focus === 'remediation' && (
+                      <DetailPanel title="Remediação" subtitle="Estado atual e ação rápida para este workload.">
+                        {!remediation ? (
+                          <EmptyState
+                            icon={GitPullRequest}
+                            title="Sem remediação publicada"
+                            description="Ainda não existe evento de remediação para este workload."
+                          />
+                        ) : (
+                          <>
+                            <div className="grid gap-3 md:grid-cols-3">
+                              <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Status</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{formatEnum(remediation.status)}</p></Card>
+                              <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Versão</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{remediation.version}</p></Card>
+                              <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Disparado em</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{formatDate(remediation.triggeredAt)}</p></Card>
+                            </div>
+
+                            {remediation.githubPrUrl && (
+                              <div className="flex flex-wrap gap-2">
+                                <ButtonDefault
+                                  label={`Abrir PR #${remediation.githubPrNumber ?? 'N/D'}`}
+                                  icon={ArrowRight}
+                                  onClick={() => window.open(remediation.githubPrUrl ?? '', '_blank', 'noreferrer')}
+                                />
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </DetailPanel>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </section>
+        )}
       </div>
     </div>
   )
