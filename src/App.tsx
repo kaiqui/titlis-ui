@@ -17,6 +17,8 @@ import { Login } from '@/pages/Login'
 import { LoginCallback } from '@/pages/LoginCallback'
 import { Onboarding } from '@/pages/Onboarding'
 import { SettingsAuth } from '@/pages/SettingsAuth'
+import { SettingsApiKeys } from '@/pages/SettingsApiKeys'
+import { GettingStarted } from '@/pages/GettingStarted'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -47,6 +49,7 @@ export default function App() {
                 )}
               >
                 <Route path="/" element={<Dashboard />} />
+                <Route path="/getting-started" element={<GettingStarted />} />
                 <Route path="/incidents" element={<Incidents />} />
                 <Route path="/scorecards" element={<Scorecards />} />
                 <Route path="/scorecards/:id" element={<ApplicationDetail backPath="/scorecards" backLabel="Voltar para scorecards" showScorecardButton={false} />} />
@@ -69,6 +72,14 @@ export default function App() {
                   element={(
                     <AuthGate requireAdmin>
                       <SettingsAuth />
+                    </AuthGate>
+                  )}
+                />
+                <Route
+                  path="/settings/api-keys"
+                  element={(
+                    <AuthGate requireAdmin>
+                      <SettingsApiKeys />
                     </AuthGate>
                   )}
                 />

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Navigate, Link, useNavigate } from 'react-router-dom'
-import { Building2, KeyRound, ShieldCheck } from 'lucide-react'
+import { Building2, Check, Copy, KeyRound, ShieldCheck } from 'lucide-react'
 import { useAuth } from '@/contexts/useAuth'
 
 export function Onboarding() {
@@ -21,6 +21,8 @@ export function Onboarding() {
   })
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [operatorApiKey, setOperatorApiKey] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
 
   const normalizedTenantSlug = useMemo(
     () => tenantSlug
@@ -102,12 +104,69 @@ export function Onboarding() {
     setError(null)
   }, [tenantName, tenantSlug, adminName, adminEmail, password])
 
-  if (status === 'authenticated' && bootstrapStatus && !bootstrapStatus.bootstrapRequired) {
+  if (status === 'loading') {
+    return null
+  }
+
+  if (status === 'authenticated' && bootstrapStatus && !bootstrapStatus.bootstrapRequired && !operatorApiKey) {
     return <Navigate to="/" replace />
   }
 
-  if (status === 'loading') {
-    return null
+  if (operatorApiKey) {
+    return (
+      <div className="flex min-h-screen items-center justify-center px-6 py-10" style={{ background: 'var(--app-background)' }}>
+        <div className="w-full max-w-lg space-y-6">
+          <div className="rounded-[2.4rem] border p-8" style={{ borderColor: 'var(--color-border)', background: 'var(--color-card)' }}>
+            <div className="flex h-14 w-14 items-center justify-center rounded-[1.5rem]" style={{ background: 'var(--color-primary-soft)', color: 'var(--color-primary-strong)' }}>
+              <KeyRound size={24} />
+            </div>
+            <h2 className="family-neighbor mt-6 text-2xl font-black tracking-tight" style={{ color: 'var(--color-foreground)' }}>
+              Conta criada com sucesso!
+            </h2>
+            <p className="mt-3 text-sm leading-6" style={{ color: 'var(--color-muted-foreground)' }}>
+              Guarde a chave de API do operator abaixo. Ela é exibida apenas uma vez — após sair desta tela, não será possível recuperá-la.
+            </p>
+            <div className="mt-5 rounded-2xl border p-4" style={{ borderColor: 'var(--color-border)', background: 'var(--app-background)' }}>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--color-muted-foreground)' }}>
+                TITLIS_API_API_KEY
+              </p>
+              <div className="flex items-center gap-3">
+                <code className="flex-1 break-all text-sm font-mono" style={{ color: 'var(--color-primary-strong)' }}>
+                  {operatorApiKey}
+                </code>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void navigator.clipboard.writeText(operatorApiKey)
+                    setCopied(true)
+                    setTimeout(() => setCopied(false), 2000)
+                  }}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-colors"
+                  style={{ borderColor: 'var(--color-border)', color: copied ? 'var(--color-primary-strong)' : 'var(--color-muted-foreground)' }}
+                  title="Copiar chave"
+                >
+                  {copied ? <Check size={16} /> : <Copy size={16} />}
+                </button>
+              </div>
+            </div>
+            <p className="mt-4 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
+              Configure como variável de ambiente no operator: <code>TITLIS_API_API_KEY=&lt;chave&gt;</code>
+            </p>
+            <button
+              type="button"
+              className="button-jeitto mt-6 w-full"
+              style={{ background: 'var(--color-primary)', color: '#fff' }}
+              onClick={() => {
+                localStorage.removeItem('titlis.onboarding.dismissed')
+                navigate('/getting-started', { replace: true })
+              }}
+            >
+              Entrar no painel
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -129,14 +188,18 @@ export function Onboarding() {
     setError(null)
 
     try {
-      await bootstrapSetup({
+      const apiKey = await bootstrapSetup({
         tenantName: tenantName.trim(),
         tenantSlug: normalizedTenantSlug,
         adminName: adminName.trim(),
         adminEmail: normalizedAdminEmail,
         password: password.trim(),
       })
-      navigate('/', { replace: true })
+      if (apiKey) {
+        setOperatorApiKey(apiKey)
+      } else {
+        navigate('/', { replace: true })
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Não foi possível criar a conta agora.')
     } finally {

@@ -24,6 +24,28 @@ export interface AuthSession {
   refreshToken?: string | null
 }
 
+export interface BootstrapSetupResponse extends AuthSession {
+  operatorApiKey: string
+}
+
+export interface ApiKeyRecord {
+  id: number
+  description: string | null
+  prefix: string
+  createdAt: string
+  lastUsedAt: string | null
+  isActive: boolean
+  revokedAt: string | null
+}
+
+export interface ApiKeyCreateResponse {
+  id: number
+  description: string | null
+  prefix: string
+  createdAt: string
+  rawToken: string
+}
+
 export interface AuthMeResponse {
   user: AuthUser
 }

@@ -30,7 +30,7 @@ interface AuthContextValue {
   loginLocal: (payload: LocalLoginPayload) => Promise<void>
   loginWithOkta: (returnPath?: string) => Promise<void>
   finishOktaLogin: (currentUrl: string) => Promise<string>
-  bootstrapSetup: (payload: BootstrapSetupPayload) => Promise<void>
+  bootstrapSetup: (payload: BootstrapSetupPayload) => Promise<string | null>
   refreshSession: () => Promise<void>
   signOut: () => Promise<void>
 }
@@ -45,7 +45,7 @@ const defaultValue: AuthContextValue = {
   loginLocal: async () => undefined,
   loginWithOkta: async () => undefined,
   finishOktaLogin: async () => '/',
-  bootstrapSetup: async () => undefined,
+  bootstrapSetup: async () => null,
   refreshSession: async () => undefined,
   signOut: async () => undefined,
 }
@@ -199,7 +199,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return returnPath
   }
 
-  async function bootstrapSetup(payload: BootstrapSetupPayload) {
+  async function bootstrapSetup(payload: BootstrapSetupPayload): Promise<string | null> {
     if (isMockAuthMode()) {
       const mockSession = buildMockSession()
       writeStoredSession(mockSession)
@@ -211,7 +211,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         primaryProvider: 'mock',
       })
       setStatus('authenticated')
-      return
+      return null
     }
 
     const nextSession = await api.auth.bootstrapSetup(payload)
@@ -220,6 +220,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const bootstrap = await api.auth.bootstrapStatus()
     setBootstrapStatus(bootstrap)
     setStatus('authenticated')
+    return nextSession.operatorApiKey ?? null
   }
 
   async function signOut() {

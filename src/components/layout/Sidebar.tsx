@@ -5,6 +5,7 @@ import {
   ChevronRight,
   ClipboardCheck,
   GitPullRequest,
+  Key,
   KeyRound,
   LayoutDashboard,
   Network,
@@ -75,7 +76,11 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     ? [...primaryNavItems, { to: '/recommendations', icon: GitPullRequest, label: 'Remediação' }]
     : primaryNavItems
   const contextualItems = user?.canRemediate
-    ? [...secondaryNavItems, { to: '/settings/auth', icon: KeyRound, label: 'Acesso' }]
+    ? [
+        ...secondaryNavItems,
+        { to: '/settings/auth', icon: KeyRound, label: 'Acesso' },
+        { to: '/settings/api-keys', icon: Key, label: 'Chaves de API' },
+      ]
     : secondaryNavItems
 
   return (

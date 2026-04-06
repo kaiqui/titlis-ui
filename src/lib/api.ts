@@ -11,9 +11,12 @@ import {
   getAuthMode,
   getDevAuthConfig,
   getStoredAccessToken,
+  type ApiKeyCreateResponse,
+  type ApiKeyRecord,
   type AuthMeResponse,
   type AuthSession,
   type BootstrapSetupPayload,
+  type BootstrapSetupResponse,
   type BootstrapStatus,
   type LocalLoginPayload,
   type TenantAuthIntegration,
@@ -163,7 +166,7 @@ async function request<T>(
   options?: {
     params?: Record<string, string | undefined>
     optional?: boolean
-    method?: 'GET' | 'POST'
+    method?: 'GET' | 'POST' | 'DELETE'
     body?: unknown
   },
 ): Promise<T | null> {
@@ -193,6 +196,7 @@ async function request<T>(
     ...(options?.body ? { body: JSON.stringify(options.body) } : {}),
   })
   if (options?.optional && response.status === 404) return null
+  if (response.status === 204) return null
 
   if (!response.ok) {
     const message = await response.text()
@@ -410,7 +414,7 @@ export const api = {
     },
     bootstrapSetup: async (payload: BootstrapSetupPayload) => {
       try {
-        const response = await request<AuthSession>('/auth/bootstrap/setup', {
+        const response = await request<BootstrapSetupResponse>('/auth/bootstrap/setup', {
           method: 'POST',
           body: payload,
         })
@@ -532,6 +536,29 @@ export const api = {
         optional: true,
       })
       return response ? mapRemediationItem(response) : null
+    },
+  },
+  apiKeys: {
+    list: async () => {
+      const response = await request<ApiKeyRecord[]>('/settings/api-keys')
+      return response ?? []
+    },
+    create: async (description?: string) => {
+      const response = await request<ApiKeyCreateResponse>('/settings/api-keys', {
+        method: 'POST',
+        body: { description: description ?? null },
+      })
+      if (!response) throw new Error('Não foi possível criar a chave.')
+      return response
+    },
+    revoke: async (id: number) => {
+      await request<void>(`/settings/api-keys/${id}`, { method: 'DELETE' })
+    },
+    connectionStatus: async () => {
+      const response = await request<{ connected: boolean; lastEventAt: string | null; activeKeyCount: number }>(
+        '/settings/api-keys/connection-status',
+      )
+      return response ?? { connected: false, lastEventAt: null, activeKeyCount: 0 }
     },
   },
   slos: {
