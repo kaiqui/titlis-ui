@@ -63,7 +63,7 @@ export function Login() {
             <Shield size={26} />
           </div>
           <p className="mt-6 text-sm font-extrabold uppercase tracking-[0.18em]" style={{ color: 'var(--color-primary-strong)' }}>
-            Acesso Titlis
+            Acesso {import.meta.env.VITE_APP_NAME ?? 'Titlis'}
           </p>
           <h1 className="family-neighbor mt-3 text-3xl font-black tracking-tight lg:text-4xl" style={{ color: 'var(--color-foreground)' }}>
             Entre com sua conta da plataforma.
