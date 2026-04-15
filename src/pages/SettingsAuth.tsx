@@ -530,7 +530,7 @@ export function SettingsAuth() {
             </div>
             <div className="rounded-2xl border p-3" style={{ borderColor: 'var(--color-border)', background: 'var(--color-muted)' }}>
               <p className="text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--color-muted-foreground)' }}>Roles aceitas</p>
-              <p className="mt-2 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>titlis.admin, titlis.engineer, titlis.pm, titlis.viewer</p>
+              <p className="mt-2 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>titlis.admin, titlis.viewer</p>
             </div>
             <div className="rounded-2xl border p-3" style={{ borderColor: 'var(--color-border)', background: 'var(--color-muted)' }}>
               <p className="text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--color-muted-foreground)' }}>Regra de remediacao</p>

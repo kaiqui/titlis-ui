@@ -1,4 +1,4 @@
-export type PlatformRole = 'admin' | 'engineer' | 'pm' | 'viewer'
+export type PlatformRole = 'admin' | 'viewer'
 export type AuthProviderType = 'local' | 'okta' | 'mock'
 export type FrontendAuthMode = 'okta' | 'mock'
 
@@ -222,8 +222,6 @@ export function resolvePrimaryRole(values: string[]): PlatformRole {
   const normalized = values.map(value => value.trim().toLowerCase())
 
   if (normalized.some(value => value === 'titlis.admin' || value === 'admin')) return 'admin'
-  if (normalized.some(value => value === 'titlis.engineer' || value === 'engineer')) return 'engineer'
-  if (normalized.some(value => value === 'titlis.pm' || value === 'pm')) return 'pm'
   return 'viewer'
 }
 
