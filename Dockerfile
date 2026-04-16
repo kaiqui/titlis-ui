@@ -1,7 +1,7 @@
 FROM node:22-alpine AS build
 WORKDIR /app
 
-ENV VITE_API_URL=https://api.confia.jeitto.com.br/v1
+ENV VITE_API_URL=http://localhost:30081/v1
 ENV VITE_APP_ENV=production
 ENV VITE_AUTH_MODE=okta
 ENV VITE_OKTA_ISSUER=
