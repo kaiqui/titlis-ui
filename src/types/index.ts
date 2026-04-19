@@ -21,6 +21,27 @@ export interface Finding {
   remediable: boolean
   remediationCategory: string | null
   evaluatedAt: string | null
+  remediationPending: boolean
+  remediationPrUrl: string | null
+}
+
+export interface ActiveRemediation {
+  status: string
+  prUrl: string | null
+  prNumber: number | null
+  pendingRuleIds: string[]
+}
+
+export interface AiConfig {
+  provider: string
+  model: string
+  githubBaseBranch: string
+  monthlyTokenBudget: number | null
+  tokensUsedMonth: number
+  isActive: boolean
+  hasApiKey: boolean
+  hasGithubToken: boolean
+  updatedAt: string
 }
 
 export interface WorkloadSummary {
@@ -47,6 +68,7 @@ export interface WorkloadDetail extends WorkloadSummary {
   warningCount: number
   pillarScores: PillarScore[]
   validationResults: Finding[]
+  activeRemediation: ActiveRemediation | null
 }
 
 export interface RemediationDetail {

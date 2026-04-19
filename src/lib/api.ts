@@ -1,4 +1,6 @@
 import type {
+  ActiveRemediation,
+  AiConfig,
   Finding,
   PillarScore,
   RemediationDetail,
@@ -57,6 +59,7 @@ interface ApiScorecardItem {
   warning_count: number | null
   pillar_scores: ApiPillarScoreItem[]
   validation_results: ApiValidationResultItem[]
+  active_remediation?: ApiActiveRemediation | null
 }
 
 interface ApiPillarScoreItem {
@@ -80,6 +83,15 @@ interface ApiValidationResultItem {
   is_remediable: boolean
   remediation_category: string | null
   evaluated_at: string | null
+  remediation_pending?: boolean
+  remediation_pr_url?: string | null
+}
+
+interface ApiActiveRemediation {
+  status: string
+  pr_url: string | null
+  pr_number: number | null
+  pending_rule_ids: string[]
 }
 
 interface ApiRemediationItem {
@@ -166,7 +178,7 @@ async function request<T>(
   options?: {
     params?: Record<string, string | undefined>
     optional?: boolean
-    method?: 'GET' | 'POST' | 'DELETE'
+    method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
     body?: unknown
   },
 ): Promise<T | null> {
@@ -297,6 +309,7 @@ function mapScorecardItem(item: ApiScorecardItem): WorkloadDetail {
     warningCount: item.warning_count ?? 0,
     pillarScores: (item.pillar_scores ?? []).map(mapPillarScoreItem),
     validationResults: (item.validation_results ?? []).map(mapValidationResultItem),
+    activeRemediation: item.active_remediation ? mapActiveRemediation(item.active_remediation) : null,
   }
 }
 
@@ -332,6 +345,17 @@ function mapValidationResultItem(item: ApiValidationResultItem): Finding {
     remediable: item.is_remediable,
     remediationCategory: item.remediation_category,
     evaluatedAt: item.evaluated_at,
+    remediationPending: item.remediation_pending ?? false,
+    remediationPrUrl: item.remediation_pr_url ?? null,
+  }
+}
+
+function mapActiveRemediation(item: ApiActiveRemediation): ActiveRemediation {
+  return {
+    status: item.status,
+    prUrl: item.pr_url,
+    prNumber: item.pr_number,
+    pendingRuleIds: item.pending_rule_ids ?? [],
   }
 }
 
@@ -397,6 +421,96 @@ function mapTenantAuthIntegration(item: ApiTenantAuthIntegration): TenantAuthInt
     verifiedAt: item.verifiedAt,
     activatedAt: item.activatedAt,
     configuredByUserId: item.configuredByUserId,
+    updatedAt: item.updatedAt,
+  }
+}
+
+interface AiConfigApiResponse {
+  provider: string
+  model: string
+  githubBaseBranch: string
+  monthlyTokenBudget: number | null
+  tokensUsedMonth: number
+  isActive: boolean
+  hasApiKey: boolean
+  hasGithubToken: boolean
+  updatedAt: string
+}
+
+interface AiConfigUpsertPayload {
+  provider: string
+  model: string
+  apiKey: string
+  githubToken?: string
+  githubBaseBranch?: string
+  monthlyTokenBudget?: number | null
+}
+
+type SseEvent = { type: string } & Record<string, unknown>
+
+async function* streamSse(path: string, body: unknown): AsyncGenerator<SseEvent> {
+  const url = buildUrl(path)
+  const token = getStoredAccessToken()
+  const authMode = getAuthMode()
+  const devAuth = getDevAuthConfig()
+
+  const response = await fetch(url.toString(), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(authMode === 'mock'
+        ? {
+            'X-Dev-Auth': 'true',
+            'X-Dev-Tenant-Id': String(devAuth.tenantId),
+            'X-Dev-User': devAuth.email,
+            'X-Dev-Roles': devAuth.roles.join(','),
+          }
+        : {}),
+      ...(authMode !== 'mock' && token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  })
+
+  if (!response.ok) {
+    const message = await response.text()
+    throw new Error(message || `API error ${response.status}`)
+  }
+
+  const reader = response.body!.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() ?? ''
+    for (const line of lines) {
+      if (line.startsWith('data: ')) {
+        const json = line.slice(6).trim()
+        if (json) {
+          try {
+            yield JSON.parse(json) as SseEvent
+          } catch {
+            /* skip malformed */
+          }
+        }
+      }
+    }
+  }
+}
+
+function mapAiConfig(item: AiConfigApiResponse): AiConfig {
+  return {
+    provider: item.provider,
+    model: item.model,
+    githubBaseBranch: item.githubBaseBranch,
+    monthlyTokenBudget: item.monthlyTokenBudget,
+    tokensUsedMonth: item.tokensUsedMonth,
+    isActive: item.isActive,
+    hasApiKey: item.hasApiKey,
+    hasGithubToken: item.hasGithubToken,
     updatedAt: item.updatedAt,
   }
 }
@@ -577,5 +691,52 @@ export const api = {
       })
       return response ? mapSloItem(namespace, name, response) : null
     },
+  },
+  aiConfig: {
+    get: async (): Promise<AiConfig | null> => {
+      const response = await request<AiConfigApiResponse>('/settings/ai-config', { optional: true })
+      return response ? mapAiConfig(response) : null
+    },
+    upsert: async (payload: AiConfigUpsertPayload): Promise<AiConfig> => {
+      const response = await request<AiConfigApiResponse>('/settings/ai-config', {
+        method: 'PUT' as const,
+        body: payload,
+      })
+      if (!response) throw new Error('Não foi possível salvar a configuração.')
+      return mapAiConfig(response)
+    },
+  },
+  ai: {
+    explainStream: (
+      workloadId: string,
+      ruleId: string,
+      body: {
+        pillar: string
+        severity: string
+        deploymentName: string
+        namespace: string
+        actualValue?: string | null
+        containerName?: string | null
+      },
+    ) =>
+      streamSse(`/ai/workloads/${workloadId}/findings/${ruleId}/explain`, {
+        pillar: body.pillar,
+        severity: body.severity,
+        deploymentName: body.deploymentName,
+        namespace: body.namespace,
+        actualValue: body.actualValue ?? null,
+        containerName: body.containerName ?? null,
+      }),
+    remediateStream: (
+      workloadId: string,
+      body: { findingIds: string[]; repoUrl: string; deployManifestPath?: string },
+    ) =>
+      streamSse(`/ai/workloads/${workloadId}/remediate`, {
+        findingIds: body.findingIds,
+        repoUrl: body.repoUrl,
+        deployManifestPath: body.deployManifestPath ?? 'manifests/kubernetes/main/deploy.yaml',
+      }),
+    confirmRemediation: (threadId: string, approved: boolean) =>
+      streamSse(`/ai/remediate/${threadId}/confirm`, { approved }),
   },
 }

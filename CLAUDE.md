@@ -406,7 +406,71 @@ Componentes SRE em `src/components/sre/`:
 
 ---
 
-## 12. O Que Não Fazer
+## 12. Assistente de IA
+
+O titlis-ai expõe dois fluxos SSE consumidos pela UI: **explicação** (streaming de texto)
+e **remediação** (pipeline multi-step com confirmação humana).
+
+### Endpoints consumidos
+
+```typescript
+// Proxied via titlis-api → titlis-ai
+POST /v1/ai/workloads/{id}/explain         // SSE stream: chunks de markdown
+POST /v1/ai/workloads/{id}/remediate       // SSE stream: fix_ready | existing_pr | progress | error | done
+POST /v1/ai/remediate/{thread_id}/confirm  // SSE stream: pr_created | progress | done
+```
+
+### Fluxo de explicação ("Explicar com IA")
+
+1. Usuário clica "Explicar com IA" num finding com `passed: false`
+2. UI faz `POST /v1/ai/workloads/{id}/explain` com `{ rule_id, actual_value, ... }`
+3. Lê SSE stream e renderiza chunks em markdown progressivamente
+4. Painel lateral (`<DetailPanel>`) exibe a resposta
+
+### Fluxo de remediação ("Corrigir com IA")
+
+1. Usuário clica "Corrigir com IA" num finding com `is_remediable: true`
+2. UI faz `POST /v1/ai/workloads/{id}/remediate` com `{ finding_ids, repo_url, deploy_manifest_path }`
+3. Lê SSE stream:
+   - `existing_pr` → mostra link do PR já existente
+   - `progress` → atualiza status de cada nó do pipeline
+   - `fix_ready` → exibe diff (`patched_manifest` vs `current_manifest`) e botões Confirmar/Rejeitar
+4. Ao confirmar, UI faz `POST /v1/ai/remediate/{thread_id}/confirm` com `{ approved: true }`
+5. Lê SSE stream: `pr_created` → exibe link do PR criado
+
+### Tipos de evento SSE
+
+| `type` | Ação na UI |
+|---|---|
+| `fix_ready` | Para stream; exibe diff; aguarda usuário (guarda `thread_id`) |
+| `existing_pr` | Exibe link do PR existente; encerra fluxo |
+| `progress` | Exibe nome do nó atual em execução |
+| `pr_created` | Exibe link do PR criado (pr_url, pr_number) |
+| `error` | Exibe mensagem de erro e encerra |
+| `done` | Limpa loading state |
+
+### Configuração de AI (admin)
+
+Página `SettingsAuth` ou nova aba — admin configura por tenant:
+- `provider`: openai | anthropic | google | mistral
+- `model`: gpt-4o | claude-3-5-sonnet | etc.
+- `api_key` (write-only — nunca exibida)
+- `github_token` (write-only)
+- `github_base_branch`
+- `monthly_token_budget` (opcional)
+
+Badge na UI mostra o provider configurado ou CTA para configurar (se não admin: oculta botões de IA).
+
+### Convenções de implementação
+
+- Leia SSE com `EventSource` ou `fetch()` + `ReadableStream` — não use WebSocket
+- Nunca armazene `api_key` ou `github_token` no state da UI — são write-only
+- `canRemediate` (derivado do role) controla visibilidade dos botões "Corrigir com IA"
+- O `thread_id` vem do evento `fix_ready` — guarde em `useState` para o confirm posterior
+
+---
+
+## 13. O Que Não Fazer
 
 - **Nunca** use `useEffect` para buscar dados de API — use React Query
 - **Nunca** armazene tokens em `sessionStorage` — o padrão é `localStorage` com chave `titlis.auth.session`

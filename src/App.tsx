@@ -18,6 +18,7 @@ import { LoginCallback } from '@/pages/LoginCallback'
 import { Onboarding } from '@/pages/Onboarding'
 import { SettingsAuth } from '@/pages/SettingsAuth'
 import { SettingsApiKeys } from '@/pages/SettingsApiKeys'
+import { SettingsAi } from '@/pages/SettingsAi'
 import { GettingStarted } from '@/pages/GettingStarted'
 
 const queryClient = new QueryClient({
@@ -80,6 +81,14 @@ export default function App() {
                   element={(
                     <AuthGate requireAdmin>
                       <SettingsApiKeys />
+                    </AuthGate>
+                  )}
+                />
+                <Route
+                  path="/settings/ai"
+                  element={(
+                    <AuthGate requireAdmin>
+                      <SettingsAi />
                     </AuthGate>
                   )}
                 />

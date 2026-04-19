@@ -39,3 +39,11 @@ export function useSloCatalog(namespace?: string, cluster?: string) {
     queryFn: () => api.slos.list({ namespace, cluster }),
   })
 }
+
+export function useAiConfig() {
+  return useQuery({
+    queryKey: ['ai-config'],
+    queryFn: () => api.aiConfig.get(),
+    retry: false,
+  })
+}

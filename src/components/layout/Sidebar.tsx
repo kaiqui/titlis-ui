@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import {
   AppWindow,
+  Bot,
   ChevronLeft,
   ChevronRight,
   ClipboardCheck,
@@ -80,6 +81,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         ...secondaryNavItems,
         { to: '/settings/auth', icon: KeyRound, label: 'Acesso' },
         { to: '/settings/api-keys', icon: Key, label: 'Chaves de API' },
+        { to: '/settings/ai', icon: Bot, label: 'Configurar IA' },
       ]
     : secondaryNavItems
 

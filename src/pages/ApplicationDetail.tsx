@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
-import { AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, ExternalLink, GitPullRequest, Layers3, ShieldAlert, ShieldCheck, XCircle } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, ArrowRight, Bot, CheckCircle2, ExternalLink, GitPullRequest, Layers3, ShieldAlert, ShieldCheck, Sparkles, XCircle } from 'lucide-react'
 import { ButtonDefault } from '@/components/jeitto/ButtonDefault'
 import { Card } from '@/components/jeitto/Card'
 import { EmptyState } from '@/components/jeitto/EmptyState'
@@ -13,8 +13,12 @@ import { DetailPanel } from '@/components/sre/DetailPanel'
 import { FocusTabs } from '@/components/sre/FocusTabs'
 import { InlineAccordion } from '@/components/sre/InlineAccordion'
 import { SummaryStrip } from '@/components/sre/SummaryStrip'
+import { AiExplainDrawer } from '@/components/ai/AiExplainDrawer'
+import { AiRemediationModal } from '@/components/ai/AiRemediationModal'
 import { useWorkloadRemediation, useWorkloadScorecard } from '@/hooks/useApi'
+import { useAuth } from '@/contexts/useAuth'
 import { formatDate, formatEnum, severityColor, statusTone } from '@/lib/utils'
+import type { Finding } from '@/types'
 
 interface ApplicationDetailProps {
   backPath?: string
@@ -32,9 +36,12 @@ export function ApplicationDetail({
 }: ApplicationDetailProps) {
   const { id = '' } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
   const scorecardQuery = useWorkloadScorecard(id)
   const remediationQuery = useWorkloadRemediation(id)
   const [focus, setFocus] = useState<DetailFocus>('overview')
+  const [explainFinding, setExplainFinding] = useState<Finding | null>(null)
+  const [showRemediationModal, setShowRemediationModal] = useState(false)
 
   if (scorecardQuery.isLoading) return <><Header title="Detalhe do workload" /><PageLoading /></>
   if (scorecardQuery.error) {
@@ -63,6 +70,9 @@ export function ApplicationDetail({
   const remediation = remediationQuery.data
   const failedFindings = workload.validationResults.filter(item => !item.passed)
   const passedFindings = workload.validationResults.filter(item => item.passed)
+  const remediableFindings = failedFindings.filter(f => f.remediable)
+  const canUseAi = user?.canRemediate ?? false
+
   const evaluationMetrics: EvaluationMetric[] = [
     { label: 'Regras totais', value: workload.totalRules, icon: Layers3 },
     { label: 'Aprovadas', value: workload.passedRules, icon: CheckCircle2 },
@@ -76,6 +86,22 @@ export function ApplicationDetail({
     <div className="flex min-h-screen flex-col">
       <Header title={workload.name} subtitle={`${workload.namespace} · ${workload.cluster} · ${formatEnum(workload.environment)}`} />
 
+      {explainFinding && (
+        <AiExplainDrawer
+          finding={explainFinding}
+          workload={workload}
+          onClose={() => setExplainFinding(null)}
+        />
+      )}
+
+      {showRemediationModal && (
+        <AiRemediationModal
+          workload={workload}
+          remediableFindings={remediableFindings}
+          onClose={() => setShowRemediationModal(false)}
+        />
+      )}
+
       <div className="flex-1 space-y-5 px-4 py-6 lg:px-8">
         <div className="flex flex-wrap gap-3">
           <ButtonDefault label={backLabel} visual="secondary" icon={ArrowLeft} onClick={() => navigate(backPath)} />
@@ -84,6 +110,13 @@ export function ApplicationDetail({
               label="Abrir scorecard dedicado"
               icon={ArrowRight}
               onClick={() => navigate(`/applications/${workload.id}/scorecard`)}
+            />
+          )}
+          {canUseAi && remediableFindings.length > 0 && (
+            <ButtonDefault
+              label="Corrigir com IA"
+              icon={Bot}
+              onClick={() => setShowRemediationModal(true)}
             />
           )}
         </div>
@@ -191,6 +224,18 @@ export function ApplicationDetail({
                               <span className="rounded-full px-2.5 py-1 text-[11px] font-semibold" style={{ backgroundColor: 'var(--color-card)', color: 'var(--color-muted-foreground)' }}>
                                 {finding.ruleId}
                               </span>
+                              {finding.remediationPending && (
+                                <a
+                                  href={finding.remediationPrUrl ?? undefined}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold hover:opacity-80"
+                                  style={{ backgroundColor: 'rgba(59,130,246,0.1)', color: '#3b82f6' }}
+                                >
+                                  <GitPullRequest size={10} />
+                                  PR em andamento
+                                </a>
+                              )}
                             </div>
                             <p className="mt-2 text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
                               {finding.message ?? 'Sem mensagem detalhada para esta regra.'}
@@ -200,11 +245,21 @@ export function ApplicationDetail({
                             Falhou
                           </span>
                         </div>
-                        <div className="mt-4 flex flex-wrap gap-2 text-xs">
+                        <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
                           <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--color-card)', color: 'var(--color-muted-foreground)' }}>{formatEnum(finding.pillar)}</span>
                           <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--color-card)', color: 'var(--color-muted-foreground)' }}>{formatEnum(finding.ruleType)}</span>
                           {finding.weight !== null && <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--color-card)', color: 'var(--color-muted-foreground)' }}>peso {finding.weight}</span>}
                           {finding.remediable && <span className="rounded-full px-3 py-1 font-semibold" style={{ backgroundColor: 'rgba(249,115,22,0.1)', color: '#ea580c' }}>Remediável</span>}
+                          {canUseAi && (
+                            <button
+                              onClick={() => setExplainFinding(finding)}
+                              className="flex items-center gap-1.5 rounded-full px-3 py-1 font-semibold transition-opacity hover:opacity-70"
+                              style={{ backgroundColor: 'rgba(139,92,246,0.1)', color: '#7c3aed' }}
+                            >
+                              <Sparkles size={10} />
+                              Explicar com IA
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -254,6 +309,23 @@ export function ApplicationDetail({
 
         {focus === 'remediation' && (
           <DetailPanel title="Estado de remediação" subtitle="Abra o detalhe só se houver ação registrada.">
+            {workload.activeRemediation && (
+              <div className="mb-4 rounded-2xl border px-4 py-4" style={{ borderColor: 'rgba(59,130,246,0.3)', backgroundColor: 'rgba(59,130,246,0.06)' }}>
+                <div className="flex items-center gap-2 mb-2">
+                  <GitPullRequest size={14} style={{ color: '#3b82f6' }} />
+                  <p className="text-sm font-semibold" style={{ color: '#3b82f6' }}>PR em andamento</p>
+                </div>
+                <p className="text-xs mb-3" style={{ color: 'var(--color-muted-foreground)' }}>
+                  Findings cobertos: {workload.activeRemediation.pendingRuleIds.join(', ') || 'todos'}
+                </p>
+                {workload.activeRemediation.prUrl && (
+                  <a href={workload.activeRemediation.prUrl} target="_blank" rel="noreferrer">
+                    <ButtonDefault label={`Ver PR #${workload.activeRemediation.prNumber ?? 'N/D'}`} icon={ExternalLink} />
+                  </a>
+                )}
+              </div>
+            )}
+
             {!remediation ? (
               <EmptyState
                 icon={GitPullRequest}
