@@ -5,7 +5,7 @@ import { AuthContext } from '@/contexts/AuthContext'
 import { Sidebar } from '@/components/layout/Sidebar'
 
 describe('Sidebar', () => {
-  it('renderiza a navegação principal com a nova identidade Jeitto', () => {
+  it('agrupa as telas de produto e configuração em seções distintas', () => {
     render(
       <AuthContext.Provider
         value={{
@@ -41,8 +41,12 @@ describe('Sidebar', () => {
     )
 
     expect(screen.getByText('Titlis')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Workloads' })).toHaveAttribute('href', '/applications')
-    expect(screen.getByRole('link', { name: 'Scorecards' })).toBeInTheDocument()
+    expect(screen.getByText('Produto')).toBeInTheDocument()
+    expect(screen.getByText('Configuração')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Services' })).toHaveAttribute('href', '/applications')
+    expect(screen.getByRole('link', { name: 'Termômetro de Confiabilidade' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Chaves de API' })).toHaveAttribute('href', '/settings/api-keys')
+    expect(screen.getByRole('link', { name: 'Configurar ARIA' })).toHaveAttribute('href', '/settings/ai')
   })
 
   it('esconde o texto expandido quando o menu está recolhido', () => {

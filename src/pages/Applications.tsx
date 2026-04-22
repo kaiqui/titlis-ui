@@ -92,11 +92,11 @@ export function Applications() {
   const unknownCount = workloadList.length - nonCompliantCount - compliantCount
   const sortLabel = sortKey === 'score' ? 'Score' : sortKey === 'name' ? 'Nome' : 'Namespace'
 
-  if (isLoading) return <><Header title="Workloads" /><PageLoading /></>
+  if (isLoading) return <><Header title="Services" /><PageLoading /></>
   if (error || !workloads) {
     return (
       <>
-        <Header title="Workloads" />
+        <Header title="Services" />
         <PageError message={error instanceof Error ? error.message : undefined} onRetry={() => void refetch()} />
       </>
     )
@@ -104,7 +104,7 @@ export function Applications() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Header title="Workloads" subtitle="Selecione um workload e abra só a camada de detalhe que precisar." />
+      <Header title="Services" subtitle="Selecione um service e abra só a camada de detalhe que precisar." />
 
       <div className="flex-1 space-y-5 px-4 py-6 lg:px-8">
         <SummaryStrip

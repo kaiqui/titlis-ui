@@ -79,6 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function refreshSession() {
     setStatus('loading')
     const stored = readStoredSession()
+    let fetchedBootstrap: BootstrapStatus | null = null
 
     if (isMockAuthMode()) {
       const mockSession = stored?.provider === 'mock' ? stored : buildMockSession()
@@ -106,6 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const bootstrap = await api.auth.bootstrapStatus()
+      fetchedBootstrap = bootstrap
       setBootstrapStatus(bootstrap)
 
       let effectiveSession = stored
@@ -140,8 +142,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       clearStoredSession()
       setSession(null)
-      setBootstrapStatus({
-        bootstrapRequired: !stored?.accessToken,
+      setBootstrapStatus(fetchedBootstrap ?? {
+        bootstrapRequired: false,
         localLoginEnabled: true,
         oktaConfigured: false,
         primaryProvider: null,

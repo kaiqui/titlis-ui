@@ -35,6 +35,7 @@ src/
 ├── index.css                # Tailwind globals + CSS variables de tema
 │
 ├── pages/                   # Um arquivo por rota
+│   ├── AssistantPage.tsx    # /assistant — chat com agente IA (human-in-the-loop)
 │   ├── Dashboard.tsx        # / — visão geral com 4 focos
 │   ├── Applications.tsx     # /applications — lista + filtros + detail panel
 │   ├── ApplicationDetail.tsx# /applications/:id — scorecard completo
@@ -50,6 +51,9 @@ src/
 │   └── SettingsAuth.tsx     # /settings/auth (admin only)
 │
 ├── components/
+│   ├── ai/
+│   │   ├── AiExplainDrawer.tsx  # Drawer de explicação de finding (SSE streaming markdown)
+│   │   └── ToolProposalCard.tsx # Card de aprovação de tool call (approve/reject/edit JSON)
 │   ├── atoms/               # Primitivos simples: button, input, img, typography
 │   ├── auth/
 │   │   └── AuthGate.tsx     # HOC de proteção de rotas
@@ -124,12 +128,16 @@ src/
 | `/applications/:id` | ApplicationDetail | sim | não | Detalhe de workload |
 | `/applications/:id/scorecard` | ScorecardDetail | sim | não | Scorecard de workload |
 | `/slos` | SLOs | sim | não | Catálogo de SLOs |
+| `/assistant` | AssistantPage | sim | não* | Agente IA conversacional com aprovação de tools |
 | `/recommendations` | Recommendations | sim | **sim** | Fila de remediação |
 | `/topology` | Squads | sim | não | Topologia de squads |
 | `/settings/auth` | SettingsAuth | sim | **sim** | Config de providers OIDC |
 
 **Proteção de rotas:** `<AuthGate>` em torno de todas as rotas autenticadas.
 `<AuthGate requireAdmin>` para admin-only (redireciona para `/` se não for admin).
+
+*`/assistant` é visível para qualquer usuário autenticado, mas o link na sidebar só aparece
+para usuários com `canRemediate` (role admin/engineer). A lógica de permissão de tools é no backend.
 
 ---
 
@@ -408,50 +416,71 @@ Componentes SRE em `src/components/sre/`:
 
 ## 12. Assistente de IA
 
-O titlis-ai expõe dois fluxos SSE consumidos pela UI: **explicação** (streaming de texto)
-e **remediação** (pipeline multi-step com confirmação humana).
+O titlis-ai expõe três fluxos SSE consumidos pela UI:
 
-### Endpoints consumidos
+| Fluxo | Trigger | Endpoint |
+|---|---|---|
+| **Explicação** | "Explicar com IA" em finding | `POST /v1/ai/workloads/{id}/findings/{ruleId}/explain` |
+| **Remediação LangGraph** | Pipeline automático (legado) | `POST /v1/ai/workloads/{id}/remediate` |
+| **Agente conversacional** | `/assistant` page + "Corrigir com IA" | `POST /v1/ai/agent/chat` |
 
+### Agente Conversacional (`AssistantPage.tsx`)
+
+**Página:** `/assistant` — acessível via sidebar (ícone `MessageSquare`, visível para `canRemediate`).
+
+**Acesso via botão "Corrigir com IA":** em `ApplicationDetail`, o botão navega para `/assistant`
+passando via router state: `{ workloadId, workloadName, namespace, findingIds }`. A página detecta
+esse estado no mount e dispara automaticamente a mensagem de análise.
+
+**Estado de sessão:** `sessionId` gerado com `crypto.randomUUID()` e persistido em `sessionStorage`
+com chave `titlis.agent.session`. "Nova sessão" gera novo UUID.
+
+**Fluxo por turn:**
+```
+sendMessage(text)
+  → POST /v1/ai/agent/chat { sessionId, message }
+  → SSE:
+      thinking    → acumula texto de raciocínio no assistantMsg
+      awaiting_approvals → adiciona msg role="proposals" com lista de ToolProposal
+      message     → resposta final (role="assistant")
+      scope_rejected → msg role="scope_rejected"
+      done        → setLoading(false)
+
+submitDecisions()   # após usuário aprovar/rejeitar cada tool
+  → POST /v1/ai/agent/{sessionId}/tools/respond { decisions }
+  → SSE:
+      tool_result → msg role="tool_results"
+      thinking / message / awaiting_approvals → continuação
+      done        → setLoading(false)
+```
+
+**`ToolProposalCard`** (`src/components/ai/ToolProposalCard.tsx`):
+- Expand/collapse de parâmetros (JSON)
+- Edição inline de args (textarea JSON com validação)
+- Write tools: badge âmbar "escrita" + ícone `ShieldAlert`
+- Read tools: badge indigo padrão
+- Estado `pending | approved | rejected` — após decisão mostra badge de resultado
+
+**Métodos em `api.ai` (`src/lib/api.ts`):**
 ```typescript
-// Proxied via titlis-api → titlis-ai
-POST /v1/ai/workloads/{id}/explain         // SSE stream: chunks de markdown
-POST /v1/ai/workloads/{id}/remediate       // SSE stream: fix_ready | existing_pr | progress | error | done
-POST /v1/ai/remediate/{thread_id}/confirm  // SSE stream: pr_created | progress | done
+api.ai.agentChat(sessionId, message)              // → AsyncGenerator<SSE events>
+api.ai.agentToolsRespond(sessionId, decisions)    // → AsyncGenerator<SSE events>
 ```
 
 ### Fluxo de explicação ("Explicar com IA")
 
 1. Usuário clica "Explicar com IA" num finding com `passed: false`
-2. UI faz `POST /v1/ai/workloads/{id}/explain` com `{ rule_id, actual_value, ... }`
-3. Lê SSE stream e renderiza chunks em markdown progressivamente
-4. Painel lateral (`<DetailPanel>`) exibe a resposta
+2. UI faz `POST /v1/ai/workloads/{id}/findings/{ruleId}/explain`
+3. Lê SSE stream e renderiza chunks em markdown progressivamente no `<AiExplainDrawer>`
 
-### Fluxo de remediação ("Corrigir com IA")
+### Fluxo de remediação LangGraph (legado)
 
-1. Usuário clica "Corrigir com IA" num finding com `is_remediable: true`
-2. UI faz `POST /v1/ai/workloads/{id}/remediate` com `{ finding_ids, repo_url, deploy_manifest_path }`
-3. Lê SSE stream:
-   - `existing_pr` → mostra link do PR já existente
-   - `progress` → atualiza status de cada nó do pipeline
-   - `fix_ready` → exibe diff (`patched_manifest` vs `current_manifest`) e botões Confirmar/Rejeitar
-4. Ao confirmar, UI faz `POST /v1/ai/remediate/{thread_id}/confirm` com `{ approved: true }`
-5. Lê SSE stream: `pr_created` → exibe link do PR criado
-
-### Tipos de evento SSE
-
-| `type` | Ação na UI |
-|---|---|
-| `fix_ready` | Para stream; exibe diff; aguarda usuário (guarda `thread_id`) |
-| `existing_pr` | Exibe link do PR existente; encerra fluxo |
-| `progress` | Exibe nome do nó atual em execução |
-| `pr_created` | Exibe link do PR criado (pr_url, pr_number) |
-| `error` | Exibe mensagem de erro e encerra |
-| `done` | Limpa loading state |
+1. `POST /v1/ai/workloads/{id}/remediate` → SSE: `fix_ready | existing_pr | progress | error | done`
+2. `POST /v1/ai/remediate/{thread_id}/confirm` → SSE: `pr_created | progress | done`
 
 ### Configuração de AI (admin)
 
-Página `SettingsAuth` ou nova aba — admin configura por tenant:
+Página `/settings/ai` — admin configura por tenant:
 - `provider`: openai | anthropic | google | mistral
 - `model`: gpt-4o | claude-3-5-sonnet | etc.
 - `api_key` (write-only — nunca exibida)
@@ -459,14 +488,13 @@ Página `SettingsAuth` ou nova aba — admin configura por tenant:
 - `github_base_branch`
 - `monthly_token_budget` (opcional)
 
-Badge na UI mostra o provider configurado ou CTA para configurar (se não admin: oculta botões de IA).
-
 ### Convenções de implementação
 
-- Leia SSE com `EventSource` ou `fetch()` + `ReadableStream` — não use WebSocket
+- Leia SSE com `fetch()` + `ReadableStream` — não use `EventSource` (não suporta POST)
 - Nunca armazene `api_key` ou `github_token` no state da UI — são write-only
-- `canRemediate` (derivado do role) controla visibilidade dos botões "Corrigir com IA"
-- O `thread_id` vem do evento `fix_ready` — guarde em `useState` para o confirm posterior
+- `canRemediate` (derivado do role) controla visibilidade do link na sidebar e do botão "Corrigir com IA"
+- O `thread_id` do LangGraph vem do evento `fix_ready` — guarde em `useState` para o confirm posterior
+- O `sessionId` do agente conversacional vem do `sessionStorage` — nunca do `localStorage`
 
 ---
 

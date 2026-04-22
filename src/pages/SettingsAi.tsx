@@ -27,8 +27,8 @@ export function SettingsAi() {
   const [saved, setSaved] = useState(false)
   const [formInitialized, setFormInitialized] = useState(false)
 
-  if (isLoading) return <><Header title="Configuração de IA" /><PageLoading /></>
-  if (error) return <><Header title="Configuração de IA" /><PageError message="Não foi possível carregar a configuração." /></>
+  if (isLoading) return <><Header title="Configuração do ARIA" /><PageLoading /></>
+  if (error) return <><Header title="Configuração do ARIA" /><PageError message="Não foi possível carregar a configuração." /></>
 
   if (config && !formInitialized) {
     setProvider(config.provider)
@@ -67,7 +67,7 @@ export function SettingsAi() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Header title="Configuração de IA" subtitle="Defina o provedor e credenciais para remediação automática e explicações" />
+      <Header title="Configuração do ARIA" subtitle="Defina o provedor e credenciais do ARIA para remediação automática e explicações" />
 
       <div className="flex-1 space-y-5 px-4 py-6 lg:px-8">
         {config && (

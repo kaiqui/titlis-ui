@@ -146,7 +146,7 @@ export function AiRemediationModal({ workload, remediableFindings, onClose }: Pr
               <GitPullRequest size={16} style={{ color: 'var(--color-primary)' }} />
             </div>
             <div>
-              <p className="text-sm font-black" style={{ color: 'var(--color-foreground)' }}>Corrigir com IA</p>
+              <p className="text-sm font-black" style={{ color: 'var(--color-foreground)' }}>Corrigir com ARIA</p>
               <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>{workload.name} · {workload.namespace}</p>
             </div>
           </div>

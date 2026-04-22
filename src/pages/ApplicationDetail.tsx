@@ -14,7 +14,6 @@ import { FocusTabs } from '@/components/sre/FocusTabs'
 import { InlineAccordion } from '@/components/sre/InlineAccordion'
 import { SummaryStrip } from '@/components/sre/SummaryStrip'
 import { AiExplainDrawer } from '@/components/ai/AiExplainDrawer'
-import { AiRemediationModal } from '@/components/ai/AiRemediationModal'
 import { useWorkloadRemediation, useWorkloadScorecard } from '@/hooks/useApi'
 import { useAuth } from '@/contexts/useAuth'
 import { formatDate, formatEnum, severityColor, statusTone } from '@/lib/utils'
@@ -41,7 +40,6 @@ export function ApplicationDetail({
   const remediationQuery = useWorkloadRemediation(id)
   const [focus, setFocus] = useState<DetailFocus>('overview')
   const [explainFinding, setExplainFinding] = useState<Finding | null>(null)
-  const [showRemediationModal, setShowRemediationModal] = useState(false)
 
   if (scorecardQuery.isLoading) return <><Header title="Detalhe do workload" /><PageLoading /></>
   if (scorecardQuery.error) {
@@ -56,7 +54,7 @@ export function ApplicationDetail({
   if (!scorecardQuery.data) {
     return (
       <div className="flex min-h-screen flex-col">
-        <Header title="Workload não encontrado" subtitle="O recurso pode ainda não ter sido materializado no titlis-api." />
+        <Header title="Service não encontrado" subtitle="O recurso pode ainda não ter sido materializado no titlis-api." />
         <EmptyState
           icon={Layers3}
           title="Nenhum scorecard encontrado"
@@ -94,14 +92,6 @@ export function ApplicationDetail({
         />
       )}
 
-      {showRemediationModal && (
-        <AiRemediationModal
-          workload={workload}
-          remediableFindings={remediableFindings}
-          onClose={() => setShowRemediationModal(false)}
-        />
-      )}
-
       <div className="flex-1 space-y-5 px-4 py-6 lg:px-8">
         <div className="flex flex-wrap gap-3">
           <ButtonDefault label={backLabel} visual="secondary" icon={ArrowLeft} onClick={() => navigate(backPath)} />
@@ -114,9 +104,16 @@ export function ApplicationDetail({
           )}
           {canUseAi && remediableFindings.length > 0 && (
             <ButtonDefault
-              label="Corrigir com IA"
+              label="Corrigir com ARIA"
               icon={Bot}
-              onClick={() => setShowRemediationModal(true)}
+              onClick={() => navigate('/assistant', {
+                state: {
+                  workloadId: workload.id,
+                  workloadName: workload.name,
+                  namespace: workload.namespace,
+                  findingIds: remediableFindings.map(f => f.ruleId),
+                },
+              })}
             />
           )}
         </div>
@@ -257,7 +254,7 @@ export function ApplicationDetail({
                               style={{ backgroundColor: 'rgba(139,92,246,0.1)', color: '#7c3aed' }}
                             >
                               <Sparkles size={10} />
-                              Explicar com IA
+                              Explicar com ARIA
                             </button>
                           )}
                         </div>

@@ -7,6 +7,7 @@ interface ScoreRingProps {
   strokeWidth?: number
   showLabel?: boolean
   showScore?: boolean
+  showFraction?: boolean
   className?: string
 }
 
@@ -16,6 +17,7 @@ export function ScoreRing({
   strokeWidth = 6,
   showLabel = false,
   showScore = true,
+  showFraction = false,
   className = '',
 }: ScoreRingProps) {
   const safeScore = score ?? 0
@@ -64,7 +66,14 @@ export function ScoreRing({
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5, delay: 0.45 }}
           >
-            {score === null ? 'N/D' : Math.round(clampedScore)}
+            {score === null ? 'N/D' : (
+              showFraction ? (
+                <>
+                  {Math.round(clampedScore)}
+                  <span className="font-semibold opacity-50" style={{ fontSize: '0.55em' }}>/100</span>
+                </>
+              ) : Math.round(clampedScore)
+            )}
           </motion.span>
           {showLabel && (
             <span className="mt-1 text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--color-muted-foreground)' }}>

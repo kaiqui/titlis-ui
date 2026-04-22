@@ -9,6 +9,7 @@ import {
   Key,
   KeyRound,
   LayoutDashboard,
+  MessageSquare,
   Network,
   Shield,
   Siren,
@@ -18,16 +19,31 @@ import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/useAuth'
 
 const primaryNavItems = [
-  { to: '/', icon: LayoutDashboard, label: 'Panorama', exact: true },
-  { to: '/incidents', icon: Siren, label: 'Incidentes' },
-  { to: '/applications', icon: AppWindow, label: 'Workloads' },
-  { to: '/scorecards', icon: ClipboardCheck, label: 'Scorecards' },
+  { to: '/', icon: LayoutDashboard, label: 'Home', exact: true },
+  { to: '/incidents', icon: Siren, label: 'Degradações' },
+  { to: '/applications', icon: AppWindow, label: 'Services' },
+  { to: '/scorecards', icon: ClipboardCheck, label: 'Termômetro de Confiabilidade' },
 ]
 
 const secondaryNavItems = [
   { to: '/slos', icon: Target, label: 'SLOs' },
   { to: '/topology', icon: Network, label: 'Topologia' },
 ]
+
+const remediationNavItems = [
+  { to: '/recommendations', icon: GitPullRequest, label: 'Remediação' },
+  { to: '/assistant', icon: MessageSquare, label: 'ARIA' },
+]
+
+const settingsNavItems = {
+  base: [
+    { to: '/settings/api-keys', icon: Key, label: 'Chaves de API' },
+  ],
+  admin: [
+    { to: '/settings/auth', icon: KeyRound, label: 'Acesso' },
+    { to: '/settings/ai', icon: Bot, label: 'Configurar ARIA' },
+  ],
+} as const
 
 function NavItems({
   items,
@@ -66,6 +82,40 @@ function NavItems({
   ))
 }
 
+function NavSection({
+  title,
+  items,
+  collapsed,
+  emphasized = false,
+}: {
+  title: string
+  items: typeof primaryNavItems
+  collapsed: boolean
+  emphasized?: boolean
+}) {
+  if (!items.length) return null
+
+  return (
+    <section
+      className={cn(
+        'rounded-[1.6rem] border transition-colors',
+        collapsed ? 'p-2' : 'p-3',
+        emphasized ? 'bg-white/[0.05]' : 'bg-white/[0.03]',
+      )}
+      style={{ borderColor: emphasized ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.1)' }}
+    >
+      {!collapsed && (
+        <div className="mb-2 px-2">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/48">{title}</p>
+        </div>
+      )}
+      <div className="space-y-2">
+        <NavItems items={items} collapsed={collapsed} />
+      </div>
+    </section>
+  )
+}
+
 interface SidebarProps {
   collapsed: boolean
   onToggle: () => void
@@ -73,17 +123,15 @@ interface SidebarProps {
 
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const { user } = useAuth()
-  const navItems = user?.canRemediate
-    ? [...primaryNavItems, { to: '/recommendations', icon: GitPullRequest, label: 'Remediação' }]
-    : primaryNavItems
-  const contextualItems = user?.canRemediate
-    ? [
-        ...secondaryNavItems,
-        { to: '/settings/auth', icon: KeyRound, label: 'Acesso' },
-        { to: '/settings/api-keys', icon: Key, label: 'Chaves de API' },
-        { to: '/settings/ai', icon: Bot, label: 'Configurar IA' },
-      ]
-    : secondaryNavItems
+  const navItems = [
+    ...primaryNavItems,
+    ...secondaryNavItems,
+    ...(user?.canRemediate ? remediationNavItems : []),
+  ]
+  const configurationItems = [
+    ...(user?.role === 'admin' ? settingsNavItems.admin : []),
+    ...settingsNavItems.base,
+  ]
 
   return (
     <>
@@ -122,20 +170,9 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         </div>
 
         <div className="relative z-[1] flex-1 overflow-y-auto pb-4">
-          <nav className={`space-y-2 ${collapsed ? 'px-3' : 'px-4'}`}>
-            {!collapsed && (
-              <p className="px-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/45">Principal</p>
-            )}
-            <div className="space-y-2">
-              <NavItems items={navItems} collapsed={collapsed} />
-            </div>
-
-            {!collapsed && (
-              <p className="px-4 pt-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/35">Contexto</p>
-            )}
-            <div className="space-y-2">
-              <NavItems items={contextualItems} collapsed={collapsed} />
-            </div>
+          <nav className={`space-y-3 ${collapsed ? 'px-3' : 'px-4'}`}>
+            <NavSection title="Produto" items={navItems} collapsed={collapsed} />
+            <NavSection title="Configuração" items={configurationItems} collapsed={collapsed} emphasized />
           </nav>
         </div>
 
@@ -148,7 +185,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           background: 'var(--sidebar-background)',
         }}
       >
-        <NavItems items={[...navItems, ...contextualItems]} mobile />
+        <NavItems items={[...navItems, ...configurationItems]} mobile />
       </nav>
     </>
   )

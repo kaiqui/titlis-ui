@@ -63,7 +63,7 @@ export function AiExplainDrawer({ finding, workload, onClose }: Props) {
     <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-xl flex-col shadow-2xl" style={{ backgroundColor: 'var(--color-card)', borderLeft: '1px solid var(--color-border)' }}>
       <div className="flex items-start justify-between gap-4 border-b px-6 py-5" style={{ borderColor: 'var(--color-border)' }}>
         <div>
-          <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-primary)' }}>Explicar com IA</p>
+          <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-primary)' }}>Explicar com ARIA</p>
           <p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{finding.ruleName}</p>
           <p className="mt-0.5 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>{finding.ruleId} · {finding.pillar}</p>
         </div>
@@ -76,7 +76,7 @@ export function AiExplainDrawer({ finding, workload, onClose }: Props) {
         {status === 'loading' && (
           <div className="flex items-center gap-3">
             <div className="h-2 w-2 animate-pulse rounded-full" style={{ backgroundColor: 'var(--color-primary)' }} />
-            <span className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>Consultando IA...</span>
+            <span className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>Consultando ARIA...</span>
           </div>
         )}
 

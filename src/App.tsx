@@ -20,6 +20,7 @@ import { SettingsAuth } from '@/pages/SettingsAuth'
 import { SettingsApiKeys } from '@/pages/SettingsApiKeys'
 import { SettingsAi } from '@/pages/SettingsAi'
 import { GettingStarted } from '@/pages/GettingStarted'
+import { AssistantPage } from '@/pages/AssistantPage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -66,6 +67,7 @@ export default function App() {
                     </AuthGate>
                   )}
                 />
+                <Route path="/assistant" element={<AssistantPage />} />
                 <Route path="/topology" element={<Squads />} />
                 <Route path="/squads" element={<Navigate to="/topology" replace />} />
                 <Route

@@ -448,13 +448,29 @@ interface AiConfigUpsertPayload {
 
 type SseEvent = { type: string } & Record<string, unknown>
 
+async function fetchWithBackoff(url: string, options: RequestInit, maxRetries = 3): Promise<Response> {
+  let lastError: Error = new Error('fetch failed')
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    if (attempt > 0) {
+      await new Promise(r => setTimeout(r, Math.min(1000 * 2 ** (attempt - 1), 8000)))
+    }
+    try {
+      const response = await fetch(url, options)
+      return response
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err))
+    }
+  }
+  throw lastError
+}
+
 async function* streamSse(path: string, body: unknown): AsyncGenerator<SseEvent> {
   const url = buildUrl(path)
   const token = getStoredAccessToken()
   const authMode = getAuthMode()
   const devAuth = getDevAuthConfig()
 
-  const response = await fetch(url.toString(), {
+  const response = await fetchWithBackoff(url.toString(), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -738,5 +754,12 @@ export const api = {
       }),
     confirmRemediation: (threadId: string, approved: boolean) =>
       streamSse(`/ai/remediate/${threadId}/confirm`, { approved }),
+    agentChat: (sessionId: string, message: string) =>
+      streamSse('/ai/agent/chat', { sessionId, message }),
+    agentToolsRespond: (
+      sessionId: string,
+      decisions: { proposalId: string; approved: boolean; editedArgs?: Record<string, unknown> }[],
+    ) =>
+      streamSse(`/ai/agent/${sessionId}/tools/respond`, { decisions }),
   },
 }

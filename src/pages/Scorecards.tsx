@@ -67,11 +67,11 @@ export function Scorecards() {
   const detail = scorecardQuery.data
   const adherence = detail && detail.totalRules > 0 ? Math.round((detail.passedRules / detail.totalRules) * 100) : null
 
-  if (isLoading) return <><Header title="Scorecards" /><PageLoading /></>
+  if (isLoading) return <><Header title="Termômetro de Confiabilidade" /><PageLoading /></>
   if (error || !workloads) {
     return (
       <>
-        <Header title="Scorecards" />
+        <Header title="Termômetro de Confiabilidade" />
         <PageError message={error instanceof Error ? error.message : undefined} onRetry={() => void refetch()} />
       </>
     )
@@ -79,13 +79,13 @@ export function Scorecards() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Header title="Scorecards" subtitle="Escolha um workload e aprofunde só o scorecard em foco." />
+      <Header title="Termômetro de Confiabilidade" subtitle="Escolha um workload e aprofunde só o scorecard em foco." />
 
       <div className="flex-1 space-y-5 px-4 py-6 lg:px-8">
         <SummaryStrip
           items={[
             { label: 'Publicados', value: summary.scoredWorkloads, helper: 'scorecards disponíveis' },
-            { label: 'Score médio', value: formatNumber(summary.averageScore), helper: 'aderência da plataforma' },
+            { label: 'Score de confiabilidade médio', value: formatNumber(summary.averageScore), helper: 'aderência da plataforma' },
             { label: 'Não conformes', value: summary.nonCompliantCount, helper: 'pedem priorização' },
             { label: 'Cluster', value: cluster === 'all' ? 'Todos' : cluster, helper: 'recorte atual' },
           ]}
@@ -187,7 +187,7 @@ export function Scorecards() {
                 <Card>
                   <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                     <div className="flex items-center gap-4">
-                      <ScoreRing score={selectedWorkload.overallScore} size={84} strokeWidth={7} showLabel />
+                      <ScoreRing score={selectedWorkload.overallScore} size={84} strokeWidth={7} showLabel showFraction />
                       <div className="space-y-2">
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="text-lg font-black tracking-tight" style={{ color: 'var(--color-foreground)' }}>

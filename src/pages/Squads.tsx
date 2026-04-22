@@ -130,7 +130,7 @@ export function Squads() {
           items={[
             { label: 'Clusters', value: summary.clusters, helper: 'escopos ativos' },
             { label: 'Namespaces', value: summary.namespaces, helper: 'combinações monitoradas' },
-            { label: 'Cobertura', value: `${summary.scoredWorkloads}/${summary.totalWorkloads}`, helper: 'workloads com scorecard' },
+            { label: 'Cobertura', value: `${summary.scoredWorkloads}/${summary.totalWorkloads}`, helper: 'services com scorecard' },
             { label: 'Conformes', value: summary.compliantCount, helper: 'em faixa saudável' },
           ]}
         />
@@ -230,7 +230,7 @@ export function Squads() {
                 {selectedCluster && detailFocus === 'overview' && (
                   <DetailPanel title="Resumo do cluster" subtitle="Visão curta para capacidade e organização.">
                     <div className="grid gap-3 md:grid-cols-4">
-                      <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Workloads</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{selectedCluster.workloadCount}</p></Card>
+                      <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Services</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{selectedCluster.workloadCount}</p></Card>
                       <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Namespaces</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{selectedCluster.namespaces}</p></Card>
                       <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Ambiente</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{formatEnum(selectedCluster.environment)}</p></Card>
                       <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Score médio</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{formatNumber(selectedCluster.averageScore)}</p></Card>
@@ -261,8 +261,8 @@ export function Squads() {
                     <InlineAccordion title="Risco" defaultOpen>
                       <div className="space-y-2">
                         {[
-                          `${selectedCluster.nonCompliantCount} workloads fora de conformidade`,
-                          `${selectedCluster.remediatedCount} workloads com remediação aberta`,
+                          `${selectedCluster.nonCompliantCount} services fora de conformidade`,
+                          `${selectedCluster.remediatedCount} services com remediação aberta`,
                           `score médio ${formatNumber(selectedCluster.averageScore)} no recorte atual`,
                         ].map(item => (
                           <div key={item} className="rounded-2xl px-3 py-2" style={{ backgroundColor: 'var(--color-muted)' }}>
@@ -277,7 +277,7 @@ export function Squads() {
                 {selectedNamespace && detailFocus === 'overview' && (
                   <DetailPanel title="Resumo do namespace" subtitle="Visão curta do domínio selecionado.">
                     <div className="grid gap-3 md:grid-cols-4">
-                      <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Workloads</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{selectedNamespace.workloadCount}</p></Card>
+                      <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Services</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{selectedNamespace.workloadCount}</p></Card>
                       <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Cluster</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{selectedNamespace.cluster}</p></Card>
                       <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Ambiente</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{formatEnum(selectedNamespace.environment)}</p></Card>
                       <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Score médio</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{formatNumber(selectedNamespace.averageScore)}</p></Card>
@@ -295,7 +295,7 @@ export function Squads() {
                   <DetailPanel title="Cobertura do namespace" subtitle="O que já foi lido e onde ainda existe lacuna.">
                     <InlineAccordion title="Cobertura" defaultOpen>
                       <div className="grid gap-3 md:grid-cols-3">
-                        <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Workloads</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{selectedNamespace.workloadCount}</p></Card>
+                        <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Services</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{selectedNamespace.workloadCount}</p></Card>
                         <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Score médio</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{formatNumber(selectedNamespace.averageScore)}</p></Card>
                         <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Remediações</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{selectedNamespace.openRemediations}</p></Card>
                       </div>

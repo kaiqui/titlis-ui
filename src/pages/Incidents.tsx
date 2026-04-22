@@ -72,11 +72,11 @@ export function Incidents() {
     unassigned: incidents.filter(item => item.owner === 'plataforma').length,
   }), [incidents])
 
-  if (isLoading) return <><Header title="Incidentes" /><PageLoading /></>
+  if (isLoading) return <><Header title="Degradações" /><PageLoading /></>
   if (error || !workloads) {
     return (
       <>
-        <Header title="Incidentes" />
+        <Header title="Degradações" />
         <PageError message={error instanceof Error ? error.message : undefined} onRetry={() => void refetch()} />
       </>
     )
@@ -84,7 +84,7 @@ export function Incidents() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Header title="Incidentes" subtitle="Fila operacional com foco por incidente e detalhe no mesmo contexto." />
+      <Header title="Degradações" subtitle="Fila operacional com foco por degradação e detalhe no mesmo contexto." />
 
       <div className="flex-1 space-y-5 px-4 py-6 lg:px-8">
         <SummaryStrip
@@ -119,7 +119,7 @@ export function Incidents() {
 
         {filtered.length === 0 ? (
           <Card>
-            <EmptyState icon={Siren} title="Nenhum incidente neste recorte" description="Ajuste o filtro ou a busca." />
+            <EmptyState icon={Siren} title="Nenhuma degradação neste recorte" description="Ajuste o filtro ou a busca." />
           </Card>
         ) : (
           <section className="grid gap-4 xl:grid-cols-[23rem_minmax(0,1fr)]">
@@ -130,7 +130,7 @@ export function Incidents() {
                     Fila ativa
                   </p>
                   <p className="mt-1 text-sm font-semibold" style={{ color: 'var(--color-foreground)' }}>
-                    {filtered.length} incidentes
+                    {filtered.length} degradações
                   </p>
                 </div>
                 <span className="rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
@@ -190,7 +190,7 @@ export function Incidents() {
 
                 {focus === 'overview' && (
                   <DetailPanel
-                    title="Resumo do incidente"
+                    title="Resumo da degradação"
                     subtitle="Contexto curto para triagem rápida."
                     headerMeta={<span className="rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>{selected.owner}</span>}
                   >
