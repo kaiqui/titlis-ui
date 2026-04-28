@@ -7,7 +7,7 @@ import { Card, CardHeader, CardTitle } from '@/components/jeitto/Card'
 import { InfoTip } from '@/components/jeitto/InfoTip'
 import { PageError, PageLoading } from '@/components/jeitto/PageState'
 import { api } from '@/lib/api'
-import type { TenantAuthIntegration, TenantAuthProviderType } from '@/lib/auth'
+import { acceptedRoleAliases, isLikelyOidcEndpointUrl, type TenantAuthIntegration, type TenantAuthProviderType } from '@/lib/auth'
 import { formatDate } from '@/lib/utils'
 
 type ProviderFormState = {
@@ -138,6 +138,8 @@ export function SettingsAuth() {
       next.issuerUrl = 'Informe o issuer do provedor.'
     } else if (!/^https?:\/\/[^/\s]+/i.test(form.issuerUrl.trim())) {
       next.issuerUrl = 'Issuer invalido. Use uma URL completa.'
+    } else if (isLikelyOidcEndpointUrl(form.issuerUrl)) {
+      next.issuerUrl = 'Use o issuer base do authorization server, sem apontar para /authorize, /token ou /userinfo.'
     }
     if (!form.clientId.trim()) next.clientId = 'Informe o client id.'
     if (!form.audience.trim()) next.audience = 'Informe a audience.'
@@ -517,7 +519,7 @@ export function SettingsAuth() {
         <Card>
           <CardHeader>
             <CardTitle>Contrato de Token</CardTitle>
-            <InfoTip content="Essas claims devem estar no access token do provider OIDC." />
+            <InfoTip content="Essas claims devem estar no access token do provider OIDC. O issuer deve ser o authorization server base, nao o endpoint /authorize." />
           </CardHeader>
           <div className="grid gap-3 md:grid-cols-2">
             <div className="rounded-2xl border p-3" style={{ borderColor: 'var(--color-border)', background: 'var(--color-muted)' }}>
@@ -525,12 +527,12 @@ export function SettingsAuth() {
               <p className="mt-2 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>titlis_tenant_id</p>
             </div>
             <div className="rounded-2xl border p-3" style={{ borderColor: 'var(--color-border)', background: 'var(--color-muted)' }}>
-              <p className="text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--color-muted-foreground)' }}>Claim obrigatoria</p>
-              <p className="mt-2 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>titlis_roles</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--color-muted-foreground)' }}>Claim de grupos</p>
+              <p className="mt-2 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>group, groups ou titlis_roles</p>
             </div>
             <div className="rounded-2xl border p-3" style={{ borderColor: 'var(--color-border)', background: 'var(--color-muted)' }}>
               <p className="text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--color-muted-foreground)' }}>Roles aceitas</p>
-              <p className="mt-2 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>titlis.admin, titlis.viewer</p>
+              <p className="mt-2 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{acceptedRoleAliases().join(', ')}</p>
             </div>
             <div className="rounded-2xl border p-3" style={{ borderColor: 'var(--color-border)', background: 'var(--color-muted)' }}>
               <p className="text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--color-muted-foreground)' }}>Regra de remediacao</p>
@@ -539,7 +541,7 @@ export function SettingsAuth() {
           </div>
           <div className="mt-3 rounded-2xl border p-3 text-sm" style={{ borderColor: 'var(--color-border)', background: 'var(--color-card)', color: 'var(--color-muted-foreground)' }}>
             <Info size={14} className="mr-2 inline-block align-text-top" />
-            Exemplo: {`{ "titlis_tenant_id": "42", "titlis_roles": ["titlis.admin"] }`}
+            Exemplo: {`{ "titlis_tenant_id": "42", "group": ["Jeitto Confia - Admin"] }`}
           </div>
         </Card>
       </div>

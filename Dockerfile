@@ -4,9 +4,9 @@ WORKDIR /app
 ENV VITE_API_URL=http://localhost:30081/v1
 ENV VITE_APP_ENV=production
 ENV VITE_AUTH_MODE=okta
-ENV VITE_OKTA_ISSUER=
+ENV VITE_OKTA_ISSUER=https://jeitto.okta.com/oauth2/v1/authorize
 ENV VITE_OKTA_CLIENT_ID=
-ENV VITE_OKTA_AUDIENCE=api://titlis
+ENV VITE_OKTA_AUDIENCE=api://default
 ENV VITE_OKTA_REDIRECT_URI=https://confia.jeitto.com.br/login/callback
 ENV VITE_OKTA_POST_LOGOUT_REDIRECT_URI=https://confia.jeitto.com.br/login
 

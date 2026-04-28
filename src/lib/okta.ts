@@ -14,6 +14,8 @@ type OktaUserClaims = CustomUserClaims & {
   name?: string
   given_name?: string
   locale?: string
+  group?: string[] | string
+  groups?: string[] | string
   titlis_tenant_id?: string | number
   titlis_roles?: string[] | string
 }
@@ -29,12 +31,18 @@ function normalizeReturnPath(originalUri?: string): string {
 }
 
 function resolveRoles(claims: OktaUserClaims): string[] {
-  if (Array.isArray(claims.titlis_roles)) {
-    return claims.titlis_roles
-  }
+  const candidateClaims = [claims.group, claims.groups, claims.titlis_roles]
 
-  if (typeof claims.titlis_roles === 'string') {
-    return claims.titlis_roles.split(',').map(role => role.trim()).filter(Boolean)
+  for (const value of candidateClaims) {
+    if (Array.isArray(value)) {
+      const normalized = value.map(role => role.trim()).filter(Boolean)
+      if (normalized.length > 0) return normalized
+    }
+
+    if (typeof value === 'string') {
+      const normalized = value.split(',').map(role => role.trim()).filter(Boolean)
+      if (normalized.length > 0) return normalized
+    }
   }
 
   return []

@@ -31,22 +31,22 @@ export function Scorecards() {
   const deferredSearch = useDeferredValue(search)
   const { data: workloads, isLoading, error, refetch } = useDashboardWorkloads()
   const workloadList = workloads ?? []
-  const summary = buildPlatformSummary(workloadList)
   const clusters = ['all', ...new Set(workloadList.map(workload => workload.cluster))]
-  const filtered = workloadList
+  const clusterScopedWorkloads = workloadList.filter(workload => cluster === 'all' || workload.cluster === cluster)
+  const summary = buildPlatformSummary(clusterScopedWorkloads)
+  const filtered = clusterScopedWorkloads
     .filter(workload => {
       const term = deferredSearch.trim().toLowerCase()
       const matchesSearch = term.length === 0
         || workload.name.toLowerCase().includes(term)
         || workload.namespace.toLowerCase().includes(term)
         || workload.cluster.toLowerCase().includes(term)
-      const matchesCluster = cluster === 'all' || workload.cluster === cluster
       const matchesCompliance = complianceFilter === 'all'
         || (complianceFilter === 'non_compliant' && workload.complianceStatus === 'NON_COMPLIANT')
         || (complianceFilter === 'compliant' && workload.complianceStatus === 'COMPLIANT')
         || (complianceFilter === 'unknown' && workload.complianceStatus !== 'NON_COMPLIANT' && workload.complianceStatus !== 'COMPLIANT')
 
-      return matchesSearch && matchesCluster && matchesCompliance
+      return matchesSearch && matchesCompliance
     })
     .sort((left, right) => (left.overallScore ?? -1) - (right.overallScore ?? -1))
 
@@ -118,10 +118,10 @@ export function Scorecards() {
               active={complianceFilter}
               onChange={id => setComplianceFilter(id as ComplianceFilter)}
               items={[
-                { id: 'all', label: 'Todos', count: workloadList.length },
+                { id: 'all', label: 'Todos', count: clusterScopedWorkloads.length },
                 { id: 'non_compliant', label: 'Não conformes', count: summary.nonCompliantCount },
                 { id: 'compliant', label: 'Conformes', count: summary.compliantCount },
-                { id: 'unknown', label: 'Sem classificação', count: workloadList.length - summary.nonCompliantCount - summary.compliantCount },
+                { id: 'unknown', label: 'Sem classificação', count: clusterScopedWorkloads.length - summary.nonCompliantCount - summary.compliantCount },
               ]}
             />
             <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>

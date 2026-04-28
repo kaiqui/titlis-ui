@@ -128,6 +128,18 @@ export interface DevAuthConfig {
 }
 
 const AUTH_STORAGE_KEY = 'titlis.auth.session'
+const ADMIN_ROLE_ALIASES = new Set([
+  'jeitto confia - admin',
+  'titlis.admin',
+  'admin',
+])
+const VIEWER_ROLE_ALIASES = new Set([
+  'jeitto confia - viewer',
+  'titlis.viewer',
+  'titlis.engineer',
+  'viewer',
+  'engineer',
+])
 
 export function readStoredSession(): AuthSession | null {
   if (typeof window === 'undefined') return null
@@ -221,8 +233,19 @@ export function getDevAuthConfig(): DevAuthConfig {
 export function resolvePrimaryRole(values: string[]): PlatformRole {
   const normalized = values.map(value => value.trim().toLowerCase())
 
-  if (normalized.some(value => value === 'titlis.admin' || value === 'admin')) return 'admin'
+  if (normalized.some(value => ADMIN_ROLE_ALIASES.has(value))) return 'admin'
   return 'viewer'
+}
+
+export function isLikelyOidcEndpointUrl(value: string): boolean {
+  const normalized = value.trim().toLowerCase()
+  return normalized.endsWith('/authorize')
+    || normalized.endsWith('/token')
+    || normalized.endsWith('/userinfo')
+}
+
+export function acceptedRoleAliases(): string[] {
+  return Array.from(new Set([...ADMIN_ROLE_ALIASES, ...VIEWER_ROLE_ALIASES]))
 }
 
 export function buildMockSession(): AuthSession {
