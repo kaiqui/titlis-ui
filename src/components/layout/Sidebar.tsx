@@ -18,6 +18,8 @@ import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/useAuth'
 
 const appLogoUrl = import.meta.env.VITE_APP_LOGO_URL?.trim() || '/logo.png'
+const appName = import.meta.env.VITE_APP_NAME?.trim() || 'Titlis'
+const displayAppName = appName.replace(/([a-z0-9])([A-Z])/g, '$1 $2')
 
 const primaryNavItems = [
   { to: '/', icon: LayoutDashboard, label: 'Home', exact: true },
@@ -149,8 +151,10 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               <img src={appLogoUrl} alt="" className="h-7 w-7 object-contain" />
             </div>
             {!collapsed && (
-              <div className="min-w-0">
-                <p className="family-neighbor truncate text-lg font-black uppercase tracking-[0.18em] text-white">{import.meta.env.VITE_APP_NAME ?? 'Titlis'}</p>
+              <div className="min-w-0 flex-1">
+                <p className="family-neighbor text-sm font-black leading-[1.05] tracking-[0.08em] text-white sm:text-[15px]">
+                  {displayAppName}
+                </p>
               </div>
             )}
           </div>
