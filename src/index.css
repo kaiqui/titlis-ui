@@ -827,7 +827,7 @@ body {
 .text-block-qrcode    { font-size: 0.95rem; margin-bottom: 0.5rem; }
 .text-block-subtitle-qrcode { font-size: 1.1rem; color: #555; margin-bottom: 0.5rem; }
 .heading-41           { font-size: 1.4rem; font-weight: 700; }
-.logo-full            { display: block; width: 120px; height: 40px; background: url('/logo.svg') no-repeat center/contain; }
+.logo-full            { display: block; width: 120px; height: 40px; background: url('/logo.png') no-repeat center/contain; }
 .close-menu-grey      { width: 32px; height: 32px; cursor: pointer; display: block;
   background: rgba(0,0,0,0.1); border-radius: 50%; }
 

@@ -11,12 +11,13 @@ import {
   LayoutDashboard,
   MessageSquare,
   Network,
-  Shield,
   Siren,
   Target,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/useAuth'
+
+const appLogoUrl = import.meta.env.VITE_APP_LOGO_URL?.trim() || '/logo.png'
 
 const primaryNavItems = [
   { to: '/', icon: LayoutDashboard, label: 'Home', exact: true },
@@ -145,9 +146,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         <div className={`${collapsed ? 'px-3' : 'px-5'} relative z-[1] pb-4 pt-5`}>
           <div className={`flex items-center ${collapsed ? 'justify-center' : 'gap-3'}`}>
             <div className="flex h-12 w-12 items-center justify-center rounded-[1.4rem] border shadow-sm" style={{ borderColor: 'rgba(255,255,255,0.14)', backgroundColor: 'rgba(255,255,255,0.08)' }}>
-              {import.meta.env.VITE_APP_LOGO_URL
-                ? <img src={import.meta.env.VITE_APP_LOGO_URL} alt="" className="h-7 w-7 object-contain" />
-                : <Shield size={22} className="text-white" />}
+              <img src={appLogoUrl} alt="" className="h-7 w-7 object-contain" />
             </div>
             {!collapsed && (
               <div className="min-w-0">
