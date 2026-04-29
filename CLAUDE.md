@@ -310,7 +310,7 @@ VITE_APP_ENV=local          # local | dev | staging | production
 VITE_AUTH_MODE=mock          # mock (dev) | okta (prod)
 
 # OKTA (obrigatório se VITE_AUTH_MODE=okta)
-VITE_OKTA_ISSUER=https://trial-xxx.okta.com/oauth2/ausXXX/.well-known/oauth-authorization-server
+VITE_OKTA_ISSUER=https://trial-xxx.okta.com/oauth2/ausXXX
 VITE_OKTA_CLIENT_ID=xxx
 VITE_OKTA_AUDIENCE=api://titlis
 VITE_OKTA_REDIRECT_URI=http://localhost:13000/login/callback
