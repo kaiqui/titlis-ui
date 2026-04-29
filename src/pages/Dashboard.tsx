@@ -368,7 +368,7 @@ export function Dashboard() {
               </Card>
               <Card>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--color-muted-foreground)' }}>Não sincronizados</p>
-                <p className="mt-2 family-neighbor text-[1.6rem] font-black tracking-tight" style={{ color: slosNotSynced > 0 ? '#d97706' : 'var(--color-foreground)' }}>{slosNotSynced}</p>
+                <p className="mt-2 family-neighbor text-[1.6rem] font-black tracking-tight" style={{ color: slosNotSynced > 0 ? 'var(--color-primary)' : 'var(--color-foreground)' }}>{slosNotSynced}</p>
                 <p className="mt-1 text-sm" style={{ color: 'var(--color-muted-foreground)' }}>sem ID no Datadog</p>
               </Card>
             </div>

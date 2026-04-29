@@ -40,11 +40,11 @@ export function ToolProposalCard({ proposal, decision, onApprove, onReject, disa
     }
   }
 
-  const accentColor = proposal.is_write ? '#f59e0b' : 'var(--color-primary)'
-  const accentBg = proposal.is_write ? 'rgba(245,158,11,0.08)' : 'rgba(var(--color-primary-rgb,99,102,241),0.06)'
+  const accentColor = proposal.is_write ? 'var(--color-primary-strong)' : 'var(--color-primary)'
+  const accentBg = proposal.is_write ? 'rgba(var(--color-primary-rgb),0.08)' : 'rgba(var(--color-primary-rgb),0.06)'
 
   return (
-    <div className="rounded-2xl border overflow-hidden" style={{ borderColor: proposal.is_write ? 'rgba(245,158,11,0.35)' : 'var(--color-border)', backgroundColor: accentBg }}>
+    <div className="rounded-2xl border overflow-hidden" style={{ borderColor: proposal.is_write ? 'rgba(var(--color-primary-rgb),0.35)' : 'var(--color-border)', backgroundColor: accentBg }}>
       <div className="flex items-start gap-3 px-4 py-3">
         <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: accentColor + '22' }}>
           {proposal.is_write
@@ -58,7 +58,7 @@ export function ToolProposalCard({ proposal, decision, onApprove, onReject, disa
               {proposal.description}
             </p>
             {proposal.is_write && (
-              <span className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest" style={{ backgroundColor: 'rgba(245,158,11,0.15)', color: '#f59e0b' }}>
+              <span className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest" style={{ backgroundColor: 'rgba(var(--color-primary-rgb),0.15)', color: 'var(--color-primary-strong)' }}>
                 escrita
               </span>
             )}

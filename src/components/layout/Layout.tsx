@@ -13,12 +13,7 @@ export function Layout() {
       <main className={`min-h-screen pb-24 transition-[margin] duration-300 lg:pb-0 ${collapsed ? 'lg:ml-28' : 'lg:ml-[19rem]'}`}>
         {authMode === 'mock' && (
           <div
-            className="mx-4 mt-4 rounded-[1.4rem] border px-4 py-3 text-sm lg:mx-8"
-            style={{
-              borderColor: 'rgba(245, 158, 11, 0.22)',
-              background: 'rgba(254, 249, 195, 0.88)',
-              color: '#92400e',
-            }}
+            className="jc-dev-banner mx-4 mt-4 rounded-[1.4rem] border px-4 py-3 text-sm lg:mx-8"
           >
             Modo de desenvolvimento ativo. A UI esta usando bypass local com {user?.email ?? 'dev@titlis.local'}.
           </div>

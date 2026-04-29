@@ -19,7 +19,7 @@ export function MetricCard({
   value,
   sub,
   icon: Icon,
-  iconColor = 'text-orange-500',
+  iconColor = 'jc-score-attention',
   trend,
   trendValue,
   delay = 0,

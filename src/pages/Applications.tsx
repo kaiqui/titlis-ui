@@ -375,7 +375,7 @@ export function Applications() {
                                     {finding.ruleId}
                                   </span>
                                   {finding.remediable && (
-                                    <span className="rounded-full px-3 py-1 font-semibold" style={{ backgroundColor: 'rgba(249,115,22,0.1)', color: '#ea580c' }}>
+                                    <span className="rounded-full px-3 py-1 font-semibold" style={{ backgroundColor: 'rgba(var(--color-primary-rgb),0.1)', color: 'var(--color-primary)' }}>
                                       Remediável
                                     </span>
                                   )}

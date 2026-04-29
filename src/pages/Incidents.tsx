@@ -21,8 +21,8 @@ type IncidentFocus = 'overview' | 'impact' | 'actions'
 
 function severityTone(severity: string) {
   if (severity === 'critical') return 'bg-red-500/10 text-red-600 dark:text-red-400'
-  if (severity === 'high') return 'bg-orange-500/10 text-orange-600 dark:text-orange-400'
-  if (severity === 'medium') return 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+  if (severity === 'high') return 'jc-badge-attention'
+  if (severity === 'medium') return 'jc-badge-good'
   return 'bg-slate-500/10 text-slate-500'
 }
 

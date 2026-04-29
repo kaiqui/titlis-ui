@@ -246,7 +246,7 @@ export function ApplicationDetail({
                           <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--color-card)', color: 'var(--color-muted-foreground)' }}>{formatEnum(finding.pillar)}</span>
                           <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--color-card)', color: 'var(--color-muted-foreground)' }}>{formatEnum(finding.ruleType)}</span>
                           {finding.weight !== null && <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--color-card)', color: 'var(--color-muted-foreground)' }}>peso {finding.weight}</span>}
-                          {finding.remediable && <span className="rounded-full px-3 py-1 font-semibold" style={{ backgroundColor: 'rgba(249,115,22,0.1)', color: '#ea580c' }}>Remediável</span>}
+                          {finding.remediable && <span className="rounded-full px-3 py-1 font-semibold" style={{ backgroundColor: 'rgba(var(--color-primary-rgb),0.1)', color: 'var(--color-primary)' }}>Remediável</span>}
                           {canUseAi && (
                             <button
                               onClick={() => setExplainFinding(finding)}

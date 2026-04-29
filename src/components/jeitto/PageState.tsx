@@ -16,9 +16,10 @@ export function PageLoading() {
         }}
       >
         <div className="relative h-12 w-12">
-          <div className="absolute inset-0 rounded-full border-2 border-orange-500/20" />
+          <div className="absolute inset-0 rounded-full border-2" style={{ borderColor: 'rgba(var(--color-primary-rgb), 0.2)' }} />
           <motion.div
-            className="absolute inset-0 rounded-full border-2 border-l-transparent border-r-transparent border-t-orange-500 border-b-transparent"
+            className="absolute inset-0 rounded-full border-2 border-l-transparent border-r-transparent border-b-transparent"
+            style={{ borderTopColor: 'var(--color-primary)' }}
             animate={{ rotate: 360 }}
             transition={{ duration: 0.9, repeat: Infinity, ease: 'linear' }}
           />

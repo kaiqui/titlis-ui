@@ -72,7 +72,7 @@ export function Login() {
             O login normal abre a plataforma e deixa a configuração de SSO corporativo para depois, dentro do produto.
           </p>
           {authMode === 'mock' && (
-            <div className="mt-6 rounded-[1.8rem] border p-4 text-sm" style={{ borderColor: 'rgba(245, 158, 11, 0.2)', background: 'rgba(254, 249, 195, 0.8)', color: '#92400e' }}>
+            <div className="jc-dev-banner mt-6 rounded-[1.8rem] border p-4 text-sm">
               O frontend esta em modo de desenvolvimento. A sessao sera criada automaticamente usando o bypass local.
             </div>
           )}

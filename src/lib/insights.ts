@@ -30,8 +30,8 @@ export function buildPlatformSummary(workloads: WorkloadSummary[]): PlatformSumm
 export function buildScoreBuckets(workloads: WorkloadSummary[]): ScoreBucket[] {
   const buckets = [
     { label: 'Excelente', value: 0, color: '#16a34a' },
-    { label: 'Bom', value: 0, color: '#f59e0b' },
-    { label: 'Atenção', value: 0, color: '#f97316' },
+    { label: 'Bom', value: 0, color: 'var(--color-primary-strong)' },
+    { label: 'Atenção', value: 0, color: 'var(--color-primary)' },
     { label: 'Crítico', value: 0, color: '#dc2626' },
     { label: 'Sem score', value: 0, color: '#94a3b8' },
   ]
