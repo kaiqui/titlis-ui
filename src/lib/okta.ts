@@ -1,8 +1,11 @@
 import { OktaAuth, type CustomUserClaims } from '@okta/okta-auth-js'
 import {
+  clearPendingOktaTenantSlug,
   clearStoredSession,
+  getPendingOktaTenantSlug,
   getOktaConfig,
   resolvePrimaryRole,
+  writePendingOktaTenantSlug,
   type AuthSession,
   type AuthUser,
   type PlatformRole,
@@ -52,11 +55,13 @@ function buildPlaceholderUser(claims: OktaUserClaims): AuthUser {
   const roles = resolveRoles(claims)
   const role: PlatformRole = resolvePrimaryRole(roles)
   const tenantId = Number(claims.titlis_tenant_id ?? 0)
+  const pendingTenantSlug = getPendingOktaTenantSlug()
+  const configuredTenantSlug = getOktaConfig()?.tenantSlugHint ?? null
 
   return {
     id: 0,
     tenantId: Number.isFinite(tenantId) ? tenantId : 0,
-    tenantSlug: tenantId ? `tenant-${tenantId}` : '',
+    tenantSlug: pendingTenantSlug ?? configuredTenantSlug ?? (tenantId ? `tenant-${tenantId}` : ''),
     tenantName: tenantId ? `Tenant ${tenantId}` : '',
     email: claims.email || claims.preferred_username || '',
     displayName: claims.name || claims.given_name || null,
@@ -106,12 +111,14 @@ export function getOktaClient(): OktaAuth | null {
   return oktaClient
 }
 
-export async function startOktaLogin(returnPath = '/') {
+export async function startOktaLogin(returnPath = '/', tenantSlug?: string) {
   const client = getOktaClient()
   const config = getOktaConfig()
   if (!client || !config) {
     throw new Error('Configuracao do Okta ausente no frontend.')
   }
+
+  writePendingOktaTenantSlug(tenantSlug ?? config.tenantSlugHint ?? '')
 
   await client.signInWithRedirect({
     originalUri: returnPath,
@@ -182,6 +189,7 @@ export async function restoreOktaSession(): Promise<AuthSession | null> {
 export async function signOutFromOkta(session: AuthSession | null): Promise<void> {
   const client = getOktaClient()
   clearStoredSession()
+  clearPendingOktaTenantSlug()
 
   if (!client || session?.provider !== 'okta') {
     return

@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { isLikelyOidcEndpointUrl, resolvePrimaryRole } from '@/lib/auth'
+import {
+  clearPendingOktaTenantSlug,
+  getPendingOktaTenantSlug,
+  isLikelyOidcEndpointUrl,
+  normalizeTenantSlug,
+  resolvePrimaryRole,
+  writePendingOktaTenantSlug,
+} from '@/lib/auth'
 
 describe('auth helpers', () => {
   it('mapeia o grupo Jeitto Confia - Admin como admin', () => {
@@ -13,5 +20,15 @@ describe('auth helpers', () => {
   it('rejeita issuer configurado com endpoint oauth final', () => {
     expect(isLikelyOidcEndpointUrl('https://jeitto.okta.com/oauth2/v1/authorize')).toBe(true)
     expect(isLikelyOidcEndpointUrl('https://jeitto.okta.com/oauth2/default')).toBe(false)
+  })
+
+  it('normaliza e persiste o tenant slug pendente do login okta', () => {
+    writePendingOktaTenantSlug(' Jeitto_Confia ')
+
+    expect(normalizeTenantSlug(' Jeitto_Confia ')).toBe('jeitto-confia')
+    expect(getPendingOktaTenantSlug()).toBe('jeitto-confia')
+
+    clearPendingOktaTenantSlug()
+    expect(getPendingOktaTenantSlug()).toBeNull()
   })
 })

@@ -3,6 +3,7 @@ import { api } from '@/lib/api'
 import {
   assertSupportedAuthMode,
   buildMockSession,
+  clearPendingOktaTenantSlug,
   clearStoredSession,
   getAuthMode,
   getOktaConfig,
@@ -28,7 +29,7 @@ interface AuthContextValue {
   bootstrapStatus: BootstrapStatus | null
   hasOktaConfig: boolean
   loginLocal: (payload: LocalLoginPayload) => Promise<void>
-  loginWithOkta: (returnPath?: string) => Promise<void>
+  loginWithOkta: (returnPath?: string, tenantSlug?: string) => Promise<void>
   finishOktaLogin: (currentUrl: string) => Promise<string>
   bootstrapSetup: (payload: BootstrapSetupPayload) => Promise<string | null>
   refreshSession: () => Promise<void>
@@ -175,7 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus('authenticated')
   }
 
-  async function loginWithOkta(returnPath = '/') {
+  async function loginWithOkta(returnPath = '/', tenantSlug?: string) {
     if (isMockAuthMode()) {
       const mockSession = buildMockSession()
       writeStoredSession(mockSession)
@@ -190,7 +191,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    await startOktaLogin(returnPath)
+    await startOktaLogin(returnPath, tenantSlug)
   }
 
   async function finishOktaLogin(currentUrl: string) {
@@ -198,6 +199,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     writeStoredSession(oktaSession)
     setSession(oktaSession)
     await refreshSession()
+    clearPendingOktaTenantSlug()
     return returnPath
   }
 

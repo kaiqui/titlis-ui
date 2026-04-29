@@ -10,9 +10,11 @@ import type {
   WorkloadSummary,
 } from '@/types'
 import {
+  getPendingOktaTenantSlug,
   getAuthMode,
   getDevAuthConfig,
   getStoredAccessToken,
+  readStoredSession,
   type ApiKeyCreateResponse,
   type ApiKeyRecord,
   type AuthMeResponse,
@@ -191,6 +193,9 @@ async function request<T>(
   const token = getStoredAccessToken()
   const authMode = getAuthMode()
   const devAuth = getDevAuthConfig()
+  const oktaTenantSlug = readStoredSession()?.provider === 'okta'
+    ? (readStoredSession()?.user.tenantSlug || getPendingOktaTenantSlug())
+    : null
   const response = await fetch(url.toString(), {
     method: options?.method ?? 'GET',
     headers: {
@@ -203,6 +208,7 @@ async function request<T>(
             'X-Dev-Roles': devAuth.roles.join(','),
           }
         : {}),
+      ...(authMode !== 'mock' && oktaTenantSlug ? { 'X-Titlis-Tenant-Slug': oktaTenantSlug } : {}),
       ...(authMode !== 'mock' && token ? { Authorization: `Bearer ${token}` } : {}),
     },
     ...(options?.body ? { body: JSON.stringify(options.body) } : {}),

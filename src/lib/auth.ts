@@ -116,6 +116,7 @@ export interface OktaConfig {
   redirectUri: string
   postLogoutRedirectUri: string
   scopes: string[]
+  tenantSlugHint: string | null
 }
 
 export interface DevAuthConfig {
@@ -128,6 +129,7 @@ export interface DevAuthConfig {
 }
 
 const AUTH_STORAGE_KEY = 'titlis.auth.session'
+const OKTA_PENDING_TENANT_SLUG_KEY = 'titlis.auth.okta.pendingTenantSlug'
 const ADMIN_ROLE_ALIASES = new Set([
   'jeitto confia - admin',
   'titlis.admin',
@@ -169,6 +171,36 @@ export function getStoredAccessToken(): string | null {
   return readStoredSession()?.accessToken ?? null
 }
 
+export function normalizeTenantSlug(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, '-')
+    .replace(/-{2,}/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+export function writePendingOktaTenantSlug(value: string) {
+  if (typeof window === 'undefined') return
+  const normalized = normalizeTenantSlug(value)
+  if (!normalized) {
+    window.localStorage.removeItem(OKTA_PENDING_TENANT_SLUG_KEY)
+    return
+  }
+  window.localStorage.setItem(OKTA_PENDING_TENANT_SLUG_KEY, normalized)
+}
+
+export function getPendingOktaTenantSlug(): string | null {
+  if (typeof window === 'undefined') return null
+  const raw = window.localStorage.getItem(OKTA_PENDING_TENANT_SLUG_KEY)
+  return raw ? normalizeTenantSlug(raw) || null : null
+}
+
+export function clearPendingOktaTenantSlug() {
+  if (typeof window === 'undefined') return
+  window.localStorage.removeItem(OKTA_PENDING_TENANT_SLUG_KEY)
+}
+
 export function getStoredSessionProvider(): AuthProviderType | null {
   return readStoredSession()?.provider ?? null
 }
@@ -197,6 +229,7 @@ export function getOktaConfig(): OktaConfig | null {
   const audience = import.meta.env.VITE_OKTA_AUDIENCE?.trim()
   const redirectUri = import.meta.env.VITE_OKTA_REDIRECT_URI?.trim()
   const postLogoutRedirectUri = import.meta.env.VITE_OKTA_POST_LOGOUT_REDIRECT_URI?.trim()
+  const tenantSlugHint = normalizeTenantSlug(import.meta.env.VITE_OKTA_TENANT_SLUG?.trim() || '')
 
   if (!issuer || !clientId || !audience || !redirectUri || !postLogoutRedirectUri || clientId === 'REPLACE_ME') {
     return null
@@ -209,6 +242,7 @@ export function getOktaConfig(): OktaConfig | null {
     redirectUri,
     postLogoutRedirectUri,
     scopes: ['openid', 'profile', 'email', 'offline_access'],
+    tenantSlugHint: tenantSlugHint || null,
   }
 }
 

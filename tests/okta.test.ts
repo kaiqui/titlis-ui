@@ -21,6 +21,7 @@ function setOktaEnv() {
   env.VITE_OKTA_AUDIENCE = 'api://titlis'
   env.VITE_OKTA_REDIRECT_URI = 'http://localhost/login/callback'
   env.VITE_OKTA_POST_LOGOUT_REDIRECT_URI = 'http://localhost/login'
+  env.VITE_OKTA_TENANT_SLUG = 'jeitto'
 }
 
 describe('okta auth helpers', () => {
@@ -52,6 +53,7 @@ describe('okta auth helpers', () => {
   })
 
   it('usa a claim group para montar sessao admin', async () => {
+    localStorage.setItem('titlis.auth.okta.pendingTenantSlug', 'jeitto')
     mockClient.getUser.mockResolvedValue({
       email: 'admin@jeitto.com',
       titlis_tenant_id: '42',
@@ -65,6 +67,7 @@ describe('okta auth helpers', () => {
     expect(result.session.provider).toBe('okta')
     expect(result.session.user.role).toBe('admin')
     expect(result.session.user.canRemediate).toBe(true)
+    expect(result.session.user.tenantSlug).toBe('jeitto')
   })
 
   it('usa a claim groups para montar sessao viewer', async () => {
