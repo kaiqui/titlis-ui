@@ -4,9 +4,10 @@ import {
   assertSupportedAuthMode,
   buildMockSession,
   clearPendingOktaTenantSlug,
+  getOktaConfig,
+  getPendingOktaTenantSlug,
   clearStoredSession,
   getAuthMode,
-  getOktaConfig,
   isMockAuthMode,
   readStoredSession,
   writeStoredSession,
@@ -17,7 +18,7 @@ import {
   type FrontendAuthMode,
   type LocalLoginPayload,
 } from '@/lib/auth'
-import { completeOktaLogin, renewOktaSession, restoreOktaSession, signOutFromOkta, startOktaLogin } from '@/lib/okta'
+import { completeOktaLogin, restoreOktaExchangeCandidate, signOutFromOkta, startOktaLogin } from '@/lib/okta'
 
 type AuthStatus = 'loading' | 'authenticated' | 'anonymous'
 
@@ -67,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
-    if (status !== 'authenticated' || session?.provider !== 'okta') return
+    if (status !== 'authenticated' || !session?.accessToken) return
 
     const msUntilRefresh = new Date(session.expiresAt).getTime() - Date.now() - 60_000
     const timeout = window.setTimeout(() => {
@@ -113,19 +114,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       let effectiveSession = stored
       if (!effectiveSession?.accessToken) {
-        effectiveSession = await restoreOktaSession()
+        const oktaCandidate = await restoreOktaExchangeCandidate()
+        if (oktaCandidate?.idToken) {
+          const exchanged = await api.auth.exchangeOkta({
+            idToken: oktaCandidate.idToken,
+            tenantSlug: getPendingOktaTenantSlug() ?? getOktaConfig()?.tenantSlugHint ?? undefined,
+          })
+          effectiveSession = {
+            ...exchanged,
+            idToken: oktaCandidate.idToken,
+            refreshToken: oktaCandidate.refreshToken,
+          }
+        }
         if (effectiveSession) {
           writeStoredSession(effectiveSession)
-        }
-      }
-
-      if (stored?.provider === 'okta') {
-        const expiresAtMs = new Date(stored.expiresAt).getTime()
-        if (Number.isFinite(expiresAtMs) && expiresAtMs <= Date.now() + 60_000) {
-          effectiveSession = await renewOktaSession(stored) ?? stored
-          if (effectiveSession !== stored) {
-            writeStoredSession(effectiveSession)
-          }
         }
       }
 
@@ -141,6 +143,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(nextSession)
       setStatus('authenticated')
     } catch {
+      if (stored?.idToken) {
+        const oktaCandidate = await restoreOktaExchangeCandidate()
+        if (oktaCandidate?.idToken) {
+          try {
+            const exchanged = await api.auth.exchangeOkta({
+              idToken: oktaCandidate.idToken,
+              tenantSlug: getPendingOktaTenantSlug() ?? getOktaConfig()?.tenantSlugHint ?? undefined,
+            })
+            const recoveredSession = {
+              ...exchanged,
+              idToken: oktaCandidate.idToken,
+              refreshToken: oktaCandidate.refreshToken,
+            }
+            writeStoredSession(recoveredSession)
+            setSession(recoveredSession)
+            setStatus('authenticated')
+            return
+          } catch {
+            // fall through to anonymous state
+          }
+        }
+      }
+
       clearStoredSession()
       setSession(null)
       setBootstrapStatus(fetchedBootstrap ?? {
@@ -195,9 +220,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function finishOktaLogin(currentUrl: string) {
-    const { session: oktaSession, returnPath } = await completeOktaLogin(currentUrl)
-    writeStoredSession(oktaSession)
-    setSession(oktaSession)
+    const { exchangeCandidate, returnPath } = await completeOktaLogin(currentUrl)
+    const exchanged = await api.auth.exchangeOkta({
+      idToken: exchangeCandidate.idToken,
+      tenantSlug: getPendingOktaTenantSlug() ?? getOktaConfig()?.tenantSlugHint ?? undefined,
+    })
+    const nextSession = {
+      ...exchanged,
+      idToken: exchangeCandidate.idToken,
+      refreshToken: exchangeCandidate.refreshToken,
+    }
+    writeStoredSession(nextSession)
+    setSession(nextSession)
     await refreshSession()
     clearPendingOktaTenantSlug()
     return returnPath
@@ -232,7 +266,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearStoredSession()
     setSession(null)
     setStatus(isMockAuthMode() ? 'loading' : 'anonymous')
-    await signOutFromOkta(current)
+    await signOutFromOkta(current?.idToken)
 
     if (isMockAuthMode()) {
       await refreshSession()

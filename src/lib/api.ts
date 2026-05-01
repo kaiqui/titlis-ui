@@ -23,6 +23,7 @@ import {
   type BootstrapSetupResponse,
   type BootstrapStatus,
   type LocalLoginPayload,
+  type OktaExchangePayload,
   type TenantAuthIntegration,
   type UpsertTenantAuthIntegrationPayload,
   type VerifyTenantAuthIntegrationResult,
@@ -170,6 +171,10 @@ function mapAuthErrorMessage(code: string): string {
       return 'A configuração inicial já foi concluída neste ambiente. Use a tela de login ou crie outro tenant.'
     case 'invalid_credentials':
       return 'Tenant, email ou senha inválidos.'
+    case 'invalid_okta_id_token':
+      return 'Nao foi possivel validar o login com Okta.'
+    case 'federated_user_not_found':
+      return 'Usuario Okta nao vinculado ao tenant configurado.'
     default:
       return code
     }
@@ -582,6 +587,21 @@ export const api = {
       const response = await request<AuthMeResponse>('/auth/me')
       if (!response) throw new Error('Sessão indisponível.')
       return response
+    },
+    exchangeOkta: async (payload: OktaExchangePayload) => {
+      try {
+        const response = await request<AuthSession>('/auth/okta/exchange', {
+          method: 'POST',
+          body: payload,
+        })
+        if (!response) throw new Error('Nao foi possivel criar a sessao do Titlis.')
+        return response
+      } catch (cause) {
+        if (cause instanceof Error) {
+          throw new Error(mapAuthErrorMessage(cause.message))
+        }
+        throw cause
+      }
     },
   },
   authSettings: {

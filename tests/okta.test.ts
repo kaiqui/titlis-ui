@@ -36,12 +36,9 @@ describe('okta auth helpers', () => {
       removeOriginalUri: vi.fn(),
       tokenManager: {
         getTokens: vi.fn().mockResolvedValue({
-          accessToken: {
-            accessToken: 'access-token',
-            expiresAt: Math.floor(Date.now() / 1000) + 3600,
-          },
           idToken: {
             idToken: 'id-token',
+            claims: {},
           },
           refreshToken: {
             refreshToken: 'refresh-token',
@@ -54,33 +51,49 @@ describe('okta auth helpers', () => {
 
   it('usa a claim group para montar sessao admin', async () => {
     localStorage.setItem('titlis.auth.okta.pendingTenantSlug', 'jeitto')
-    mockClient.getUser.mockResolvedValue({
-      email: 'admin@jeitto.com',
-      titlis_tenant_id: '42',
-      group: ['Jeitto Confia - Admin'],
+    mockClient.tokenManager.getTokens.mockResolvedValue({
+      idToken: {
+        idToken: 'id-token',
+        claims: {
+          email: 'admin@jeitto.com',
+          titlis_tenant_id: '42',
+          group: ['Jeitto Confia - Admin'],
+        },
+      },
+      refreshToken: {
+        refreshToken: 'refresh-token',
+      },
     })
 
     const { completeOktaLogin } = await import('@/lib/okta')
     const result = await completeOktaLogin(window.location.href)
 
     expect(result.returnPath).toBe('/applications')
-    expect(result.session.provider).toBe('okta')
-    expect(result.session.user.role).toBe('admin')
-    expect(result.session.user.canRemediate).toBe(true)
-    expect(result.session.user.tenantSlug).toBe('jeitto')
+    expect(result.exchangeCandidate.idToken).toBe('id-token')
+    expect(result.exchangeCandidate.user.role).toBe('admin')
+    expect(result.exchangeCandidate.user.canRemediate).toBe(true)
+    expect(result.exchangeCandidate.user.tenantSlug).toBe('jeitto')
   })
 
   it('usa a claim groups para montar sessao viewer', async () => {
-    mockClient.getUser.mockResolvedValue({
-      email: 'viewer@jeitto.com',
-      titlis_tenant_id: '42',
-      groups: 'Jeitto Confia - Viewer',
+    mockClient.tokenManager.getTokens.mockResolvedValue({
+      idToken: {
+        idToken: 'id-token',
+        claims: {
+          email: 'viewer@jeitto.com',
+          titlis_tenant_id: '42',
+          groups: 'Jeitto Confia - Viewer',
+        },
+      },
+      refreshToken: {
+        refreshToken: 'refresh-token',
+      },
     })
 
     const { completeOktaLogin } = await import('@/lib/okta')
     const result = await completeOktaLogin(window.location.href)
 
-    expect(result.session.user.role).toBe('viewer')
-    expect(result.session.user.canRemediate).toBe(false)
+    expect(result.exchangeCandidate.user.role).toBe('viewer')
+    expect(result.exchangeCandidate.user.canRemediate).toBe(false)
   })
 })

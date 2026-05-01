@@ -1,12 +1,10 @@
 import { OktaAuth, type CustomUserClaims } from '@okta/okta-auth-js'
 import {
   clearPendingOktaTenantSlug,
-  clearStoredSession,
   getPendingOktaTenantSlug,
   getOktaConfig,
   resolvePrimaryRole,
   writePendingOktaTenantSlug,
-  type AuthSession,
   type AuthUser,
   type PlatformRole,
 } from '@/lib/auth'
@@ -72,20 +70,31 @@ function buildPlaceholderUser(claims: OktaUserClaims): AuthUser {
   }
 }
 
-function buildSessionFromTokens(tokens: Awaited<ReturnType<OktaAuth['tokenManager']['getTokens']>>, claims: OktaUserClaims): AuthSession {
-  const accessToken = tokens.accessToken?.accessToken
-  if (!accessToken) {
-    throw new Error('O Okta nao retornou access token para a sessao.')
+export interface OktaExchangeCandidate {
+  idToken: string
+  refreshToken: string | null
+  user: AuthUser
+}
+
+function buildExchangeCandidateFromTokens(
+  tokens: Awaited<ReturnType<OktaAuth['tokenManager']['getTokens']>>,
+  claims: OktaUserClaims,
+): OktaExchangeCandidate {
+  const idToken = tokens.idToken?.idToken
+  if (!idToken) {
+    throw new Error('O Okta nao retornou id token para concluir o login.')
   }
 
   return {
-    provider: 'okta',
-    accessToken,
-    expiresAt: new Date((tokens.accessToken?.expiresAt ?? Math.floor(Date.now() / 1000) + 3600) * 1000).toISOString(),
-    idToken: tokens.idToken?.idToken ?? null,
+    idToken,
     refreshToken: tokens.refreshToken?.refreshToken ?? null,
     user: buildPlaceholderUser(claims),
   }
+}
+
+function extractClaimsFromTokens(tokens: Awaited<ReturnType<OktaAuth['tokenManager']['getTokens']>>): OktaUserClaims {
+  const rawClaims = tokens.idToken?.claims
+  return rawClaims && typeof rawClaims === 'object' ? rawClaims as OktaUserClaims : {}
 }
 
 export function getOktaClient(): OktaAuth | null {
@@ -129,7 +138,7 @@ export async function startOktaLogin(returnPath = '/', tenantSlug?: string) {
   })
 }
 
-export async function completeOktaLogin(_currentUrl: string): Promise<{ session: AuthSession; returnPath: string }> {
+export async function completeOktaLogin(_currentUrl: string): Promise<{ exchangeCandidate: OktaExchangeCandidate; returnPath: string }> {
   const client = getOktaClient()
   if (!client) {
     throw new Error('Configuracao do Okta ausente no frontend.')
@@ -146,31 +155,15 @@ export async function completeOktaLogin(_currentUrl: string): Promise<{ session:
   client.removeOriginalUri()
 
   const tokens = await client.tokenManager.getTokens()
-  const claims = await client.getUser<OktaUserClaims>().catch(() => ({}))
+  const claims = extractClaimsFromTokens(tokens)
 
   return {
-    session: buildSessionFromTokens(tokens, claims),
+    exchangeCandidate: buildExchangeCandidateFromTokens(tokens, claims),
     returnPath,
   }
 }
 
-export async function renewOktaSession(currentSession: AuthSession): Promise<AuthSession | null> {
-  const client = getOktaClient()
-  if (!client || currentSession.provider !== 'okta') {
-    return null
-  }
-
-  try {
-    await client.tokenManager.renew('accessToken')
-    const tokens = await client.tokenManager.getTokens()
-    const claims = await client.getUser<OktaUserClaims>().catch(() => ({}))
-    return buildSessionFromTokens(tokens, claims)
-  } catch {
-    return null
-  }
-}
-
-export async function restoreOktaSession(): Promise<AuthSession | null> {
+export async function restoreOktaExchangeCandidate(): Promise<OktaExchangeCandidate | null> {
   const client = getOktaClient()
   if (!client) return null
 
@@ -179,19 +172,18 @@ export async function restoreOktaSession(): Promise<AuthSession | null> {
     if (!authenticated) return null
 
     const tokens = await client.tokenManager.getTokens()
-    const claims = await client.getUser<OktaUserClaims>().catch(() => ({}))
-    return buildSessionFromTokens(tokens, claims)
+    const claims = extractClaimsFromTokens(tokens)
+    return buildExchangeCandidateFromTokens(tokens, claims)
   } catch {
     return null
   }
 }
 
-export async function signOutFromOkta(session: AuthSession | null): Promise<void> {
+export async function signOutFromOkta(idToken: string | null | undefined): Promise<void> {
   const client = getOktaClient()
-  clearStoredSession()
   clearPendingOktaTenantSlug()
 
-  if (!client || session?.provider !== 'okta') {
+  if (!client || !idToken) {
     return
   }
 

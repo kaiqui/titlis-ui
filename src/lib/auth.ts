@@ -119,6 +119,11 @@ export interface OktaConfig {
   tenantSlugHint: string | null
 }
 
+export interface OktaExchangePayload {
+  idToken: string
+  tenantSlug?: string
+}
+
 export interface DevAuthConfig {
   tenantId: number
   tenantSlug: string
@@ -241,7 +246,7 @@ export function getOktaConfig(): OktaConfig | null {
     audience,
     redirectUri,
     postLogoutRedirectUri,
-    scopes: ['openid', 'profile', 'email', 'offline_access'],
+    scopes: ['openid', 'profile', 'email', 'groups', 'offline_access'],
     tenantSlugHint: tenantSlugHint || null,
   }
 }
