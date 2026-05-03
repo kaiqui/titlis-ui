@@ -4,11 +4,11 @@ WORKDIR /app
 ARG VITE_API_URL=http://localhost:30081/v1
 ARG VITE_APP_ENV=production
 ARG VITE_AUTH_MODE=okta
-ARG VITE_OKTA_ISSUER=https://jeitto.okta.com
-ARG VITE_OKTA_CLIENT_ID=
-ARG VITE_OKTA_AUDIENCE=api://titlis
-ARG VITE_OKTA_REDIRECT_URI=https://confia.jeitto.com.br/login/callback
-ARG VITE_OKTA_POST_LOGOUT_REDIRECT_URI=https://confia.jeitto.com.br/login
+ARG VITE_OKTA_ISSUER=https://trial-6259005.okta.com
+ARG VITE_OKTA_CLIENT_ID=0oa12kd682sUjPeZT698
+ARG VITE_OKTA_AUDIENCE=api://default
+ARG VITE_OKTA_REDIRECT_URI=https://localhost:13000/login/callback
+ARG VITE_OKTA_POST_LOGOUT_REDIRECT_URI=https://localhost:13000/login
 ARG VITE_OKTA_TENANT_SLUG=jeitto
 
 ENV VITE_API_URL=${VITE_API_URL}
