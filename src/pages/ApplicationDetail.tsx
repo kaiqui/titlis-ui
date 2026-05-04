@@ -68,7 +68,6 @@ export function ApplicationDetail({
   const remediation = remediationQuery.data
   const failedFindings = workload.validationResults.filter(item => !item.passed)
   const passedFindings = workload.validationResults.filter(item => item.passed)
-  const remediableFindings = failedFindings.filter(f => f.remediable)
   const canUseAi = user?.canRemediate ?? false
 
   const evaluationMetrics: EvaluationMetric[] = [
@@ -102,7 +101,7 @@ export function ApplicationDetail({
               onClick={() => navigate(`/applications/${workload.id}/scorecard`)}
             />
           )}
-          {canUseAi && remediableFindings.length > 0 && (
+          {canUseAi && failedFindings.length > 0 && (
             <ButtonDefault
               label="Corrigir com ARIA"
               icon={Bot}
@@ -111,7 +110,7 @@ export function ApplicationDetail({
                   workloadId: workload.id,
                   workloadName: workload.name,
                   namespace: workload.namespace,
-                  findingIds: remediableFindings.map(f => f.ruleId),
+                  findingIds: failedFindings.map(f => f.ruleId),
                 },
               })}
             />

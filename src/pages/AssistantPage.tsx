@@ -92,7 +92,7 @@ export function AssistantPage() {
   useEffect(() => {
     if (!workloadCtx || autoStarted.current) return
     autoStarted.current = true
-    const msg = `Analise e corrija as falhas de compliance do workload **${workloadCtx.workloadName}** (namespace: \`${workloadCtx.namespace}\`). Findings: ${workloadCtx.findingIds.join(', ')}.`
+    const msg = `Analise as falhas de compliance do workload **${workloadCtx.workloadName}** (namespace: \`${workloadCtx.namespace}\`). Findings: ${workloadCtx.findingIds.join(', ')}.`
     void sendMessage(msg)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
