@@ -80,17 +80,22 @@ export function AiExplainDrawer({ finding, workload, onClose }: Props) {
           </div>
         )}
 
-        {status === 'error' && (
+        {status === 'error' && !content && (
           <div className="rounded-2xl px-4 py-3 text-sm" style={{ backgroundColor: 'rgba(239,68,68,0.08)', color: '#dc2626' }}>
             {error}
           </div>
         )}
 
-        {(status === 'streaming' || status === 'done') && content && (
+        {(status === 'streaming' || status === 'done' || (status === 'error' && !!content)) && content && (
           <div className="prose prose-sm max-w-none" style={{ color: 'var(--color-foreground)' }}>
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
             {status === 'streaming' && (
               <span className="inline-block h-4 w-1 animate-pulse rounded" style={{ backgroundColor: 'var(--color-primary)' }} />
+            )}
+            {status === 'error' && (
+              <p className="mt-4 rounded-2xl px-4 py-3 text-xs not-prose" style={{ backgroundColor: 'rgba(239,68,68,0.08)', color: '#dc2626' }}>
+                {error}
+              </p>
             )}
           </div>
         )}
