@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { X } from 'lucide-react'
@@ -15,10 +15,9 @@ export function AiExplainDrawer({ finding, workload, onClose }: Props) {
   const [content, setContent] = useState('')
   const [status, setStatus] = useState<'loading' | 'streaming' | 'done' | 'error'>('loading')
   const [error, setError] = useState<string | null>(null)
-  const abortRef = useRef(false)
 
   useEffect(() => {
-    abortRef.current = false
+    const controller = new AbortController()
     setContent('')
     setStatus('loading')
     setError(null)
@@ -31,11 +30,10 @@ export function AiExplainDrawer({ finding, workload, onClose }: Props) {
           deploymentName: workload.name,
           namespace: workload.namespace,
           actualValue: finding.actualValue,
-        })
+        }, controller.signal)
 
         setStatus('streaming')
         for await (const event of stream) {
-          if (abortRef.current) break
           if (event.type === 'chunk' && typeof event.content === 'string') {
             setContent(prev => prev + event.content)
           } else if (event.type === 'done') {
@@ -46,9 +44,9 @@ export function AiExplainDrawer({ finding, workload, onClose }: Props) {
             setContent(prev => prev + event.content)
           }
         }
-        if (!abortRef.current) setStatus('done')
+        if (!controller.signal.aborted) setStatus('done')
       } catch (err) {
-        if (!abortRef.current) {
+        if (!controller.signal.aborted) {
           setError(err instanceof Error ? err.message : 'Erro ao gerar explicação')
           setStatus('error')
         }
@@ -56,7 +54,7 @@ export function AiExplainDrawer({ finding, workload, onClose }: Props) {
     }
 
     void run()
-    return () => { abortRef.current = true }
+    return () => controller.abort()
   }, [finding.ruleId, workload.id, workload.name, workload.namespace, finding.pillar, finding.severity, finding.actualValue])
 
   return (
@@ -73,10 +71,14 @@ export function AiExplainDrawer({ finding, workload, onClose }: Props) {
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-5">
-        {status === 'loading' && (
+        {(status === 'loading' || (status === 'streaming' && !content)) && (
           <div className="flex items-center gap-3">
-            <div className="h-2 w-2 animate-pulse rounded-full" style={{ backgroundColor: 'var(--color-primary)' }} />
-            <span className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>Consultando ARIA...</span>
+            <div className="flex gap-1">
+              <span className="h-2 w-2 animate-bounce rounded-full [animation-delay:0ms]" style={{ backgroundColor: 'var(--color-primary)' }} />
+              <span className="h-2 w-2 animate-bounce rounded-full [animation-delay:150ms]" style={{ backgroundColor: 'var(--color-primary)' }} />
+              <span className="h-2 w-2 animate-bounce rounded-full [animation-delay:300ms]" style={{ backgroundColor: 'var(--color-primary)' }} />
+            </div>
+            <span className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>Pensando...</span>
           </div>
         )}
 

@@ -20,6 +20,7 @@ import { Onboarding } from '@/pages/Onboarding'
 import { SettingsAuth } from '@/pages/SettingsAuth'
 import { SettingsApiKeys } from '@/pages/SettingsApiKeys'
 import { SettingsAi } from '@/pages/SettingsAi'
+import { SettingsScoreConfig } from '@/pages/SettingsScoreConfig'
 import { GettingStarted } from '@/pages/GettingStarted'
 import { AssistantPage } from '@/pages/AssistantPage'
 
@@ -105,6 +106,14 @@ export default function App() {
                   element={(
                     <AuthGate requireAdmin>
                       <SettingsAi />
+                    </AuthGate>
+                  )}
+                />
+                <Route
+                  path="/settings/score-config"
+                  element={(
+                    <AuthGate requireAdmin>
+                      <SettingsScoreConfig />
                     </AuthGate>
                   )}
                 />

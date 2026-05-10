@@ -47,3 +47,27 @@ export function useAiConfig() {
     retry: false,
   })
 }
+
+export function useScoreConfigRules(engine = 'kubernetes') {
+  return useQuery({
+    queryKey: ['score-config', 'rules', engine],
+    queryFn: () => api.scoreConfig.getRules(engine),
+    staleTime: 60_000,
+  })
+}
+
+export function useScoreConfigOverrides(engine = 'kubernetes') {
+  return useQuery({
+    queryKey: ['score-config', 'overrides', engine],
+    queryFn: () => api.scoreConfig.getOverrides(engine),
+    staleTime: 30_000,
+  })
+}
+
+export function useScoreConfigWeights(engine = 'kubernetes') {
+  return useQuery({
+    queryKey: ['score-config', 'weights', engine],
+    queryFn: () => api.scoreConfig.getWeights(engine),
+    staleTime: 60_000,
+  })
+}

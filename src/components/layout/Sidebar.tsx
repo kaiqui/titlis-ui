@@ -12,6 +12,7 @@ import {
   MessageSquare,
   Network,
   Siren,
+  SlidersHorizontal,
   Target,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -45,6 +46,7 @@ const settingsNavItems = {
   admin: [
     { to: '/settings/auth', icon: KeyRound, label: 'Acesso' },
     { to: '/settings/ai', icon: Bot, label: 'Configurar ARIA' },
+    { to: '/settings/score-config', icon: SlidersHorizontal, label: 'Score & Regras' },
   ],
 } as const
 

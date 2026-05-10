@@ -14,7 +14,7 @@ import { FocusTabs } from '@/components/sre/FocusTabs'
 import { InlineAccordion } from '@/components/sre/InlineAccordion'
 import { SummaryStrip } from '@/components/sre/SummaryStrip'
 import { AiExplainDrawer } from '@/components/ai/AiExplainDrawer'
-import { useWorkloadRemediation, useWorkloadScorecard } from '@/hooks/useApi'
+import { useScoreConfigOverrides, useWorkloadRemediation, useWorkloadScorecard } from '@/hooks/useApi'
 import { useAuth } from '@/contexts/useAuth'
 import { formatDate, formatEnum, severityColor, statusTone } from '@/lib/utils'
 import type { Finding } from '@/types'
@@ -66,8 +66,15 @@ export function ApplicationDetail({
 
   const workload = scorecardQuery.data
   const remediation = remediationQuery.data
-  const failedFindings = workload.validationResults.filter(item => !item.passed)
-  const passedFindings = workload.validationResults.filter(item => item.passed)
+
+  const { data: overrides = [] } = useScoreConfigOverrides()
+  const disabledRuleIds = new Set(
+    overrides.filter(o => !o.enabled).map(o => o.rule_id)
+  )
+
+  const activeFindings = workload.validationResults.filter(f => !disabledRuleIds.has(f.ruleId))
+  const failedFindings = activeFindings.filter(item => !item.passed)
+  const passedFindings = activeFindings.filter(item => item.passed)
   const canUseAi = user?.canRemediate ?? false
 
   const evaluationMetrics: EvaluationMetric[] = [

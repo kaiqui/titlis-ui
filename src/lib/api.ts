@@ -457,6 +457,54 @@ interface AiConfigUpsertPayload {
   monthlyTokenBudget?: number | null
 }
 
+export interface ScoreConfigRule {
+  engine_id: number
+  rule_id: string
+  pillar: string
+  name: string
+  severity: string
+  enabled_by_default: boolean
+}
+
+export interface ScoreConfigOverride {
+  id: number
+  tenant_id: number
+  engine_id: number
+  rule_id: string
+  scope: 'tenant' | 'cluster' | 'namespace' | 'workload'
+  cluster_name: string | null
+  namespace: string | null
+  workload_uid: string | null
+  enabled: boolean
+  reason: string | null
+  created_by: string | null
+  created_at: string
+}
+
+export interface CreateOverridePayload {
+  engine_id: number
+  rule_id: string
+  scope: 'tenant' | 'cluster' | 'namespace' | 'workload'
+  cluster_name?: string
+  namespace?: string
+  workload_uid?: string
+  enabled: boolean
+  reason?: string
+  created_by: string
+}
+
+export interface PillarWeight {
+  engine_id: number
+  pillar: string
+  weight: number
+}
+
+export interface SetWeightsPayload {
+  engine_id: number
+  weights: Record<string, number>
+  updated_by?: string
+}
+
 type SseEvent = { type: string } & Record<string, unknown>
 
 async function fetchWithBackoff(url: string, options: RequestInit, maxRetries = 3): Promise<Response> {
@@ -475,7 +523,7 @@ async function fetchWithBackoff(url: string, options: RequestInit, maxRetries = 
   throw lastError
 }
 
-async function* streamSse(path: string, body: unknown): AsyncGenerator<SseEvent> {
+async function* streamSse(path: string, body: unknown, signal?: AbortSignal): AsyncGenerator<SseEvent> {
   const url = buildUrl(path)
   const token = getStoredAccessToken()
   const authMode = getAuthMode()
@@ -496,6 +544,7 @@ async function* streamSse(path: string, body: unknown): AsyncGenerator<SseEvent>
       ...(authMode !== 'mock' && token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify(body),
+    signal,
   })
 
   if (!response.ok) {
@@ -748,6 +797,39 @@ export const api = {
       return mapAiConfig(response)
     },
   },
+  scoreConfig: {
+    getRules: async (engine = 'kubernetes'): Promise<ScoreConfigRule[]> => {
+      const res = await request<ScoreConfigRule[]>(`/settings/score-config/rules?engine=${engine}`, { optional: true })
+      return res ?? []
+    },
+    getOverrides: async (engine = 'kubernetes'): Promise<ScoreConfigOverride[]> => {
+      const res = await request<ScoreConfigOverride[]>(`/settings/score-config/overrides?engine=${engine}`, { optional: true })
+      return res ?? []
+    },
+    createOverride: async (body: CreateOverridePayload): Promise<ScoreConfigOverride> => {
+      const res = await request<ScoreConfigOverride>('/settings/score-config/overrides', {
+        method: 'POST' as const,
+        body,
+      })
+      if (!res) throw new Error('Não foi possível salvar a configuração.')
+      return res
+    },
+    deleteOverride: async (id: number): Promise<void> => {
+      await request(`/settings/score-config/overrides/${id}`, { method: 'DELETE' as const })
+    },
+    getWeights: async (engine = 'kubernetes'): Promise<PillarWeight[]> => {
+      const res = await request<PillarWeight[]>(`/settings/score-config/weights?engine=${engine}`, { optional: true })
+      return res ?? []
+    },
+    setWeights: async (body: SetWeightsPayload): Promise<PillarWeight[]> => {
+      const res = await request<PillarWeight[]>('/settings/score-config/weights', {
+        method: 'PUT' as const,
+        body,
+      })
+      if (!res) throw new Error('Não foi possível salvar os pesos.')
+      return res
+    },
+  },
   ai: {
     explainStream: (
       workloadId: string,
@@ -760,6 +842,7 @@ export const api = {
         actualValue?: string | null
         containerName?: string | null
       },
+      signal?: AbortSignal,
     ) =>
       streamSse(`/ai/workloads/${workloadId}/findings/${ruleId}/explain`, {
         pillar: body.pillar,
@@ -768,7 +851,7 @@ export const api = {
         namespace: body.namespace,
         actualValue: body.actualValue ?? null,
         containerName: body.containerName ?? null,
-      }),
+      }, signal),
     remediateStream: (
       workloadId: string,
       body: { findingIds: string[]; repoUrl: string; deployManifestPath?: string },
