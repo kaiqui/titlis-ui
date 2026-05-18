@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { Bot, Check, Eye, EyeOff } from 'lucide-react'
+import { ArrowRight, Bot, Check, Eye, EyeOff } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { ButtonDefault } from '@/components/jeitto/ButtonDefault'
 import { Card } from '@/components/jeitto/Card'
 import { PageError, PageLoading } from '@/components/jeitto/PageState'
@@ -17,11 +18,8 @@ export function SettingsAi() {
   const [provider, setProvider] = useState('')
   const [model, setModel] = useState('')
   const [apiKey, setApiKey] = useState('')
-  const [githubToken, setGithubToken] = useState('')
-  const [baseBranch, setBaseBranch] = useState('main')
   const [monthlyBudget, setMonthlyBudget] = useState('')
   const [showApiKey, setShowApiKey] = useState(false)
-  const [showGithubToken, setShowGithubToken] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
@@ -30,7 +28,6 @@ export function SettingsAi() {
     if (config) {
       setProvider(config.provider)
       setModel(config.model)
-      setBaseBranch(config.githubBaseBranch)
       setMonthlyBudget(config.monthlyTokenBudget?.toString() ?? '')
     }
   }, [config])
@@ -38,7 +35,7 @@ export function SettingsAi() {
   if (isLoading) return <><Header title="Configuração do ARIA" /><PageLoading /></>
   if (error) return <><Header title="Configuração do ARIA" /><PageError message="Não foi possível carregar a configuração." /></>
 
-  const isValid = provider.trim() && model.trim() && apiKey.trim()
+  const isValid = provider.trim() && model.trim() && (apiKey.trim() || config?.hasApiKey)
 
   const handleSave = async () => {
     if (!isValid) return
@@ -49,14 +46,12 @@ export function SettingsAi() {
       await api.aiConfig.upsert({
         provider: provider.trim(),
         model: model.trim(),
-        apiKey: apiKey.trim(),
-        githubToken: githubToken.trim() || undefined,
-        githubBaseBranch: baseBranch.trim() || 'main',
+        apiKey: apiKey.trim() || undefined,
+        githubBaseBranch: config?.githubBaseBranch ?? 'main',
         monthlyTokenBudget: monthlyBudget ? parseInt(monthlyBudget, 10) : null,
       })
       await queryClient.invalidateQueries({ queryKey: ['ai-config'] })
       setApiKey('')
-      setGithubToken('')
       setSaved(true)
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Erro ao salvar.')
@@ -65,11 +60,15 @@ export function SettingsAi() {
     }
   }
 
+  const inputCls = 'mt-2 w-full rounded-2xl px-4 py-3 text-sm outline-none'
+  const inputStyle = { backgroundColor: 'var(--color-muted)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }
+
   return (
     <div className="flex min-h-screen flex-col">
-      <Header title="Configuração do ARIA" subtitle="Defina o provedor e credenciais do ARIA para remediação automática e explicações" />
+      <Header title="Configuração do ARIA" subtitle="Provedor e modelo de linguagem usados pelo ARIA para análise e explicações" />
 
       <div className="flex-1 space-y-5 px-4 py-6 lg:px-8">
+
         {config && (
           <Card>
             <div className="flex items-center gap-3">
@@ -82,8 +81,9 @@ export function SettingsAi() {
                 </p>
                 <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
                   API key {config.hasApiKey ? 'configurada' : 'não configurada'}
-                  {config.hasGithubToken ? ' · GitHub token configurado' : ''}
-                  {config.monthlyTokenBudget ? ` · ${config.tokensUsedMonth}/${config.monthlyTokenBudget} tokens este mês` : ''}
+                  {config.monthlyTokenBudget
+                    ? ` · ${config.tokensUsedMonth}/${config.monthlyTokenBudget} tokens este mês`
+                    : ''}
                 </p>
               </div>
             </div>
@@ -91,15 +91,19 @@ export function SettingsAi() {
         )}
 
         <Card>
-          <p className="mb-4 text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>Configurar provedor</p>
+          <p className="mb-4 text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>
+            Provedor de IA
+          </p>
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>Provedor *</label>
+              <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>
+                Provedor *
+              </label>
               <select
                 value={provider}
                 onChange={e => setProvider(e.target.value)}
-                className="mt-2 w-full rounded-2xl px-4 py-3 text-sm outline-none"
-                style={{ backgroundColor: 'var(--color-muted)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}
+                className={inputCls}
+                style={inputStyle}
               >
                 <option value="">Selecione...</option>
                 {PROVIDERS.map(p => <option key={p} value={p}>{p}</option>)}
@@ -107,27 +111,31 @@ export function SettingsAi() {
             </div>
 
             <div>
-              <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>Modelo *</label>
+              <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>
+                Modelo *
+              </label>
               <input
                 type="text"
                 value={model}
                 onChange={e => setModel(e.target.value)}
                 placeholder="ex: gemini-2.5-flash"
-                className="mt-2 w-full rounded-2xl px-4 py-3 text-sm outline-none"
-                style={{ backgroundColor: 'var(--color-muted)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}
+                className={inputCls}
+                style={inputStyle}
               />
             </div>
 
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>API Key *</label>
+            <div className="md:col-span-2">
+              <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>
+                API Key {config?.hasApiKey ? '' : '*'}
+              </label>
               <div className="relative mt-2">
                 <input
                   type={showApiKey ? 'text' : 'password'}
                   value={apiKey}
                   onChange={e => setApiKey(e.target.value)}
-                  placeholder={config?.hasApiKey ? '••••••••• (manter atual)' : 'Cole sua API key'}
+                  placeholder={config?.hasApiKey ? '••••••••• (deixe vazio para manter a atual)' : 'Cole sua API key'}
                   className="w-full rounded-2xl px-4 py-3 pr-12 text-sm outline-none"
-                  style={{ backgroundColor: 'var(--color-muted)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}
+                  style={inputStyle}
                 />
                 <button type="button" onClick={() => setShowApiKey(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 opacity-60 hover:opacity-100">
                   {showApiKey ? <EyeOff size={14} /> : <Eye size={14} />}
@@ -136,42 +144,16 @@ export function SettingsAi() {
             </div>
 
             <div>
-              <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>GitHub Token</label>
-              <div className="relative mt-2">
-                <input
-                  type={showGithubToken ? 'text' : 'password'}
-                  value={githubToken}
-                  onChange={e => setGithubToken(e.target.value)}
-                  placeholder={config?.hasGithubToken ? '••••••••• (manter atual)' : 'ghp_... (para abrir PRs)'}
-                  className="w-full rounded-2xl px-4 py-3 pr-12 text-sm outline-none"
-                  style={{ backgroundColor: 'var(--color-muted)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}
-                />
-                <button type="button" onClick={() => setShowGithubToken(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 opacity-60 hover:opacity-100">
-                  {showGithubToken ? <EyeOff size={14} /> : <Eye size={14} />}
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>Branch base</label>
-              <input
-                type="text"
-                value={baseBranch}
-                onChange={e => setBaseBranch(e.target.value)}
-                className="mt-2 w-full rounded-2xl px-4 py-3 text-sm outline-none"
-                style={{ backgroundColor: 'var(--color-muted)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>Limite mensal de tokens</label>
+              <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>
+                Limite mensal de tokens
+              </label>
               <input
                 type="number"
                 value={monthlyBudget}
                 onChange={e => setMonthlyBudget(e.target.value)}
                 placeholder="Deixe vazio para ilimitado"
-                className="mt-2 w-full rounded-2xl px-4 py-3 text-sm outline-none"
-                style={{ backgroundColor: 'var(--color-muted)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}
+                className={inputCls}
+                style={inputStyle}
               />
             </div>
           </div>
@@ -194,6 +176,24 @@ export function SettingsAi() {
             )}
           </div>
         </Card>
+
+        {/* link para config de GitHub */}
+        <Link
+          to="/settings/auto-remediation"
+          className="flex items-center justify-between rounded-2xl border px-4 py-3 transition-colors hover:opacity-80"
+          style={{ borderColor: 'var(--color-border)', background: 'var(--color-card)' }}
+        >
+          <div>
+            <p className="text-sm font-medium" style={{ color: 'var(--color-foreground)' }}>
+              Token GitHub e branch base
+            </p>
+            <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
+              Necessário para abertura de PRs de remediação — configurado em Auto-Remediação
+            </p>
+          </div>
+          <ArrowRight size={16} style={{ color: 'var(--color-muted-foreground)' }} />
+        </Link>
+
       </div>
     </div>
   )

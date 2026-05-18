@@ -451,7 +451,7 @@ interface AiConfigApiResponse {
 interface AiConfigUpsertPayload {
   provider: string
   model: string
-  apiKey: string
+  apiKey?: string
   githubToken?: string
   githubBaseBranch?: string
   monthlyTokenBudget?: number | null

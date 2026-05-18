@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Save, Wrench } from 'lucide-react'
+import { Check, Eye, EyeOff, Github, Save, Wrench } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { ButtonDefault } from '@/components/jeitto/ButtonDefault'
 import { Card, CardHeader, CardTitle } from '@/components/jeitto/Card'
 import { EmptyState } from '@/components/jeitto/EmptyState'
 import { PageError, PageLoading } from '@/components/jeitto/PageState'
+import { useAiConfig } from '@/hooks/useApi'
 import { api } from '@/lib/api'
 import type { AutoRemediationPolicy } from '@/lib/api'
 
@@ -77,6 +78,15 @@ export function SettingsAutoRemediation() {
   const [form, setForm] = useState<PolicyForm>(defaultForm())
   const [feedback, setFeedback] = useState<{ tone: 'success' | 'error'; message: string } | null>(null)
 
+  // GitHub section state — todos os hooks antes de qualquer return
+  const { data: aiConfig } = useAiConfig()
+  const [githubToken, setGithubToken] = useState('')
+  const [baseBranch, setBaseBranch] = useState('main')
+  const [showGithubToken, setShowGithubToken] = useState(false)
+  const [githubSaving, setGithubSaving] = useState(false)
+  const [githubSaved, setGithubSaved] = useState(false)
+  const [githubError, setGithubError] = useState<string | null>(null)
+
   const { data: policies, isLoading, error } = useQuery({
     queryKey: ['auto-remediation'],
     queryFn: api.autoRemediation.list,
@@ -96,10 +106,12 @@ export function SettingsAutoRemediation() {
   const existingPolicy = policies?.[0]
 
   useEffect(() => {
-    if (existingPolicy) {
-      setForm(policyToForm(existingPolicy))
-    }
+    if (existingPolicy) setForm(policyToForm(existingPolicy))
   }, [existingPolicy])
+
+  useEffect(() => {
+    if (aiConfig) setBaseBranch(aiConfig.githubBaseBranch)
+  }, [aiConfig])
 
   const handleSave = () => {
     const policy: AutoRemediationPolicy = {
@@ -112,6 +124,28 @@ export function SettingsAutoRemediation() {
       require_pr_checks_green: form.requirePrChecksGreen,
     }
     saveMutation.mutate(policy)
+  }
+
+  const handleGithubSave = async () => {
+    if (!aiConfig) return
+    setGithubSaving(true)
+    setGithubError(null)
+    setGithubSaved(false)
+    try {
+      await api.aiConfig.upsert({
+        provider: aiConfig.provider,
+        model: aiConfig.model,
+        githubToken: githubToken.trim() || undefined,
+        githubBaseBranch: baseBranch.trim() || 'main',
+      })
+      await queryClient.invalidateQueries({ queryKey: ['ai-config'] })
+      setGithubToken('')
+      setGithubSaved(true)
+    } catch (err) {
+      setGithubError(err instanceof Error ? err.message : 'Erro ao salvar.')
+    } finally {
+      setGithubSaving(false)
+    }
   }
 
   const inputClass = 'w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-blue-400'
@@ -143,6 +177,7 @@ export function SettingsAutoRemediation() {
             </div>
           )}
 
+          {/* política de remediação */}
           <Card>
             <CardHeader>
               <CardTitle>Política para PERF-004</CardTitle>
@@ -279,6 +314,102 @@ export function SettingsAutoRemediation() {
               </div>
             </Card>
           )}
+
+          {/* configuração de GitHub */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Github size={16} style={{ color: 'var(--color-muted-foreground)' }} />
+                <CardTitle>GitHub para PRs de remediação</CardTitle>
+              </div>
+            </CardHeader>
+
+            {!aiConfig ? (
+              <div className="px-5 pb-5">
+                <p className="text-sm rounded-2xl border px-4 py-3"
+                  style={{ color: 'var(--color-muted-foreground)', borderColor: 'var(--color-border)', background: 'var(--color-muted)' }}>
+                  Configure o provedor de IA em <strong>Configurações &rsaquo; ARIA</strong> antes de definir credenciais GitHub.
+                </p>
+              </div>
+            ) : (
+              <div className="p-5 space-y-4">
+
+                <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
+                  <span
+                    className="rounded-full px-2 py-0.5 font-semibold"
+                    style={aiConfig.hasGithubToken
+                      ? { background: 'rgba(34,197,94,0.1)', color: '#16a34a' }
+                      : { background: 'rgba(148,163,184,0.1)', color: '#64748b' }}
+                  >
+                    {aiConfig.hasGithubToken ? 'Token configurado' : 'Token não configurado'}
+                  </span>
+                  {aiConfig.hasGithubToken && (
+                    <span>· branch base: <strong>{aiConfig.githubBaseBranch}</strong></span>
+                  )}
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold uppercase tracking-widest"
+                      style={{ color: 'var(--color-muted-foreground)' }}>
+                      GitHub Token
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showGithubToken ? 'text' : 'password'}
+                        value={githubToken}
+                        onChange={e => setGithubToken(e.target.value)}
+                        placeholder={aiConfig.hasGithubToken ? '••••••••• (deixe vazio para manter)' : 'ghp_... (para abrir PRs)'}
+                        className={`${inputClass} pr-10`}
+                        style={inputStyle}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowGithubToken(v => !v)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 opacity-60 hover:opacity-100"
+                      >
+                        {showGithubToken ? <EyeOff size={14} /> : <Eye size={14} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold uppercase tracking-widest"
+                      style={{ color: 'var(--color-muted-foreground)' }}>
+                      Branch base
+                    </label>
+                    <input
+                      type="text"
+                      value={baseBranch}
+                      onChange={e => setBaseBranch(e.target.value)}
+                      className={inputClass}
+                      style={inputStyle}
+                    />
+                  </div>
+                </div>
+
+                {githubError && (
+                  <p className="text-sm" style={{ color: '#dc2626' }}>{githubError}</p>
+                )}
+
+                <div className="flex items-center gap-3 pt-1">
+                  <ButtonDefault
+                    label={githubSaving ? 'Salvando...' : 'Salvar credenciais GitHub'}
+                    icon={Save}
+                    onClick={() => void handleGithubSave()}
+                    disabled={githubSaving}
+                  />
+                  {githubSaved && (
+                    <div className="flex items-center gap-1.5 text-sm" style={{ color: '#10b981' }}>
+                      <Check size={14} />
+                      Salvo
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </Card>
+
         </div>
       </div>
     </div>
