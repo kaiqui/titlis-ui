@@ -17,7 +17,15 @@ import { AiExplainDrawer } from '@/components/ai/AiExplainDrawer'
 import { useScoreConfigOverrides, useWorkloadRemediation, useWorkloadScorecard } from '@/hooks/useApi'
 import { useAuth } from '@/contexts/useAuth'
 import { formatDate, formatEnum, severityColor, statusTone } from '@/lib/utils'
+import type { ScoreConfigOverride } from '@/lib/api'
 import type { Finding } from '@/types'
+
+function isOverrideApplicable(o: ScoreConfigOverride, workload: { id: string; cluster: string; namespace: string }): boolean {
+  if (o.scope === 'tenant') return true
+  if (o.scope === 'cluster') return o.cluster_name === workload.cluster
+  if (o.scope === 'namespace') return o.cluster_name === workload.cluster && o.namespace === workload.namespace
+  return o.cluster_name === workload.cluster && o.namespace === workload.namespace && o.workload_uid === workload.id
+}
 
 interface ApplicationDetailProps {
   backPath?: string
@@ -40,6 +48,7 @@ export function ApplicationDetail({
   const remediationQuery = useWorkloadRemediation(id)
   const [focus, setFocus] = useState<DetailFocus>('overview')
   const [explainFinding, setExplainFinding] = useState<Finding | null>(null)
+  const { data: overrides = [] } = useScoreConfigOverrides()
 
   if (scorecardQuery.isLoading) return <><Header title="Detalhe do workload" /><PageLoading /></>
   if (scorecardQuery.error) {
@@ -66,10 +75,8 @@ export function ApplicationDetail({
 
   const workload = scorecardQuery.data
   const remediation = remediationQuery.data
-
-  const { data: overrides = [] } = useScoreConfigOverrides()
   const disabledRuleIds = new Set(
-    overrides.filter(o => !o.enabled).map(o => o.rule_id)
+    overrides.filter(o => !o.enabled && isOverrideApplicable(o, workload)).map(o => o.rule_id)
   )
 
   const activeFindings = workload.validationResults.filter(f => !disabledRuleIds.has(f.ruleId))

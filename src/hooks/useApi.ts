@@ -71,3 +71,43 @@ export function useScoreConfigWeights(engine = 'kubernetes') {
     staleTime: 60_000,
   })
 }
+
+export function useClusters() {
+  return useQuery({
+    queryKey: ['clusters'],
+    queryFn: () => api.clusters.list(),
+    staleTime: 60_000,
+  })
+}
+
+export function useNamespaces(clusterId?: number) {
+  return useQuery({
+    queryKey: ['namespaces', clusterId ?? null],
+    queryFn: () => api.namespaces.list(clusterId),
+    staleTime: 60_000,
+  })
+}
+
+export function useWorkloadItems(clusterId?: number, namespaceId?: number) {
+  return useQuery({
+    queryKey: ['workload-items', clusterId ?? null, namespaceId ?? null],
+    queryFn: () => api.workloadItems.list(clusterId, namespaceId),
+    staleTime: 30_000,
+  })
+}
+
+export function useResourceTags(resourceType: string) {
+  return useQuery({
+    queryKey: ['tags', resourceType],
+    queryFn: () => api.tags.list(resourceType),
+    staleTime: 30_000,
+  })
+}
+
+export function useTagPolicies() {
+  return useQuery({
+    queryKey: ['tag-policies'],
+    queryFn: () => api.tagPolicies.list(),
+    staleTime: 30_000,
+  })
+}

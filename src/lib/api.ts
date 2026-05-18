@@ -326,7 +326,7 @@ function mapScorecardItem(item: ApiScorecardItem): WorkloadDetail {
 
 function mapPillarScoreItem(item: ApiPillarScoreItem): PillarScore {
   return {
-    pillar: item.pillar,
+    pillar: item.pillar.toLowerCase(),
     score: parseNumber(item.score),
     passedChecks: item.passed_checks ?? 0,
     failedChecks: item.failed_checks ?? 0,
@@ -457,6 +457,51 @@ interface AiConfigUpsertPayload {
   monthlyTokenBudget?: number | null
 }
 
+export interface ClusterItem {
+  id: number
+  name: string
+  environment: string
+}
+
+export interface NamespaceItem {
+  id: number
+  name: string
+  clusterId: number
+  clusterName: string
+}
+
+export interface WorkloadItem {
+  id: number
+  name: string
+  namespaceId: number
+  namespaceName: string
+  clusterName: string
+}
+
+export interface ResourceTagItem {
+  resourceId: number
+  tags: string[]
+}
+
+export interface TagPolicy {
+  id: number
+  tenant_id: number
+  tag: string
+  rule_id?: string
+  severity?: string
+  action: string
+  created_by?: string
+  created_at: string
+}
+
+export interface CreateTagPolicyPayload {
+  tag: string
+  rule_id?: string
+  severity?: string
+  action?: string
+  created_by?: string
+}
+
 export interface ScoreConfigRule {
   engine_id: number
   rule_id: string
@@ -503,6 +548,91 @@ export interface SetWeightsPayload {
   engine_id: number
   weights: Record<string, number>
   updated_by?: string
+}
+
+export interface CampaignSummary {
+  id: string
+  tenantId: number
+  workflowId: string
+  actorEmail: string | null
+  triggerSource: string
+  ruleId: string | null
+  title: string
+  status: string
+  totalItems: number
+  succeededItems: number
+  failedItems: number
+  skippedItems: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateCampaignPayload {
+  title: string
+  description?: string
+  workload_uids: string[]
+  rule_id?: string
+  cascade_up_to?: 'dev' | 'hml' | 'prd'
+  trigger_source: 'manual'
+  actor_email?: string | null
+  tenant_id?: number
+}
+
+export interface HpaTemplate {
+  id: number
+  tenantId: number
+  environment: string
+  criticality: string
+  minReplicas: number
+  maxReplicas: number
+  targetCpuPct: number
+  targetMemPct: number
+  updatedAt: string
+}
+
+export interface HpaTemplatePayload {
+  environment: string
+  criticality: string
+  min_replicas: number
+  max_replicas: number
+  target_cpu_pct: number
+  target_mem_pct?: number
+}
+
+export interface AutoRemediationPolicy {
+  tenant_id?: number
+  rule_id: string
+  environment: string | null
+  mode: 'disabled' | 'discovery_only' | 'open_pr' | 'auto_merge'
+  cascade_up_to: 'dev' | 'hml' | 'prd'
+  auto_merge_max_delta_pct?: number | null
+  require_pr_checks_green: boolean
+  max_prs_per_day: number
+}
+
+export type AutoRemediationPolicyPayload = AutoRemediationPolicy
+
+export interface GitopsProfile {
+  tenant_id?: number
+  repo_url: string
+  layout: 'folder_per_env'
+  base_branch: string
+  env_path_template: Record<string, string>
+  pipeline_watcher?: string | null
+  confirmed_at?: string | null
+}
+
+export interface GitopsProfilePayload {
+  repo_url: string
+  base_branch: string
+  env_path_template: Record<string, string>
+  pipeline_watcher?: string
+}
+
+export interface DatadogProbeResult {
+  ok: boolean
+  reason: string
+  tenant_id: number
 }
 
 type SseEvent = { type: string } & Record<string, unknown>
@@ -830,6 +960,125 @@ export const api = {
       return res
     },
   },
+  clusters: {
+    list: async (): Promise<ClusterItem[]> => {
+      const res = await request<ClusterItem[]>('/settings/tags/resource-list/clusters', { optional: true })
+      return res ?? []
+    },
+  },
+  namespaces: {
+    list: async (clusterId?: number): Promise<NamespaceItem[]> => {
+      const path = clusterId
+        ? `/settings/tags/resource-list/namespaces?clusterId=${clusterId}`
+        : '/settings/tags/resource-list/namespaces'
+      const res = await request<NamespaceItem[]>(path, { optional: true })
+      return res ?? []
+    },
+  },
+  workloadItems: {
+    list: async (clusterId?: number, namespaceId?: number): Promise<WorkloadItem[]> => {
+      const params = new URLSearchParams()
+      if (namespaceId) params.set('namespaceId', String(namespaceId))
+      else if (clusterId) params.set('clusterId', String(clusterId))
+      const qs = params.toString()
+      const res = await request<WorkloadItem[]>(
+        `/settings/tags/resource-list/workloads${qs ? `?${qs}` : ''}`,
+        { optional: true },
+      )
+      return res ?? []
+    },
+  },
+  tags: {
+    list: async (resourceType: string): Promise<ResourceTagItem[]> => {
+      const res = await request<ResourceTagItem[]>(`/settings/tags/${resourceType}`, { optional: true })
+      return res ?? []
+    },
+    add: async (resourceType: string, resourceId: number, tag: string): Promise<void> => {
+      await request(`/settings/tags/${resourceType}/${resourceId}`, {
+        method: 'POST' as const,
+        body: { tag },
+      })
+    },
+    remove: async (resourceType: string, resourceId: number, tag: string): Promise<void> => {
+      await request(`/settings/tags/${resourceType}/${resourceId}/${encodeURIComponent(tag)}`, {
+        method: 'DELETE' as const,
+      })
+    },
+  },
+  tagPolicies: {
+    list: async (): Promise<TagPolicy[]> => {
+      const res = await request<TagPolicy[]>('/settings/scoring/tag-policies', { optional: true })
+      return res ?? []
+    },
+    create: async (body: CreateTagPolicyPayload): Promise<TagPolicy> => {
+      const res = await request<TagPolicy>('/settings/scoring/tag-policies', {
+        method: 'POST' as const,
+        body,
+      })
+      if (!res) throw new Error('Não foi possível criar a política.')
+      return res
+    },
+    delete: async (id: number): Promise<void> => {
+      await request(`/settings/scoring/tag-policies/${id}`, { method: 'DELETE' as const })
+    },
+  },
+  campaigns: {
+    list: async (): Promise<CampaignSummary[]> => {
+      const res = await request<CampaignSummary[]>('/bulk-pr/campaigns', { optional: true })
+      return res ?? []
+    },
+    create: async (body: CreateCampaignPayload): Promise<CampaignSummary> => {
+      const res = await request<CampaignSummary>('/bulk-pr/campaigns', { method: 'POST', body })
+      if (!res) throw new Error('Não foi possível criar a campanha.')
+      return res
+    },
+    get: async (id: string): Promise<CampaignSummary | null> => {
+      return request<CampaignSummary>(`/bulk-pr/campaigns/${id}`, { optional: true })
+    },
+    cancel: async (id: string): Promise<void> => {
+      await request(`/bulk-pr/campaigns/${id}/cancel`, { method: 'POST' })
+    },
+  },
+  hpaTemplates: {
+    list: async (): Promise<HpaTemplate[]> => {
+      const res = await request<HpaTemplate[]>('/settings/hpa-templates', { optional: true })
+      return res ?? []
+    },
+    upsert: async (body: HpaTemplatePayload): Promise<HpaTemplate> => {
+      const res = await request<HpaTemplate>('/settings/hpa-templates', { method: 'PUT', body })
+      if (!res) throw new Error('Não foi possível salvar o template.')
+      return res
+    },
+  },
+  autoRemediation: {
+    list: async (): Promise<AutoRemediationPolicy[]> => {
+      const res = await request<AutoRemediationPolicy[]>('/settings/auto-remediation', { optional: true })
+      return res ?? []
+    },
+    update: async (body: AutoRemediationPolicyPayload): Promise<AutoRemediationPolicy> => {
+      const res = await request<AutoRemediationPolicy>('/settings/auto-remediation', { method: 'PUT', body })
+      if (!res) throw new Error('Não foi possível atualizar a política.')
+      return res
+    },
+  },
+  gitopsProfiles: {
+    list: async (): Promise<GitopsProfile[]> => {
+      const res = await request<GitopsProfile[]>('/settings/gitops-profiles', { optional: true })
+      return res ?? []
+    },
+    upsert: async (body: GitopsProfilePayload): Promise<GitopsProfile> => {
+      const res = await request<GitopsProfile>('/settings/gitops-profiles', { method: 'PUT', body })
+      if (!res) throw new Error('Não foi possível salvar o perfil.')
+      return res
+    },
+  },
+  datadogProbe: {
+    run: async (): Promise<DatadogProbeResult> => {
+      const res = await request<DatadogProbeResult>('/insights/datadog/probe')
+      if (!res) throw new Error('Não foi possível verificar as credenciais.')
+      return res
+    },
+  },
   ai: {
     explainStream: (
       workloadId: string,
@@ -863,6 +1112,8 @@ export const api = {
       }),
     confirmRemediation: (threadId: string, approved: boolean) =>
       streamSse(`/ai/remediate/${threadId}/confirm`, { approved }),
+    setManifestPath: (threadId: string, manifestPath: string) =>
+      streamSse(`/ai/remediate/${threadId}/set-path`, { manifestPath }),
     agentChat: (sessionId: string, message: string) =>
       streamSse('/ai/agent/chat', { sessionId, message }),
     agentToolsRespond: (

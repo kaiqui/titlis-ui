@@ -498,7 +498,54 @@ Página `/settings/ai` — admin configura por tenant:
 
 ---
 
-## 13. O Que Não Fazer
+## 13. Regras de Hooks (React error #310 / #185)
+
+Violações das Rules of Hooks causam erros intermitentes difíceis de reproduzir. Siga rigorosamente:
+
+### Todo hook deve ser chamado antes de qualquer early return
+
+```tsx
+// ERRADO — useScoreConfigOverrides nunca é chamado quando isLoading=true,
+// mas é chamado na render seguinte → React error #310
+export function MyPage() {
+  const query = useWorkloadScorecard(id)
+  if (query.isLoading) return <PageLoading />
+  const { data: overrides } = useScoreConfigOverrides() // ← DEPOIS do return: proibido
+}
+
+// CORRETO — todos os hooks antes de qualquer return condicional
+export function MyPage() {
+  const query = useWorkloadScorecard(id)
+  const { data: overrides } = useScoreConfigOverrides() // ← ANTES do return
+  if (query.isLoading) return <PageLoading />
+}
+```
+
+### Nunca chame setState diretamente no corpo do render
+
+```tsx
+// ERRADO — chama setState durante a render, causando re-renders em cascata
+export function MyForm() {
+  const [value, setValue] = useState('')
+  const { data } = useMyQuery()
+  if (data && !initialized) setValue(data.field) // ← proibido fora de useEffect
+
+// CORRETO — inicializar state de dados externos sempre em useEffect
+export function MyForm() {
+  const [value, setValue] = useState('')
+  const { data } = useMyQuery()
+  useEffect(() => {
+    if (data) setValue(data.field)
+  }, [data])
+```
+
+### Regra prática ao escrever um componente com early returns
+
+Declare todos os `useState`, `useEffect`, `useMemo`, `useCallback`, `useRef`, `useContext` e hooks customizados (`use*`) **no topo do componente**, antes de qualquer `if`/`return`. O lint do React (`eslint-plugin-react-hooks`) detecta a maioria dessas violações — se o build reportar warning de hooks, trate como erro.
+
+---
+
+## 14. O Que Não Fazer
 
 - **Nunca** use `useEffect` para buscar dados de API — use React Query
 - **Nunca** armazene tokens em `sessionStorage` — o padrão é `localStorage` com chave `titlis.auth.session`

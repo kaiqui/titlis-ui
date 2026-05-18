@@ -21,8 +21,12 @@ import { SettingsAuth } from '@/pages/SettingsAuth'
 import { SettingsApiKeys } from '@/pages/SettingsApiKeys'
 import { SettingsAi } from '@/pages/SettingsAi'
 import { SettingsScoreConfig } from '@/pages/SettingsScoreConfig'
+import { SettingsTags } from '@/pages/SettingsTags'
 import { GettingStarted } from '@/pages/GettingStarted'
 import { AssistantPage } from '@/pages/AssistantPage'
+import { Campaigns } from '@/pages/Campaigns'
+import { SettingsHpaTemplates } from '@/pages/SettingsHpaTemplates'
+import { SettingsAutoRemediation } from '@/pages/SettingsAutoRemediation'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -83,6 +87,23 @@ export default function App() {
                   )}
                 />
                 <Route path="/assistant" element={<AssistantPage />} />
+                <Route path="/campaigns" element={<Campaigns />} />
+                <Route
+                  path="/settings/hpa-templates"
+                  element={(
+                    <AuthGate requireAdmin>
+                      <SettingsHpaTemplates />
+                    </AuthGate>
+                  )}
+                />
+                <Route
+                  path="/settings/auto-remediation"
+                  element={(
+                    <AuthGate requireAdmin>
+                      <SettingsAutoRemediation />
+                    </AuthGate>
+                  )}
+                />
                 <Route path="/topology" element={<Squads />} />
                 <Route path="/squads" element={<Navigate to="/topology" replace />} />
                 <Route
@@ -114,6 +135,14 @@ export default function App() {
                   element={(
                     <AuthGate requireAdmin>
                       <SettingsScoreConfig />
+                    </AuthGate>
+                  )}
+                />
+                <Route
+                  path="/settings/tags"
+                  element={(
+                    <AuthGate requireAdmin>
+                      <SettingsTags />
                     </AuthGate>
                   )}
                 />

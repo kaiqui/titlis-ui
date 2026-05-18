@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Bot, Check, Eye, EyeOff } from 'lucide-react'
 import { ButtonDefault } from '@/components/jeitto/ButtonDefault'
@@ -25,18 +25,18 @@ export function SettingsAi() {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
-  const [formInitialized, setFormInitialized] = useState(false)
+
+  useEffect(() => {
+    if (config) {
+      setProvider(config.provider)
+      setModel(config.model)
+      setBaseBranch(config.githubBaseBranch)
+      setMonthlyBudget(config.monthlyTokenBudget?.toString() ?? '')
+    }
+  }, [config])
 
   if (isLoading) return <><Header title="Configuração do ARIA" /><PageLoading /></>
   if (error) return <><Header title="Configuração do ARIA" /><PageError message="Não foi possível carregar a configuração." /></>
-
-  if (config && !formInitialized) {
-    setProvider(config.provider)
-    setModel(config.model)
-    setBaseBranch(config.githubBaseBranch)
-    setMonthlyBudget(config.monthlyTokenBudget?.toString() ?? '')
-    setFormInitialized(true)
-  }
 
   const isValid = provider.trim() && model.trim() && apiKey.trim()
 

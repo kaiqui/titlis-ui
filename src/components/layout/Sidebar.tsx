@@ -11,9 +11,12 @@ import {
   LayoutDashboard,
   MessageSquare,
   Network,
+  Server,
   Siren,
   SlidersHorizontal,
+  Tag,
   Target,
+  Wrench,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/useAuth'
@@ -36,6 +39,7 @@ const secondaryNavItems = [
 
 const remediationNavItems = [
   { to: '/recommendations', icon: GitPullRequest, label: 'Remediação' },
+  { to: '/campaigns', icon: Server, label: 'Campanhas HPA' },
   { to: '/assistant', icon: MessageSquare, label: 'ARIA' },
 ]
 
@@ -47,6 +51,9 @@ const settingsNavItems = {
     { to: '/settings/auth', icon: KeyRound, label: 'Acesso' },
     { to: '/settings/ai', icon: Bot, label: 'Configurar ARIA' },
     { to: '/settings/score-config', icon: SlidersHorizontal, label: 'Score & Regras' },
+    { to: '/settings/hpa-templates', icon: Server, label: 'Templates HPA' },
+    { to: '/settings/auto-remediation', icon: Wrench, label: 'Auto-Remediação' },
+    { to: '/settings/tags', icon: Tag, label: 'Tags' },
   ],
 } as const
 

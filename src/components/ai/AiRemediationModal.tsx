@@ -4,7 +4,15 @@ import { ButtonDefault } from '@/components/jeitto/ButtonDefault'
 import { api } from '@/lib/api'
 import type { Finding, WorkloadDetail } from '@/types'
 
-type Step = 'config' | 'running' | 'review' | 'confirming' | 'done' | 'error'
+type Step = 'config' | 'running' | 'path_resolution' | 'review' | 'confirming' | 'done' | 'error'
+
+interface PathRequired {
+  threadId: string
+  detectedEnvironment: string
+  suggestedPath: string
+  deploymentName: string
+  namespace: string
+}
 
 interface FixReady {
   threadId: string
@@ -26,6 +34,7 @@ interface Props {
 
 const NODE_LABELS: Record<string, string> = {
   classify_findings: 'Classificando findings',
+  resolve_manifest_path: 'Detectando ambiente',
   fetch_context: 'Buscando contexto',
   check_existing_pr: 'Verificando PR existente',
   analyze_findings: 'Analisando problemas',
@@ -43,6 +52,7 @@ export function AiRemediationModal({ workload, remediableFindings, onClose }: Pr
   const [selectedIds, setSelectedIds] = useState<string[]>(remediableFindings.map(f => f.ruleId))
   const [currentNode, setCurrentNode] = useState<string | null>(null)
   const [completedNodes, setCompletedNodes] = useState<string[]>([])
+  const [pathRequired, setPathRequired] = useState<PathRequired | null>(null)
   const [fixReady, setFixReady] = useState<FixReady | null>(null)
   const [prResult, setPrResult] = useState<PrCreated | null>(null)
   const [existingPrUrl, setExistingPrUrl] = useState<string | null>(null)
@@ -76,6 +86,18 @@ export function AiRemediationModal({ workload, remediableFindings, onClose }: Pr
         if (event.type === 'progress' && typeof event.node === 'string') {
           setCurrentNode(event.node)
           setCompletedNodes(prev => [...prev, event.node as string])
+        } else if (event.type === 'path_required') {
+          const suggested = String(event.suggested_path ?? '')
+          setPathRequired({
+            threadId: String(event.thread_id),
+            detectedEnvironment: String(event.detected_environment ?? 'desconhecido'),
+            suggestedPath: suggested,
+            deploymentName: String(event.deployment_name ?? ''),
+            namespace: String(event.namespace ?? ''),
+          })
+          setManifestPath(suggested)
+          setStep('path_resolution')
+          return
         } else if (event.type === 'fix_ready') {
           setFixReady({
             threadId: String(event.thread_id),
@@ -132,6 +154,49 @@ export function AiRemediationModal({ workload, remediableFindings, onClose }: Pr
     } catch (err) {
       if (!abortRef.current) {
         setError(err instanceof Error ? err.message : 'Erro ao confirmar remediação')
+        setStep('error')
+      }
+    }
+  }
+
+  const submitManifestPath = async () => {
+    if (!pathRequired || !manifestPath.trim()) return
+    abortRef.current = false
+    setStep('running')
+    setError(null)
+
+    try {
+      const stream = api.ai.setManifestPath(pathRequired.threadId, manifestPath.trim())
+
+      for await (const event of stream) {
+        if (abortRef.current) break
+
+        if (event.type === 'progress' && typeof event.node === 'string') {
+          setCurrentNode(event.node)
+          setCompletedNodes(prev => [...prev, event.node as string])
+        } else if (event.type === 'fix_ready') {
+          setFixReady({
+            threadId: String(event.thread_id),
+            patchedManifest: String(event.patched_manifest ?? ''),
+            currentManifest: String(event.current_manifest ?? ''),
+            findings: (event.findings ?? []) as unknown[],
+          })
+          setStep('review')
+          return
+        } else if (event.type === 'existing_pr') {
+          setExistingPrUrl(String(event.pr_url))
+          setStep('done')
+          return
+        } else if (event.type === 'error') {
+          throw new Error(String(event.error ?? 'Erro no pipeline'))
+        } else if (event.type === 'done') {
+          break
+        }
+      }
+      if (!abortRef.current) setStep('done')
+    } catch (err) {
+      if (!abortRef.current) {
+        setError(err instanceof Error ? err.message : 'Erro ao continuar pipeline')
         setStep('error')
       }
     }
@@ -228,6 +293,37 @@ export function AiRemediationModal({ workload, remediableFindings, onClose }: Pr
                     {NODE_LABELS[node] ?? node}
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {step === 'path_resolution' && pathRequired && (
+            <div className="space-y-4">
+              <div className="rounded-2xl px-4 py-3" style={{ backgroundColor: 'rgba(var(--color-primary-rgb, 99,102,241),0.08)' }}>
+                <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: 'var(--color-muted-foreground)' }}>Ambiente detectado</p>
+                <p className="text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{pathRequired.detectedEnvironment}</p>
+              </div>
+              <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
+                Em qual arquivo de manifesto devo aplicar a correção para este ambiente?
+              </p>
+              <div>
+                <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>Caminho do manifesto *</label>
+                <input
+                  type="text"
+                  value={manifestPath}
+                  onChange={e => setManifestPath(e.target.value)}
+                  placeholder="ex: manifests/kubernetes/dev/deploy.yaml"
+                  className="mt-2 w-full rounded-2xl px-4 py-3 text-sm outline-none transition-colors"
+                  style={{ backgroundColor: 'var(--color-muted)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <ButtonDefault label="Cancelar" visual="secondary" onClick={onClose} />
+                <ButtonDefault
+                  label="Confirmar e continuar"
+                  onClick={() => void submitManifestPath()}
+                  disabled={!manifestPath.trim()}
+                />
               </div>
             </div>
           )}
