@@ -111,3 +111,12 @@ export function useTagPolicies() {
     staleTime: 30_000,
   })
 }
+
+export function useServiceDefinitions() {
+  return useQuery({
+    queryKey: ['service-definitions'],
+    queryFn: () => api.serviceDefinitions.list(),
+    staleTime: 60_000,
+    retry: false,
+  })
+}

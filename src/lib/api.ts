@@ -629,6 +629,18 @@ export interface GitopsProfilePayload {
   pipeline_watcher?: string
 }
 
+interface ApiServiceDefinitionMapping {
+  workload_name: string
+  repo_url: string
+  last_synced_at: string
+}
+
+export interface ServiceDefinitionMapping {
+  workloadName: string
+  repoUrl: string
+  lastSyncedAt: string
+}
+
 export interface DatadogProbeResult {
   ok: boolean
   reason: string
@@ -1070,6 +1082,16 @@ export const api = {
       const res = await request<GitopsProfile>('/settings/gitops-profiles', { method: 'PUT', body })
       if (!res) throw new Error('Não foi possível salvar o perfil.')
       return res
+    },
+  },
+  serviceDefinitions: {
+    list: async (): Promise<ServiceDefinitionMapping[]> => {
+      const res = await request<{ items: ApiServiceDefinitionMapping[] }>('/bulk-pr/service-definitions', { optional: true })
+      return (res?.items ?? []).map(m => ({
+        workloadName: m.workload_name,
+        repoUrl: m.repo_url,
+        lastSyncedAt: m.last_synced_at,
+      }))
     },
   },
   datadogProbe: {

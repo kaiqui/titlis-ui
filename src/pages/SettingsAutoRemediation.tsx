@@ -115,7 +115,7 @@ export function SettingsAutoRemediation() {
 
   const handleSave = () => {
     const policy: AutoRemediationPolicy = {
-      rule_id: 'PERF-004',
+      rule_id: '*',
       environment: null,
       mode: form.mode,
       cascade_up_to: form.cascadeUpTo,
@@ -180,7 +180,7 @@ export function SettingsAutoRemediation() {
           {/* política de remediação */}
           <Card>
             <CardHeader>
-              <CardTitle>Política para PERF-004</CardTitle>
+              <CardTitle>Política geral de remediação</CardTitle>
             </CardHeader>
             <div className="p-5 space-y-5">
 
