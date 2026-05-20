@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check, Copy, KeyRound, Plus, Trash2 } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { ButtonDefault } from '@/components/jeitto/ButtonDefault'
+import { FeatureGuard } from '@/components/atoms/FeatureGuard'
 import { Card, CardHeader, CardTitle } from '@/components/jeitto/Card'
 import { PageError, PageLoading } from '@/components/jeitto/PageState'
 import { api } from '@/lib/api'
@@ -118,12 +119,14 @@ export function SettingsApiKeys() {
                   onChange={(e) => setDescription(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') createMutation.mutate() }}
                 />
-                <ButtonDefault
-                  label={createMutation.isPending ? 'Criando...' : 'Criar'}
-                  icon={Plus}
-                  onClick={() => createMutation.mutate()}
-                  disabled={createMutation.isPending}
-                />
+                <FeatureGuard id="btn_create_api_key">
+                  <ButtonDefault
+                    label={createMutation.isPending ? 'Criando...' : 'Criar'}
+                    icon={Plus}
+                    onClick={() => createMutation.mutate()}
+                    disabled={createMutation.isPending}
+                  />
+                </FeatureGuard>
               </div>
             </div>
           </Card>

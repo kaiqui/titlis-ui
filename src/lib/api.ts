@@ -1050,6 +1050,12 @@ export const api = {
     cancel: async (id: string): Promise<void> => {
       await request(`/bulk-pr/campaigns/${id}/cancel`, { method: 'POST' })
     },
+    triggerManifest: async (): Promise<{ campaign_id: string; workflow_id: string } | null> => {
+      return request<{ campaign_id: string; workflow_id: string }>('/bulk-pr/manifest-campaigns', {
+        method: 'POST',
+        optional: true,
+      })
+    },
   },
   hpaTemplates: {
     list: async (): Promise<HpaTemplate[]> => {

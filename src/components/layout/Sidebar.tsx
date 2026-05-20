@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/useAuth'
+import { FeatureGuard } from '@/components/atoms/FeatureGuard'
 
 const appLogoUrl = import.meta.env.VITE_APP_LOGO_URL?.trim() || '/logo.png'
 const appName = import.meta.env.VITE_APP_NAME?.trim() || 'Titlis'
@@ -27,70 +28,70 @@ const displayAppName = appName.replace(/([a-z0-9])([A-Z])/g, '$1 $2')
 
 const primaryNavItems = [
   { to: '/', icon: LayoutDashboard, label: 'Home', exact: true },
-  { to: '/incidents', icon: Siren, label: 'Degradações' },
-  { to: '/applications', icon: AppWindow, label: 'Services' },
-  { to: '/scorecards', icon: ClipboardCheck, label: 'Termômetro de Confiabilidade' },
+  { to: '/incidents', icon: Siren, label: 'Degradações', featureId: 'nav_incidents' },
+  { to: '/applications', icon: AppWindow, label: 'Services', featureId: 'nav_applications' },
+  { to: '/scorecards', icon: ClipboardCheck, label: 'Termômetro de Confiabilidade', featureId: 'nav_scorecards' },
 ]
 
 const secondaryNavItems = [
-  { to: '/slos', icon: Target, label: 'SLOs' },
-  { to: '/topology', icon: Network, label: 'Topologia' },
+  { to: '/slos', icon: Target, label: 'SLOs', featureId: 'nav_slos' },
+  { to: '/topology', icon: Network, label: 'Topologia', featureId: 'nav_topology' },
 ]
 
 const remediationNavItems = [
-  { to: '/recommendations', icon: GitPullRequest, label: 'Remediação' },
-  { to: '/campaigns', icon: Server, label: 'Campanhas HPA' },
-  { to: '/assistant', icon: MessageSquare, label: 'ARIA' },
+  { to: '/recommendations', icon: GitPullRequest, label: 'Remediação', featureId: 'nav_recommendations' },
+  { to: '/assistant', icon: MessageSquare, label: 'ARIA', featureId: 'nav_assistant' },
 ]
 
 const settingsNavItems = {
   base: [
-    { to: '/settings/api-keys', icon: Key, label: 'Chaves de API' },
+    { to: '/settings/api-keys', icon: Key, label: 'Chaves de API', featureId: 'nav_settings_api_keys' },
   ],
   admin: [
-    { to: '/settings/auth', icon: KeyRound, label: 'Acesso' },
-    { to: '/settings/ai', icon: Bot, label: 'Configurar ARIA' },
-    { to: '/settings/score-config', icon: SlidersHorizontal, label: 'Score & Regras' },
-    { to: '/settings/hpa-templates', icon: Server, label: 'Templates HPA' },
-    { to: '/settings/auto-remediation', icon: Wrench, label: 'Auto-Remediação' },
-    { to: '/settings/tags', icon: Tag, label: 'Tags' },
+    { to: '/settings/auth', icon: KeyRound, label: 'Acesso', featureId: 'nav_settings_auth' },
+    { to: '/settings/ai', icon: Bot, label: 'Configurar ARIA', featureId: 'nav_settings_ai' },
+    { to: '/settings/score-config', icon: SlidersHorizontal, label: 'Score & Regras', featureId: 'nav_settings_score_config' },
+    { to: '/settings/hpa-templates', icon: Server, label: 'Templates HPA', featureId: 'nav_settings_hpa_templates' },
+    { to: '/settings/auto-remediation', icon: Wrench, label: 'Auto-Remediação', featureId: 'nav_settings_auto_remediation' },
+    { to: '/settings/tags', icon: Tag, label: 'Tags', featureId: 'nav_settings_tags' },
   ],
-} as const
+}
 
 function NavItems({
   items,
   mobile = false,
   collapsed = false,
 }: {
-  items: typeof primaryNavItems
+  items: { to: string; icon: React.ElementType; label: string; exact?: boolean; featureId?: string }[]
   mobile?: boolean
   collapsed?: boolean
 }) {
-  return items.map(({ to, icon: Icon, label, exact }) => (
-    <NavLink
-      key={to}
-      to={to}
-      end={exact}
-      className={({ isActive }) => cn(
-        'family-neighbor group flex items-center gap-3 rounded-[22px] font-extrabold transition-all duration-200',
-        mobile ? 'flex-1 justify-center px-3 py-3 text-[11px]' : collapsed ? 'justify-center px-3 py-3 text-sm' : 'px-4 py-3 text-sm',
-        isActive
-          ? 'shadow-sm'
-          : '',
-      )}
-      style={({ isActive }) => ({
-        backgroundColor: isActive ? 'var(--color-card)' : 'transparent',
-        color: isActive ? 'var(--color-primary-strong)' : 'rgba(255,255,255,0.84)',
-      })}
-      title={collapsed && !mobile ? label : undefined}
-    >
-      {({ isActive }) => (
-        <>
-          <Icon size={mobile ? 16 : 18} className={isActive ? '' : 'opacity-90'} />
-          {!mobile && !collapsed && <span className="font-medium">{label}</span>}
-        </>
-      )}
-    </NavLink>
+  return items.map(({ to, icon: Icon, label, exact, featureId }) => (
+    <FeatureGuard key={to} id={featureId ?? ''}>
+      <NavLink
+        to={to}
+        end={exact}
+        className={({ isActive }) => cn(
+          'family-neighbor group flex items-center gap-3 rounded-[22px] font-extrabold transition-all duration-200',
+          mobile ? 'flex-1 justify-center px-3 py-3 text-[11px]' : collapsed ? 'justify-center px-3 py-3 text-sm' : 'px-4 py-3 text-sm',
+          isActive
+            ? 'shadow-sm'
+            : '',
+        )}
+        style={({ isActive }) => ({
+          backgroundColor: isActive ? 'var(--color-card)' : 'transparent',
+          color: isActive ? 'var(--color-primary-strong)' : 'rgba(255,255,255,0.84)',
+        })}
+        title={collapsed && !mobile ? label : undefined}
+      >
+        {({ isActive }) => (
+          <>
+            <Icon size={mobile ? 16 : 18} className={isActive ? '' : 'opacity-90'} />
+            {!mobile && !collapsed && <span className="font-medium">{label}</span>}
+          </>
+        )}
+      </NavLink>
+    </FeatureGuard>
   ))
 }
 

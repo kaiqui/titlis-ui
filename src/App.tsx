@@ -24,7 +24,6 @@ import { SettingsScoreConfig } from '@/pages/SettingsScoreConfig'
 import { SettingsTags } from '@/pages/SettingsTags'
 import { GettingStarted } from '@/pages/GettingStarted'
 import { AssistantPage } from '@/pages/AssistantPage'
-import { Campaigns } from '@/pages/Campaigns'
 import { SettingsHpaTemplates } from '@/pages/SettingsHpaTemplates'
 import { SettingsAutoRemediation } from '@/pages/SettingsAutoRemediation'
 
@@ -87,7 +86,6 @@ export default function App() {
                   )}
                 />
                 <Route path="/assistant" element={<AssistantPage />} />
-                <Route path="/campaigns" element={<Campaigns />} />
                 <Route
                   path="/settings/hpa-templates"
                   element={(
