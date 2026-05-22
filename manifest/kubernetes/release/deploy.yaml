@@ -26,7 +26,7 @@ spec:
           image: __DOCKERHUB_USER__/titlis-ui:__IMAGE_TAG__
           imagePullPolicy: __IMAGE_PULL_POLICY__
           ports:
-            - containerPort: 3000
+            - containerPort: 80
               name: http
           readinessProbe:
             httpGet:
@@ -58,7 +58,7 @@ spec:
   selector:
     app: titlis-ui
   ports:
-    - port: 3000
+    - port: 80
       targetPort: http
       protocol: TCP
       nodePort: 30080
