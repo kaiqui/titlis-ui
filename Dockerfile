@@ -1,7 +1,7 @@
 FROM node:22-alpine AS build
 WORKDIR /app
 
-ARG VITE_API_URL=http://localhost:30081/v1
+ARG VITE_API_URL=/v1
 ARG VITE_APP_ENV=production
 ARG VITE_AUTH_MODE=okta
 ARG VITE_OKTA_ISSUER=https://trial-6259005.okta.com
@@ -27,12 +27,9 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM node:22-alpine
-WORKDIR /app
+FROM nginx:alpine
+COPY --from=build /app/dist /usr/share/nginx/html
+COPY nginx.conf.template /etc/nginx/nginx.conf.template
 
-RUN npm install -g serve
-
-COPY --from=build /app/dist ./dist
-
-EXPOSE 3000
-CMD ["serve", "-s", "dist", "-l", "3000"]
+EXPOSE 80
+CMD ["/bin/sh", "-c", "envsubst '${API_UPSTREAM}' < /etc/nginx/nginx.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]

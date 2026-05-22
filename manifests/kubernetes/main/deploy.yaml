@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: titlis-ui
+  namespace: titlis-system
+  labels:
+    tags.datadoghq.com/service: "titlis-ui"
+    tags.datadoghq.com/env: "production"
+spec:
+  selector:
+    matchLabels:
+      app: titlis-ui
+  template:
+    metadata:
+      annotations:
+        ad.datadoghq.com/tags: '{"squad": "sre", "produto": "sre"}'
+      labels:
+        app: titlis-ui
+        tags.datadoghq.com/service: "titlis-ui"
+        tags.datadoghq.com/env: "production"
+    spec:
+      containers:
+      - name: titlis-ui
+        image: gcr.io/jeitto-backend/titlis-ui/main:latest
+        ports:
+        - containerPort: 80
+        resources:
+          limits:
+            memory: 256Mi
+            cpu: 200m
+          requests:
+            memory: 128Mi
+            cpu: 100m
+        env:
+        - name: API_UPSTREAM
+          value: "http://service-titlis-api"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: titlis-ui
+  namespace: titlis-system
+  annotations:
+    cloud.google.com/neg: '{"exposed_ports": {"80":{}}}'
+spec:
+  type: ClusterIP
+  selector:
+    app: titlis-ui
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 80
+---
+apiVersion: networking.gke.io/v1
+kind: GCPBackendPolicy
+metadata:
+  name: titlis-ui-backend-policy
+  namespace: titlis-system
+spec:
+  default:
+    logging:
+      enabled: true
+      sampleRate: 1000000
+  targetRef:
+    group: ""
+    kind: Service
+    name: titlis-ui
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: titlis-ui-hpa
+  namespace: titlis-system
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: titlis-ui
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 80
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
