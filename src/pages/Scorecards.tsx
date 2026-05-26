@@ -353,7 +353,7 @@ export function Scorecards() {
                               label="Abrir workload"
                               icon={ArrowRight}
                               className="mt-3"
-                              onClick={() => navigate(`/applications/${selectedWorkload.id}`)}
+                              onClick={() => navigate(`/scorecards/${selectedWorkload.id}`)}
                             />
                           </div>
                         </InlineAccordion>

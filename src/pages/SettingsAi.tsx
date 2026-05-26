@@ -177,18 +177,18 @@ export function SettingsAi() {
           </div>
         </Card>
 
-        {/* link para config de GitHub */}
+        {/* link para Integrações */}
         <Link
-          to="/settings/auto-remediation"
+          to="/settings/integrations"
           className="flex items-center justify-between rounded-2xl border px-4 py-3 transition-colors hover:opacity-80"
           style={{ borderColor: 'var(--color-border)', background: 'var(--color-card)' }}
         >
           <div>
             <p className="text-sm font-medium" style={{ color: 'var(--color-foreground)' }}>
-              Token GitHub e branch base
+              GitHub e Datadog
             </p>
             <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
-              Necessário para abertura de PRs de remediação — configurado em Auto-Remediação
+              Token GitHub para PRs de remediação · Credenciais Datadog para análise de incidentes
             </p>
           </div>
           <ArrowRight size={16} style={{ color: 'var(--color-muted-foreground)' }} />

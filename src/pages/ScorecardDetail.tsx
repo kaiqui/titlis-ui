@@ -63,8 +63,8 @@ export function ScorecardDetail() {
 
       <div className="flex-1 space-y-5 px-4 py-6 lg:px-8">
         <div className="flex flex-wrap gap-3">
-          <ButtonDefault label="Voltar para workloads" visual="secondary" icon={ArrowLeft} onClick={() => navigate('/applications')} />
-          <ButtonDefault label="Abrir aplicação" icon={ArrowRight} onClick={() => navigate(`/applications/${workload.id}`)} />
+          <ButtonDefault label="Voltar para scorecards" visual="secondary" icon={ArrowLeft} onClick={() => navigate('/scorecards')} />
+          <ButtonDefault label="Abrir aplicação" icon={ArrowRight} onClick={() => navigate(`/scorecards/${workload.id}`)} />
         </div>
 
         <SummaryStrip
@@ -190,7 +190,7 @@ export function ScorecardDetail() {
                   <p className="mt-1 text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
                     Use a página da aplicação para ver as falhas uma a uma e acompanhar a remediação.
                   </p>
-                  <ButtonDefault label="Ir para a aplicação" icon={ArrowRight} className="mt-3" onClick={() => navigate(`/applications/${workload.id}`)} />
+                  <ButtonDefault label="Ir para a aplicação" icon={ArrowRight} className="mt-3" onClick={() => navigate(`/scorecards/${workload.id}`)} />
                 </div>
               </div>
             </InlineAccordion>

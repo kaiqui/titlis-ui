@@ -15,8 +15,7 @@ import { FocusTabs } from '@/components/sre/FocusTabs'
 import { InlineAccordion } from '@/components/sre/InlineAccordion'
 import { SummaryStrip } from '@/components/sre/SummaryStrip'
 import { AiExplainDrawer } from '@/components/ai/AiExplainDrawer'
-import { ServiceDefinitionBadge } from '@/components/sre/ServiceDefinitionBadge'
-import { useScoreConfigOverrides, useServiceDefinitions, useWorkloadRemediation, useWorkloadScorecard } from '@/hooks/useApi'
+import { useScoreConfigOverrides, useWorkloadRemediation, useWorkloadScorecard } from '@/hooks/useApi'
 import { useAuth } from '@/contexts/useAuth'
 import { formatDate, formatEnum, severityColor, statusTone } from '@/lib/utils'
 import type { ScoreConfigOverride } from '@/lib/api'
@@ -51,7 +50,6 @@ export function ApplicationDetail({
   const [focus, setFocus] = useState<DetailFocus>('overview')
   const [explainFinding, setExplainFinding] = useState<Finding | null>(null)
   const { data: overrides = [] } = useScoreConfigOverrides()
-  const { data: serviceDefs = [] } = useServiceDefinitions()
 
   if (scorecardQuery.isLoading) return <><Header title="Detalhe do workload" /><PageLoading /></>
   if (scorecardQuery.error) {
@@ -81,9 +79,6 @@ export function ApplicationDetail({
   const disabledRuleIds = new Set(
     overrides.filter(o => !o.enabled && isOverrideApplicable(o, workload)).map(o => o.rule_id)
   )
-
-  const serviceDefMapping = serviceDefs.find(m => m.workloadName === workload.name)
-  const hasServiceDef = Boolean(serviceDefMapping)
 
   const activeFindings = workload.validationResults.filter(f => !disabledRuleIds.has(f.ruleId))
   const failedFindings = activeFindings.filter(item => !item.passed)
@@ -161,7 +156,6 @@ export function ApplicationDetail({
                   <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone(remediation?.status ?? workload.remediationStatus)}`}>
                     {formatEnum(remediation?.status ?? workload.remediationStatus)}
                   </span>
-                  <ServiceDefinitionBadge configured={hasServiceDef} repoUrl={serviceDefMapping?.repoUrl} />
                 </div>
                 <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
                   Visão executiva primeiro. O detalhe técnico abre por área de foco.

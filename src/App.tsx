@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from '@/contexts/ThemeContext'
 import { AuthProvider } from '@/contexts/AuthContext'
@@ -7,7 +7,6 @@ import { AuthGate } from '@/components/auth/AuthGate'
 import { Layout } from '@/components/layout/Layout'
 import { Dashboard } from '@/pages/Dashboard'
 import { Incidents } from '@/pages/Incidents'
-import { Applications } from '@/pages/Applications'
 import { ApplicationDetail } from '@/pages/ApplicationDetail'
 import { Scorecards } from '@/pages/Scorecards'
 import { ScorecardDetail } from '@/pages/ScorecardDetail'
@@ -17,15 +16,20 @@ import { Squads } from '@/pages/Squads'
 import { Login } from '@/pages/Login'
 import { LoginCallback } from '@/pages/LoginCallback'
 import { Onboarding } from '@/pages/Onboarding'
-import { SettingsAuth } from '@/pages/SettingsAuth'
 import { SettingsApiKeys } from '@/pages/SettingsApiKeys'
 import { SettingsAi } from '@/pages/SettingsAi'
 import { SettingsScoreConfig } from '@/pages/SettingsScoreConfig'
 import { SettingsTags } from '@/pages/SettingsTags'
 import { GettingStarted } from '@/pages/GettingStarted'
 import { AssistantPage } from '@/pages/AssistantPage'
-import { SettingsHpaTemplates } from '@/pages/SettingsHpaTemplates'
-import { SettingsAutoRemediation } from '@/pages/SettingsAutoRemediation'
+import { SettingsIntegrations } from '@/pages/SettingsIntegrations'
+import { Docs } from '@/pages/Docs'
+
+// Redireciona /applications/:id → /scorecards/:id (compat. com links externos / bookmarks)
+function RedirectById({ to }: { to: string }) {
+  const { id } = useParams<{ id: string }>()
+  return <Navigate to={`${to}/${id}`} replace />
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -61,6 +65,16 @@ export default function App() {
               <Route path="/login/callback" element={<LoginCallback />} />
               <Route path="/signup" element={<Onboarding />} />
               <Route path="/onboarding" element={<Navigate to="/signup" replace />} />
+
+              {/* Documentação pública — não requer autenticação */}
+              <Route path="/docs" element={<Docs />} />
+              <Route path="/docs/:slug" element={<Docs />} />
+
+              {/* Redirects de compatibilidade — /applications foi removido em favor de /scorecards */}
+              <Route path="/applications" element={<Navigate to="/scorecards" replace />} />
+              <Route path="/applications/:id" element={<RedirectById to="/scorecards" />} />
+              <Route path="/applications/:id/scorecard" element={<RedirectById to="/scorecards" />} />
+
               <Route
                 element={(
                   <AuthGate>
@@ -73,9 +87,7 @@ export default function App() {
                 <Route path="/incidents" element={<Incidents />} />
                 <Route path="/scorecards" element={<Scorecards />} />
                 <Route path="/scorecards/:id" element={<ApplicationDetail backPath="/scorecards" backLabel="Voltar para scorecards" showScorecardButton={false} />} />
-                <Route path="/applications" element={<Applications />} />
-                <Route path="/applications/:id" element={<ApplicationDetail backPath="/applications" backLabel="Voltar para workloads" showScorecardButton />} />
-                <Route path="/applications/:id/scorecard" element={<ScorecardDetail />} />
+                <Route path="/scorecards/:id/scorecard" element={<ScorecardDetail />} />
                 <Route path="/slos" element={<SLOs />} />
                 <Route
                   path="/recommendations"
@@ -88,30 +100,22 @@ export default function App() {
                 <Route path="/assistant" element={<AssistantPage />} />
                 <Route
                   path="/settings/hpa-templates"
-                  element={(
-                    <AuthGate requireAdmin>
-                      <SettingsHpaTemplates />
-                    </AuthGate>
-                  )}
+                  element={<Navigate to="/settings/score-config" replace />}
                 />
                 <Route
                   path="/settings/auto-remediation"
+                  element={<Navigate to="/settings/integrations" replace />}
+                />
+                <Route
+                  path="/settings/integrations"
                   element={(
                     <AuthGate requireAdmin>
-                      <SettingsAutoRemediation />
+                      <SettingsIntegrations />
                     </AuthGate>
                   )}
                 />
                 <Route path="/topology" element={<Squads />} />
                 <Route path="/squads" element={<Navigate to="/topology" replace />} />
-                <Route
-                  path="/settings/auth"
-                  element={(
-                    <AuthGate requireAdmin>
-                      <SettingsAuth />
-                    </AuthGate>
-                  )}
-                />
                 <Route
                   path="/settings/api-keys"
                   element={(

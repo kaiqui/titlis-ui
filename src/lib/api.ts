@@ -7,6 +7,7 @@ import type {
   SloListItem,
   SloLookupResult,
   WorkloadDetail,
+  WorkloadSLOCoverage,
   WorkloadSummary,
 } from '@/types'
 import {
@@ -120,6 +121,22 @@ interface ApiSloItem {
   detected_framework: string | null
   detection_source: string | null
   last_sync_at: string | null
+  sync_error?: string | null
+  auto_detect_framework?: boolean
+}
+
+interface ApiWorkloadSLOCoverage {
+  workload_id: string
+  name: string
+  k8s_uid: string | null
+  namespace: string
+  cluster: string
+  environment: string
+  slo_status: 'WITH_SLO' | 'CANDIDATE' | 'NO_DATADOG'
+  slo_config_id: string | null
+  datadog_slo_state: string | null
+  last_sync_at: string | null
+  dd_git_repository_url: string | null
 }
 
 interface ApiTenantAuthIntegration {
@@ -412,6 +429,24 @@ function mapSloListItem(item: ApiSloItem): SloListItem {
     detectedFramework: item.detected_framework,
     detectionSource: item.detection_source,
     lastSyncAt: item.last_sync_at,
+    syncError: item.sync_error ?? null,
+    autoDetectFramework: item.auto_detect_framework ?? false,
+  }
+}
+
+function mapWorkloadSLOCoverage(item: ApiWorkloadSLOCoverage): WorkloadSLOCoverage {
+  return {
+    workloadId: item.workload_id,
+    name: item.name,
+    k8sUid: item.k8s_uid,
+    namespace: item.namespace,
+    cluster: item.cluster,
+    environment: item.environment,
+    sloStatus: item.slo_status,
+    sloConfigId: item.slo_config_id,
+    datadogSloState: item.datadog_slo_state,
+    lastSyncAt: item.last_sync_at,
+    ddGitRepositoryUrl: item.dd_git_repository_url,
   }
 }
 
@@ -440,11 +475,13 @@ interface AiConfigApiResponse {
   provider: string
   model: string
   githubBaseBranch: string
+  githubAuthMode: string
   monthlyTokenBudget: number | null
   tokensUsedMonth: number
   isActive: boolean
   hasApiKey: boolean
   hasGithubToken: boolean
+  hasGithubApp: boolean
   updatedAt: string
 }
 
@@ -454,6 +491,10 @@ interface AiConfigUpsertPayload {
   apiKey?: string
   githubToken?: string
   githubBaseBranch?: string
+  githubAuthMode?: string
+  githubAppId?: string
+  githubAppPrivateKey?: string
+  githubAppInstallationId?: string
   monthlyTokenBudget?: number | null
 }
 
@@ -550,90 +591,6 @@ export interface SetWeightsPayload {
   updated_by?: string
 }
 
-export interface CampaignSummary {
-  id: string
-  tenantId: number
-  workflowId: string
-  actorEmail: string | null
-  triggerSource: string
-  ruleId: string | null
-  title: string
-  status: string
-  totalItems: number
-  succeededItems: number
-  failedItems: number
-  skippedItems: number
-  createdAt: string
-  updatedAt: string
-}
-
-export interface CreateCampaignPayload {
-  title: string
-  description?: string
-  workload_uids: string[]
-  rule_id?: string
-  cascade_up_to?: 'dev' | 'hml' | 'prd'
-  trigger_source: 'manual'
-  actor_email?: string | null
-  tenant_id?: number
-}
-
-export interface HpaTemplate {
-  id: number
-  tenantId: number
-  environment: string
-  criticality: string
-  minReplicas: number
-  maxReplicas: number
-  targetCpuPct: number
-  targetMemPct: number
-  updatedAt: string
-}
-
-export interface HpaTemplatePayload {
-  environment: string
-  criticality: string
-  min_replicas: number
-  max_replicas: number
-  target_cpu_pct: number
-  target_mem_pct?: number
-}
-
-export interface AutoRemediationPolicy {
-  tenant_id?: number
-  rule_id: string
-  environment: string | null
-  mode: 'disabled' | 'discovery_only' | 'open_pr' | 'auto_merge'
-  cascade_up_to: 'dev' | 'hml' | 'prd'
-  auto_merge_max_delta_pct?: number | null
-  require_pr_checks_green: boolean
-  max_prs_per_day: number
-}
-
-export type AutoRemediationPolicyPayload = AutoRemediationPolicy
-
-export interface GitopsProfile {
-  tenant_id?: number
-  repo_url: string
-  layout: 'folder_per_env'
-  base_branch: string
-  env_path_template: Record<string, string>
-  pipeline_watcher?: string | null
-  confirmed_at?: string | null
-}
-
-export interface GitopsProfilePayload {
-  repo_url: string
-  base_branch: string
-  env_path_template: Record<string, string>
-  pipeline_watcher?: string
-}
-
-interface ApiServiceDefinitionMapping {
-  workload_name: string
-  repo_url: string
-  last_synced_at: string
-}
 
 export interface ServiceDefinitionMapping {
   workloadName: string
@@ -645,6 +602,11 @@ export interface DatadogProbeResult {
   ok: boolean
   reason: string
   tenant_id: number
+}
+
+export interface DatadogConfigStatus {
+  configured: boolean
+  probeStatus: 'ok' | 'error' | 'not_configured'
 }
 
 type SseEvent = { type: string } & Record<string, unknown>
@@ -724,11 +686,13 @@ function mapAiConfig(item: AiConfigApiResponse): AiConfig {
     provider: item.provider,
     model: item.model,
     githubBaseBranch: item.githubBaseBranch,
+    githubAuthMode: item.githubAuthMode ?? 'pat',
     monthlyTokenBudget: item.monthlyTokenBudget,
     tokensUsedMonth: item.tokensUsedMonth,
     isActive: item.isActive,
     hasApiKey: item.hasApiKey,
     hasGithubToken: item.hasGithubToken,
+    hasGithubApp: item.hasGithubApp ?? false,
     updatedAt: item.updatedAt,
   }
 }
@@ -924,6 +888,16 @@ export const api = {
       })
       return response ? mapSloItem(namespace, name, response) : null
     },
+    proposeChange: async (sloConfigId: string, payload: { field: string; oldValue: string; newValue: string }): Promise<void> => {
+      await request(`/slos/${sloConfigId}/propose-change`, {
+        method: 'POST' as const,
+        body: payload,
+      })
+    },
+    coverage: async (): Promise<WorkloadSLOCoverage[]> => {
+      const res = await request<ApiWorkloadSLOCoverage[]>('/slos/coverage', { optional: true })
+      return (res ?? []).map(mapWorkloadSLOCoverage)
+    },
   },
   aiConfig: {
     get: async (): Promise<AiConfig | null> => {
@@ -937,6 +911,18 @@ export const api = {
       })
       if (!response) throw new Error('Não foi possível salvar a configuração.')
       return mapAiConfig(response)
+    },
+  },
+  datadogConfig: {
+    save: async (payload: { ddApiKey: string; ddAppKey?: string }): Promise<void> => {
+      await request('/settings/datadog', {
+        method: 'POST' as const,
+        body: payload,
+      })
+    },
+    status: async (): Promise<DatadogConfigStatus> => {
+      const res = await request<DatadogConfigStatus>('/settings/datadog/status', { optional: true })
+      return res ?? { configured: false, probeStatus: 'not_configured' }
     },
   },
   scoreConfig: {
@@ -1032,79 +1018,6 @@ export const api = {
     },
     delete: async (id: number): Promise<void> => {
       await request(`/settings/scoring/tag-policies/${id}`, { method: 'DELETE' as const })
-    },
-  },
-  campaigns: {
-    list: async (): Promise<CampaignSummary[]> => {
-      const res = await request<CampaignSummary[]>('/bulk-pr/campaigns', { optional: true })
-      return res ?? []
-    },
-    create: async (body: CreateCampaignPayload): Promise<CampaignSummary> => {
-      const res = await request<CampaignSummary>('/bulk-pr/campaigns', { method: 'POST', body })
-      if (!res) throw new Error('Não foi possível criar a campanha.')
-      return res
-    },
-    get: async (id: string): Promise<CampaignSummary | null> => {
-      return request<CampaignSummary>(`/bulk-pr/campaigns/${id}`, { optional: true })
-    },
-    cancel: async (id: string): Promise<void> => {
-      await request(`/bulk-pr/campaigns/${id}/cancel`, { method: 'POST' })
-    },
-    triggerManifest: async (): Promise<{ campaign_id: string; workflow_id: string } | null> => {
-      return request<{ campaign_id: string; workflow_id: string }>('/bulk-pr/manifest-campaigns', {
-        method: 'POST',
-        optional: true,
-      })
-    },
-  },
-  hpaTemplates: {
-    list: async (): Promise<HpaTemplate[]> => {
-      const res = await request<HpaTemplate[]>('/settings/hpa-templates', { optional: true })
-      return res ?? []
-    },
-    upsert: async (body: HpaTemplatePayload): Promise<HpaTemplate> => {
-      const res = await request<HpaTemplate>('/settings/hpa-templates', { method: 'PUT', body })
-      if (!res) throw new Error('Não foi possível salvar o template.')
-      return res
-    },
-  },
-  autoRemediation: {
-    list: async (): Promise<AutoRemediationPolicy[]> => {
-      const res = await request<AutoRemediationPolicy[]>('/settings/auto-remediation', { optional: true })
-      return res ?? []
-    },
-    update: async (body: AutoRemediationPolicyPayload): Promise<AutoRemediationPolicy> => {
-      const res = await request<AutoRemediationPolicy>('/settings/auto-remediation', { method: 'PUT', body })
-      if (!res) throw new Error('Não foi possível atualizar a política.')
-      return res
-    },
-  },
-  gitopsProfiles: {
-    list: async (): Promise<GitopsProfile[]> => {
-      const res = await request<GitopsProfile[]>('/settings/gitops-profiles', { optional: true })
-      return res ?? []
-    },
-    upsert: async (body: GitopsProfilePayload): Promise<GitopsProfile> => {
-      const res = await request<GitopsProfile>('/settings/gitops-profiles', { method: 'PUT', body })
-      if (!res) throw new Error('Não foi possível salvar o perfil.')
-      return res
-    },
-  },
-  serviceDefinitions: {
-    list: async (): Promise<ServiceDefinitionMapping[]> => {
-      const res = await request<{ items: ApiServiceDefinitionMapping[] }>('/bulk-pr/service-definitions', { optional: true })
-      return (res?.items ?? []).map(m => ({
-        workloadName: m.workload_name,
-        repoUrl: m.repo_url,
-        lastSyncedAt: m.last_synced_at,
-      }))
-    },
-  },
-  datadogProbe: {
-    run: async (): Promise<DatadogProbeResult> => {
-      const res = await request<DatadogProbeResult>('/insights/datadog/probe')
-      if (!res) throw new Error('Não foi possível verificar as credenciais.')
-      return res
     },
   },
   ai: {

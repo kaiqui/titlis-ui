@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Bot, ChevronRight, Clock, Loader2, Send, ShieldOff } from 'lucide-react'
+import { Bot, ChevronDown, ChevronRight, ChevronUp, Clock, Loader2, Send, ShieldOff, Sparkles } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { Header } from '@/components/layout/Header'
@@ -21,6 +21,7 @@ interface Message {
   id: string
   role: MessageRole
   content?: string
+  thinking?: string
   proposals?: ToolProposal[]
   toolResults?: ToolResult[]
 }
@@ -80,6 +81,7 @@ export function AssistantPage() {
   const [pendingSessionId, setPendingSessionId] = useState<string | null>(null)
   const [auditOpen, setAuditOpen] = useState(false)
   const [auditLog, setAuditLog] = useState<AuditEntry[]>([])
+  const [openThinking, setOpenThinking] = useState<Set<string>>(new Set())
   const sessionId = useRef(getOrCreateSessionId())
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -124,12 +126,18 @@ export function AssistantPage() {
     try {
       const stream = api.ai.agentChat(sessionId.current, msg)
       let assistantText = ''
+      let thinkingText = ''
       let gotProposals = false
 
+      let thinkingOpened = false
       for await (const event of stream) {
         if (event.type === 'thinking' && typeof event.content === 'string') {
-          assistantText += event.content
-          updateLastMessage(m => ({ ...m, content: assistantText }))
+          thinkingText += event.content
+          updateLastMessage(m => ({ ...m, thinking: thinkingText }))
+          if (!thinkingOpened) {
+            thinkingOpened = true
+            setOpenThinking(prev => new Set([...prev, assistantMsg.id]))
+          }
         } else if (event.type === 'message' && typeof event.content === 'string') {
           assistantText = event.content
           updateLastMessage(m => ({ ...m, content: assistantText }))
@@ -149,7 +157,9 @@ export function AssistantPage() {
           updateLastMessage(m => ({ ...m, role: 'error', content: friendlyAiError(String(event.error ?? '')) }))
         } else if (event.type === 'done') {
           if (!assistantText && !gotProposals) {
-            setMessages(prev => prev.filter(m => m.id !== assistantMsg.id))
+            setMessages(prev => prev.filter(m =>
+              m.id !== assistantMsg.id || m.role !== 'assistant' || !!m.content || !!m.thinking
+            ))
           }
         }
       }
@@ -177,12 +187,14 @@ export function AssistantPage() {
       }
     })
 
-    appendMessage({ role: 'assistant', content: '' })
+    const followUpMsg = appendMessage({ role: 'assistant', content: '' })
     const resultsMsg = appendMessage({ role: 'tool_results', toolResults: [] })
 
     try {
       const stream = api.ai.agentToolsRespond(pendingSessionId, decisionsPayload)
       let assistantText = ''
+      let thinkingText = ''
+      let thinkingOpened = false
       const toolResults: ToolResult[] = []
       let gotNewProposals = false
 
@@ -197,8 +209,12 @@ export function AssistantPage() {
           toolResults.push(r)
           setMessages(prev => prev.map(m => m.id === resultsMsg.id ? { ...m, toolResults: [...toolResults] } : m))
         } else if (event.type === 'thinking' && typeof event.content === 'string') {
-          assistantText += event.content
-          updateLastMessage(m => m.role === 'assistant' ? { ...m, content: assistantText } : m)
+          thinkingText += event.content
+          updateLastMessage(m => m.role === 'assistant' ? { ...m, thinking: thinkingText } : m)
+          if (!thinkingOpened) {
+            thinkingOpened = true
+            setOpenThinking(prev => new Set([...prev, followUpMsg.id]))
+          }
         } else if (event.type === 'message' && typeof event.content === 'string') {
           assistantText = event.content
           updateLastMessage(m => m.role === 'assistant' ? { ...m, content: assistantText } : m)
@@ -236,6 +252,15 @@ export function AssistantPage() {
 
   const handleReject = (proposalId: string) => {
     setDecisions(prev => ({ ...prev, [proposalId]: { approved: false, args: {} } }))
+  }
+
+  const toggleThinking = (id: string) => {
+    setOpenThinking(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
   }
 
   const decisionFor = (proposalId: string): Decision => {
@@ -318,11 +343,43 @@ export function AssistantPage() {
                   </div>
                 )}
 
-                {msg.role === 'assistant' && msg.content && (
-                  <div className="max-w-[85%] rounded-3xl rounded-bl-lg px-5 py-3 text-sm" style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}>
-                    <div className="prose prose-sm max-w-none dark:prose-invert">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
-                    </div>
+                {msg.role === 'assistant' && (msg.content || msg.thinking) && (
+                  <div className="max-w-[85%] space-y-1.5">
+                    {msg.thinking && (
+                      <div className="rounded-2xl overflow-hidden" style={{ border: '1px solid var(--color-border)' }}>
+                        <button
+                          type="button"
+                          onClick={() => toggleThinking(msg.id)}
+                          className="flex w-full items-center gap-2 px-4 py-2 text-xs transition-colors hover:opacity-80"
+                          style={{ backgroundColor: 'rgba(var(--color-primary-rgb,99,102,241),0.06)', color: 'var(--color-muted-foreground)' }}
+                        >
+                          <Sparkles size={11} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
+                          <span className="font-medium">Raciocínio da ARIA</span>
+                          <span className="ml-auto">
+                            {openThinking.has(msg.id)
+                              ? <ChevronUp size={12} />
+                              : <ChevronDown size={12} />}
+                          </span>
+                        </button>
+                        {openThinking.has(msg.id) && (
+                          <div
+                            className="max-h-64 overflow-y-auto px-4 py-3 text-xs leading-relaxed"
+                            style={{ backgroundColor: 'var(--app-background)', color: 'var(--color-muted-foreground)', borderTop: '1px solid var(--color-border)' }}
+                          >
+                            <div className="prose prose-xs max-w-none dark:prose-invert" style={{ color: 'var(--color-muted-foreground)' }}>
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.thinking}</ReactMarkdown>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {msg.content && (
+                      <div className="rounded-3xl rounded-bl-lg px-5 py-3 text-sm" style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}>
+                        <div className="prose prose-sm max-w-none dark:prose-invert">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -390,14 +447,22 @@ export function AssistantPage() {
               </div>
             ))}
 
-            {loading && (
-              <div className="flex justify-start">
-                <div className="flex items-center gap-2 rounded-3xl rounded-bl-lg px-5 py-3" style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}>
-                  <Loader2 size={14} className="animate-spin" style={{ color: 'var(--color-primary)' }} />
-                  <span className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>Pensando...</span>
+            {loading && (() => {
+              const lastMsg = messages[messages.length - 1]
+              const isThinking = lastMsg?.role === 'assistant' && !!lastMsg.thinking && !lastMsg.content
+              return (
+                <div className="flex justify-start">
+                  <div className="flex items-center gap-2 rounded-3xl rounded-bl-lg px-5 py-3" style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}>
+                    {isThinking
+                      ? <Sparkles size={14} className="animate-pulse" style={{ color: 'var(--color-primary)' }} />
+                      : <Loader2 size={14} className="animate-spin" style={{ color: 'var(--color-primary)' }} />}
+                    <span className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
+                      {isThinking ? 'Analisando...' : 'Pensando...'}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            )}
+              )
+            })()}
 
             <div ref={bottomRef} />
           </div>

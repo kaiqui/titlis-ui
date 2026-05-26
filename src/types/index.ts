@@ -36,11 +36,13 @@ export interface AiConfig {
   provider: string
   model: string
   githubBaseBranch: string
+  githubAuthMode: string
   monthlyTokenBudget: number | null
   tokensUsedMonth: number
   isActive: boolean
   hasApiKey: boolean
   hasGithubToken: boolean
+  hasGithubApp: boolean
   updatedAt: string
 }
 
@@ -97,6 +99,24 @@ export interface SloListItem extends SloLookupResult {
   cluster: string
   environment: string
   warning: number | null
+  syncError: string | null
+  autoDetectFramework: boolean
+}
+
+export type SloStatus = 'WITH_SLO' | 'CANDIDATE' | 'NO_DATADOG'
+
+export interface WorkloadSLOCoverage {
+  workloadId: string
+  name: string
+  k8sUid: string | null
+  namespace: string
+  cluster: string
+  environment: string
+  sloStatus: SloStatus
+  sloConfigId: string | null
+  datadogSloState: string | null
+  lastSyncAt: string | null
+  ddGitRepositoryUrl: string | null
 }
 
 export interface PlatformSummary {

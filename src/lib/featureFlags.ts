@@ -5,8 +5,7 @@
 //   Sidebar — nav_incidents, nav_applications, nav_scorecards, nav_slos,
 //             nav_topology, nav_recommendations, nav_assistant,
 //             nav_settings_api_keys, nav_settings_auth, nav_settings_ai,
-//             nav_settings_score_config, nav_settings_hpa_templates,
-//             nav_settings_auto_remediation, nav_settings_tags
+//             nav_settings_score_config, nav_settings_auto_remediation, nav_settings_tags
 //
 //   Botões — btn_remediate        (Corrigir com ARIA — ApplicationDetail)
 //            btn_create_api_key   (Criar — SettingsApiKeys)

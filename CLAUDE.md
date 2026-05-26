@@ -77,11 +77,11 @@ src/
 │   │   └── ApiStatus.tsx
 │   ├── molecule/            # Componentes compostos: accordion, carousel, tabs, forms
 │   ├── sre/                 # Componentes específicos de SRE
-│   │   ├── DetailPanel.tsx  # Painel lateral de detalhes
-│   │   ├── FocusTabs.tsx    # Tabs de foco (incidentes/workloads/remediação/cobertura)
+│   │   ├── DetailPanel.tsx      # Painel lateral de detalhes
+│   │   ├── FocusTabs.tsx        # Tabs de foco (incidentes/workloads/remediação/cobertura)
 │   │   ├── InlineAccordion.tsx
 │   │   ├── SelectionList.tsx
-│   │   └── SummaryStrip.tsx # Faixa de métricas resumo
+│   │   └── SummaryStrip.tsx     # Faixa de métricas resumo
 │   └── sections/            # Seções de página (carousel, forms, imagens)
 │
 ├── contexts/
@@ -129,9 +129,15 @@ src/
 | `/applications/:id/scorecard` | ScorecardDetail | sim | não | Scorecard de workload |
 | `/slos` | SLOs | sim | não | Catálogo de SLOs |
 | `/assistant` | AssistantPage | sim | não* | Agente IA conversacional com aprovação de tools |
-| `/recommendations` | Recommendations | sim | **sim** | Fila de remediação |
+| `/recommendations` | Recommendations | sim | **sim** | Fila de remediação (PRs unitários via ARIA) |
 | `/topology` | Squads | sim | não | Topologia de squads |
 | `/settings/auth` | SettingsAuth | sim | **sim** | Config de providers OIDC |
+| `/settings/ai` | SettingsAi | sim | **sim** | Provedor LLM + modelo + API key do tenant |
+| `/settings/integrations` | SettingsIntegrations | sim | **sim** | GitHub token (PRs) + credenciais Datadog (análise de incidente) |
+| `/settings/score-config` | SettingsScoreConfig | sim | **sim** | Regras + overrides + pesos de scoring |
+| `/settings/tags` | SettingsTags | sim | **sim** | Tags de recursos |
+| `/settings/api-keys` | SettingsApiKeys | sim | **sim** | API keys para o operator |
+| `/settings/auto-remediation` | — | — | — | **Removido** → redireciona para `/settings/integrations` |
 
 **Proteção de rotas:** `<AuthGate>` em torno de todas as rotas autenticadas.
 `<AuthGate requireAdmin>` para admin-only (redireciona para `/` se não for admin).
@@ -216,8 +222,23 @@ api.apiKeys.create(description?)
 api.apiKeys.revoke(id)
 api.apiKeys.connectionStatus()
   // → { connected: boolean, lastEventAt: string | null, activeKeyCount: number }
-  // connected=true quando ao menos uma chave do tenant foi usada pelo operator
+
+api.aiConfig.get()          // → AiConfig | null  (hasApiKey, hasGithubToken, tokensUsedMonth, ...)
+api.aiConfig.upsert(payload) // salva provider, model, apiKey, githubToken, githubBaseBranch, monthlyTokenBudget
+
+api.datadogConfig.save({ ddApiKey, ddAppKey? })  // POST /settings/datadog
+api.datadogConfig.status()                        // → { configured: boolean, probeStatus: string }
+
+api.ai.agentChat(sessionId, message)              // → AsyncGenerator<SSE events>
+api.ai.agentToolsRespond(sessionId, decisions)    // → AsyncGenerator<SSE events>
+api.ai.explainStream(workloadId, ruleId, body)    // → AsyncGenerator<SSE events>
+api.ai.remediateStream(workloadId, body)          // → AsyncGenerator<SSE events>
+api.ai.confirmRemediation(threadId, approved)     // → AsyncGenerator<SSE events>
 ```
+
+**Namespaces removidos (não usar):** `api.campaigns`, `api.autoRemediation`,
+`api.gitopsProfiles`, `api.serviceDefinitions`, `api.datadogProbe` — foram arquivados
+junto com titlis-prbot e titlis-insights.
 
 ### React Query hooks (`src/hooks/useApi.ts`)
 ```typescript
@@ -226,6 +247,8 @@ useWorkloadScorecard(id)
 useWorkloadRemediation(id)
 useSloCatalog(namespace?, cluster?)
 useSloLookup(namespace, name, enabled)
+useAiConfig()                        // queryKey: ['ai-config'], staleTime: 30s
+// Para status do Datadog: useQuery({ queryKey: ['datadog-config-status'], queryFn: api.datadogConfig.status })
 ```
 
 ---

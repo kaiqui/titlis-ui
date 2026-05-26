@@ -1,82 +1,256 @@
-import { useEffect, useMemo, useState } from 'react'
-import { ExternalLink, GitPullRequest, Search, ShieldAlert, Siren, User } from 'lucide-react'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import {
+  AlertCircle,
+  AlertTriangle,
+  ArrowRight,
+  ChevronDown,
+  ChevronUp,
+  GitPullRequest,
+  Info,
+  MessageSquare,
+  RotateCcw,
+  Search,
+  Siren,
+} from 'lucide-react'
 import { Header } from '@/components/layout/Header'
-import { ButtonDefault } from '@/components/jeitto/ButtonDefault'
 import { Card } from '@/components/jeitto/Card'
 import { EmptyState } from '@/components/jeitto/EmptyState'
 import { Input } from '@/components/jeitto/Input'
 import { PageError, PageLoading } from '@/components/jeitto/PageState'
-import { DetailPanel } from '@/components/sre/DetailPanel'
+import { ScoreBadge } from '@/components/jeitto/ScoreBadge'
 import { FocusTabs } from '@/components/sre/FocusTabs'
-import { InlineAccordion } from '@/components/sre/InlineAccordion'
-import { SelectionList } from '@/components/sre/SelectionList'
 import { SummaryStrip } from '@/components/sre/SummaryStrip'
 import { useDashboardWorkloads } from '@/hooks/useApi'
-import { buildIncidents } from '@/lib/incidents'
-import { formatDate, formatEnum, statusTone } from '@/lib/utils'
+import { formatEnum } from '@/lib/utils'
 import { useAuth } from '@/contexts/useAuth'
+import type { WorkloadSummary } from '@/types'
+import { cn } from '@/lib/utils'
 
-type IncidentFilter = 'all' | 'active' | 'critical' | 'unassigned'
-type IncidentFocus = 'overview' | 'impact' | 'actions'
+type DegradacaoFilter = 'criticos' | 'alta' | 'remediando' | 'todos'
 
-function severityTone(severity: string) {
-  if (severity === 'critical') return 'bg-red-500/10 text-red-600 dark:text-red-400'
-  if (severity === 'high') return 'jc-badge-attention'
-  if (severity === 'medium') return 'jc-badge-good'
-  return 'bg-slate-500/10 text-slate-500'
+function scoreToSeverity(score: number | null): 'critical' | 'high' | 'medium' | 'low' {
+  if (score === null || score < 60) return 'critical'
+  if (score < 75) return 'high'
+  if (score < 85) return 'medium'
+  return 'low'
+}
+
+function SeverityIcon({ severity }: { severity: ReturnType<typeof scoreToSeverity> }) {
+  if (severity === 'critical') return <AlertCircle size={14} style={{ color: '#dc2626', flexShrink: 0 }} />
+  if (severity === 'high') return <AlertTriangle size={14} style={{ color: '#d97706', flexShrink: 0 }} />
+  if (severity === 'medium') return <AlertTriangle size={14} style={{ color: '#ca8a04', flexShrink: 0 }} />
+  return <Info size={14} style={{ color: '#6b7280', flexShrink: 0 }} />
+}
+
+function remediationBadge(status: string | null) {
+  if (!status) return null
+  const s = status.toUpperCase()
+  if (s.includes('OPEN') || s.includes('PR_OPEN')) {
+    return { label: 'PR aberto', color: '#2563eb', bg: 'rgba(239,246,255,0.9)', border: 'rgba(59,130,246,0.3)' }
+  }
+  if (s.includes('IN_PROGRESS') || s.includes('PROGRESS')) {
+    return { label: 'Corrigindo', color: '#7c3aed', bg: 'rgba(245,243,255,0.9)', border: 'rgba(124,58,237,0.3)' }
+  }
+  if (s.includes('PENDING')) {
+    return { label: 'Pendente', color: '#d97706', bg: 'rgba(255,251,235,0.9)', border: 'rgba(245,158,11,0.3)' }
+  }
+  if (s.includes('MERGED') || s.includes('DONE') || s.includes('COMPLETED')) {
+    return { label: 'Corrigido', color: '#16a34a', bg: 'rgba(240,253,244,0.9)', border: 'rgba(34,197,94,0.3)' }
+  }
+  return null
+}
+
+function WorkloadCard({ workload, canRemediate }: { workload: WorkloadSummary; canRemediate: boolean }) {
+  const navigate = useNavigate()
+  const [expanded, setExpanded] = useState(false)
+  const severity = scoreToSeverity(workload.overallScore)
+  const remedBadge = remediationBadge(workload.remediationStatus)
+
+  const severityBorderColor: Record<string, string> = {
+    critical: 'rgba(220,38,38,0.18)',
+    high: 'rgba(217,119,6,0.18)',
+    medium: 'rgba(202,138,4,0.12)',
+    low: 'var(--color-border)',
+  }
+
+  return (
+    <div
+      className="rounded-[1.6rem] border overflow-hidden transition-all"
+      style={{ borderColor: severityBorderColor[severity], background: 'var(--color-card)' }}
+    >
+      {/* Header clicável */}
+      <button
+        type="button"
+        className="w-full text-left"
+        onClick={() => setExpanded(v => !v)}
+      >
+        <div className="flex items-center gap-3 px-5 py-4">
+          <SeverityIcon severity={severity} />
+
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-semibold text-sm truncate" style={{ color: 'var(--color-foreground)' }}>
+                {workload.name}
+              </span>
+              {remedBadge && (
+                <span
+                  className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                  style={{ color: remedBadge.color, background: remedBadge.bg, border: `1px solid ${remedBadge.border}` }}
+                >
+                  {remedBadge.label}
+                </span>
+              )}
+            </div>
+            <p className="mt-0.5 text-xs truncate" style={{ color: 'var(--color-muted-foreground)' }}>
+              {workload.namespace} · {workload.cluster} · {formatEnum(workload.environment)}
+            </p>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-3">
+            <ScoreBadge score={workload.overallScore} />
+            <span style={{ color: 'var(--color-muted-foreground)' }}>
+              {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            </span>
+          </div>
+        </div>
+      </button>
+
+      {/* Conteúdo expandido */}
+      {expanded && (
+        <div
+          className="border-t px-5 py-4 space-y-4"
+          style={{ borderColor: 'var(--color-border)', background: 'var(--app-background)' }}
+        >
+          {/* Métricas rápidas */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="rounded-xl p-3" style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)' }}>
+              <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--color-muted-foreground)' }}>Conformidade</p>
+              <p className="mt-1 text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>
+                {formatEnum(workload.complianceStatus ?? 'unknown')}
+              </p>
+            </div>
+            <div className="rounded-xl p-3" style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)' }}>
+              <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--color-muted-foreground)' }}>Prioridade</p>
+              <p className="mt-1 text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>
+                {severity === 'critical' ? 'Crítica' : severity === 'high' ? 'Alta' : severity === 'medium' ? 'Média' : 'Baixa'}
+              </p>
+            </div>
+            <div className="rounded-xl p-3 col-span-2 sm:col-span-1" style={{ background: 'var(--color-card)', border: '1px solid var(--color-border)' }}>
+              <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--color-muted-foreground)' }}>Remediação</p>
+              <p className="mt-1 text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>
+                {workload.remediationStatus ? formatEnum(workload.remediationStatus) : 'Sem ação aberta'}
+              </p>
+            </div>
+          </div>
+
+          {/* Sugestão de ação baseada no estado */}
+          <div
+            className="rounded-xl px-4 py-3 text-sm"
+            style={{ background: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}
+          >
+            {severity === 'critical'
+              ? '⚡ Score crítico — abra remediação imediatamente ou use a ARIA para diagnóstico.'
+              : severity === 'high'
+                ? '⚠ Prioridade alta — analise os findings e planeje correção no próximo ciclo.'
+                : workload.remediationStatus
+                  ? '🔄 Correção em andamento — acompanhe o PR e valide o rollout.'
+                  : '📋 Workload abaixo do esperado — revise os scorecards para identificar melhorias.'}
+          </div>
+
+          {/* Ações */}
+          <div className="flex flex-wrap gap-2">
+            {canRemediate && (
+              <button
+                type="button"
+                className={cn(
+                  'flex items-center gap-2 rounded-2xl px-4 py-2 text-xs font-semibold transition-opacity hover:opacity-85',
+                  severity === 'critical' ? '' : 'opacity-90',
+                )}
+                style={{ background: 'var(--color-primary)', color: '#fff' }}
+                onClick={() => navigate('/assistant', {
+                  state: {
+                    workloadId: workload.id,
+                    workloadName: workload.name,
+                    namespace: workload.namespace,
+                    findingIds: [],
+                  },
+                })}
+              >
+                <MessageSquare size={12} />
+                Corrigir com IA
+              </button>
+            )}
+            <button
+              type="button"
+              className="flex items-center gap-2 rounded-2xl px-4 py-2 text-xs font-semibold transition-opacity hover:opacity-80"
+              style={{ background: 'var(--color-muted)', color: 'var(--color-foreground)', border: '1px solid var(--color-border)' }}
+              onClick={() => navigate(`/scorecards/${workload.id}`)}
+            >
+              <ArrowRight size={12} />
+              Ver scorecard
+            </button>
+            {workload.githubPrUrl && (
+              <a href={workload.githubPrUrl} target="_blank" rel="noreferrer">
+                <button
+                  type="button"
+                  className="flex items-center gap-2 rounded-2xl px-4 py-2 text-xs font-semibold transition-opacity hover:opacity-80"
+                  style={{ background: 'var(--color-muted)', color: 'var(--color-foreground)', border: '1px solid var(--color-border)' }}
+                >
+                  <GitPullRequest size={12} />
+                  Abrir PR
+                </button>
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export function Incidents() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState<IncidentFilter>('active')
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [focus, setFocus] = useState<IncidentFocus>('overview')
+  const [filter, setFilter] = useState<DegradacaoFilter>('todos')
   const { data: workloads, isLoading, error, refetch } = useDashboardWorkloads()
+
+  const canRemediate = Boolean(user?.canRemediate)
   const workloadList = workloads ?? []
-  const incidents = buildIncidents(workloadList)
 
-  const filtered = incidents.filter(item => {
+  // Apenas workloads que precisam de atenção
+  const degradados = workloadList
+    .filter(w => w.complianceStatus === 'NON_COMPLIANT' || w.remediationStatus !== null)
+    .sort((a, b) => (a.overallScore ?? -1) - (b.overallScore ?? -1))
+
+  const counts = {
+    criticos: degradados.filter(w => scoreToSeverity(w.overallScore) === 'critical').length,
+    alta: degradados.filter(w => scoreToSeverity(w.overallScore) === 'high').length,
+    remediando: degradados.filter(w => w.remediationStatus !== null).length,
+    todos: degradados.length,
+  }
+
+  const filtered = degradados.filter(w => {
     const term = search.trim().toLowerCase()
-    const matchesTerm = term.length === 0
-      || item.title.toLowerCase().includes(term)
-      || item.service.toLowerCase().includes(term)
-      || item.namespace.toLowerCase().includes(term)
+    const matchesTerm = !term
+      || w.name.toLowerCase().includes(term)
+      || w.namespace.toLowerCase().includes(term)
+      || w.cluster.toLowerCase().includes(term)
 
-    const matchesFilter = filter === 'all'
-      || (filter === 'active' && item.status !== 'mitigated')
-      || (filter === 'critical' && item.severity === 'critical')
-      || (filter === 'unassigned' && item.owner === 'plataforma')
+    const matchesFilter = filter === 'todos'
+      || (filter === 'criticos' && scoreToSeverity(w.overallScore) === 'critical')
+      || (filter === 'alta' && scoreToSeverity(w.overallScore) === 'high')
+      || (filter === 'remediando' && w.remediationStatus !== null)
 
     return matchesTerm && matchesFilter
   })
-
-  useEffect(() => {
-    if (filtered.length === 0) {
-      if (selectedId !== null) setSelectedId(null)
-      return
-    }
-
-    if (!selectedId || !filtered.some(item => item.id === selectedId)) {
-      setSelectedId(filtered[0].id)
-      setFocus('overview')
-    }
-  }, [filtered, selectedId])
-
-  const selected = filtered.find(item => item.id === selectedId) ?? null
-  const canExecuteRemediation = Boolean(user?.canRemediate)
-  const summary = useMemo(() => ({
-    active: incidents.filter(item => item.status !== 'mitigated').length,
-    critical: incidents.filter(item => item.severity === 'critical').length,
-    services: new Set(incidents.map(item => item.service)).size,
-    unassigned: incidents.filter(item => item.owner === 'plataforma').length,
-  }), [incidents])
 
   if (isLoading) return <><Header title="Degradações" /><PageLoading /></>
   if (error || !workloads) {
     return (
       <>
-        <Header title="Degradações" />
+        <Header title="Degradações" subtitle="Aplicações que precisam de atenção imediata." />
         <PageError message={error instanceof Error ? error.message : undefined} onRetry={() => void refetch()} />
       </>
     )
@@ -84,15 +258,18 @@ export function Incidents() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Header title="Degradações" subtitle="Fila operacional com foco por degradação e detalhe no mesmo contexto." />
+      <Header
+        title="Degradações"
+        subtitle="Aplicações abaixo do esperado — ordenadas por prioridade."
+      />
 
       <div className="flex-1 space-y-5 px-4 py-6 lg:px-8">
         <SummaryStrip
           items={[
-            { label: 'Ativos', value: summary.active, helper: 'pedem atenção agora' },
-            { label: 'Críticos', value: summary.critical, helper: 'maior risco' },
-            { label: 'Serviços', value: summary.services, helper: 'impactados' },
-            { label: 'Sem owner', value: summary.unassigned, helper: 'pedem atribuição' },
+            { label: 'Críticos', value: counts.criticos, helper: 'score < 60' },
+            { label: 'Alta prioridade', value: counts.alta, helper: 'score < 75' },
+            { label: 'Corrigindo', value: counts.remediando, helper: 'remediação ativa' },
+            { label: 'Total', value: counts.todos, helper: 'precisam de atenção' },
           ]}
         />
 
@@ -100,18 +277,18 @@ export function Incidents() {
           <div className="grid gap-4 xl:grid-cols-[1.2fr_auto]">
             <Input
               value={search}
-              onChange={event => setSearch(event.target.value)}
-              placeholder="Buscar por incidente, serviço ou namespace"
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Buscar por nome, namespace ou cluster"
               icon={Search}
             />
             <FocusTabs
               active={filter}
-              onChange={id => setFilter(id as IncidentFilter)}
+              onChange={id => setFilter(id as DegradacaoFilter)}
               items={[
-                { id: 'active', label: 'Ativos', count: summary.active },
-                { id: 'critical', label: 'Críticos', count: summary.critical },
-                { id: 'unassigned', label: 'Sem owner', count: summary.unassigned },
-                { id: 'all', label: 'Todos', count: incidents.length },
+                { id: 'todos', label: 'Todos', count: counts.todos },
+                { id: 'criticos', label: 'Críticos', count: counts.criticos },
+                { id: 'alta', label: 'Alta prior.', count: counts.alta },
+                { id: 'remediando', label: 'Corrigindo', count: counts.remediando },
               ]}
             />
           </div>
@@ -119,157 +296,42 @@ export function Incidents() {
 
         {filtered.length === 0 ? (
           <Card>
-            <EmptyState icon={Siren} title="Nenhuma degradação neste recorte" description="Ajuste o filtro ou a busca." />
+            {degradados.length === 0 ? (
+              <EmptyState
+                icon={Siren}
+                title="Nenhuma degradação encontrada"
+                description="Todos os workloads estão em conformidade. Bom trabalho!"
+              />
+            ) : (
+              <EmptyState
+                icon={RotateCcw}
+                title="Nenhum resultado neste filtro"
+                description="Tente outro filtro ou limpe a busca."
+              />
+            )}
           </Card>
         ) : (
-          <section className="grid gap-4 xl:grid-cols-[23rem_minmax(0,1fr)]">
-            <Card className="h-full">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--color-muted-foreground)' }}>
-                    Fila ativa
-                  </p>
-                  <p className="mt-1 text-sm font-semibold" style={{ color: 'var(--color-foreground)' }}>
-                    {filtered.length} degradações
-                  </p>
-                </div>
-                <span className="rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
-                  {formatEnum(filter)}
-                </span>
-              </div>
-
-              <div className="mt-4">
-                <SelectionList
-                  items={filtered.map(item => ({
-                    id: item.id,
-                    title: item.title,
-                    subtitle: `${item.namespace} · ${item.cluster} · ${formatDate(item.startedAt)}`,
-                    badges: (
-                      <>
-                        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${severityTone(item.severity)}`}>{formatEnum(item.severity)}</span>
-                        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone(item.status)}`}>{formatEnum(item.status)}</span>
-                      </>
-                    ),
-                    meta: <span className="text-xs font-semibold" style={{ color: 'var(--color-muted-foreground)' }}>{item.owner}</span>,
-                  }))}
-                  activeId={selected?.id ?? null}
-                  onSelect={id => {
-                    setSelectedId(id)
-                    setFocus('overview')
-                  }}
-                />
-              </div>
-            </Card>
-
-            {selected && (
-              <div className="space-y-4">
-                <Card>
-                  <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-lg font-black tracking-tight" style={{ color: 'var(--color-foreground)' }}>{selected.title}</p>
-                        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${severityTone(selected.severity)}`}>{formatEnum(selected.severity)}</span>
-                        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone(selected.status)}`}>{formatEnum(selected.status)}</span>
-                      </div>
-                      <p className="mt-2 text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
-                        {selected.service} · {selected.namespace} · {selected.cluster}
-                      </p>
-                    </div>
-
-                    <FocusTabs
-                      active={focus}
-                      onChange={id => setFocus(id as IncidentFocus)}
-                      items={[
-                        { id: 'overview', label: 'Resumo' },
-                        { id: 'impact', label: 'Impacto', count: selected.evidence.length },
-                        { id: 'actions', label: 'Ações', count: selected.actions.length },
-                      ]}
-                    />
-                  </div>
-                </Card>
-
-                {focus === 'overview' && (
-                  <DetailPanel
-                    title="Resumo da degradação"
-                    subtitle="Contexto curto para triagem rápida."
-                    headerMeta={<span className="rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>{selected.owner}</span>}
-                  >
-                    <div className="grid gap-3 md:grid-cols-4">
-                      <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Status</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{formatEnum(selected.status)}</p></Card>
-                      <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Owner</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{selected.owner}</p></Card>
-                      <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Início</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{formatDate(selected.startedAt)}</p></Card>
-                      <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Score</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{selected.score === null ? 'N/D' : selected.score.toFixed(1)}</p></Card>
-                    </div>
-
-                    <InlineAccordion title="Resumo" defaultOpen>
-                      <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>{selected.summary}</p>
-                    </InlineAccordion>
-
-                    <InlineAccordion title="Próximo passo">
-                      <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
-                        Priorize owner, confirme o impacto e só depois desça para sinais e trilha de correção.
-                      </p>
-                    </InlineAccordion>
-                  </DetailPanel>
-                )}
-
-                {focus === 'impact' && (
-                  <DetailPanel title="Impacto e evidências" subtitle="Sinais técnicos e leitura do alcance do incidente.">
-                    <InlineAccordion title="Impacto" defaultOpen>
-                      <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>{selected.impact}</p>
-                    </InlineAccordion>
-
-                    <InlineAccordion title="Evidências">
-                      <div className="space-y-2">
-                        {selected.evidence.map(item => (
-                          <div key={item} className="rounded-2xl px-3 py-2" style={{ backgroundColor: 'var(--color-muted)' }}>
-                            <p className="text-sm" style={{ color: 'var(--color-foreground)' }}>{item}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </InlineAccordion>
-                  </DetailPanel>
-                )}
-
-                {focus === 'actions' && (
-                  <DetailPanel title="Ações do incidente" subtitle="Trilha curta para condução e mitigação.">
-                    <InlineAccordion title="Próximas ações" defaultOpen>
-                      <div className="space-y-2">
-                        {selected.actions.map(item => (
-                          <div key={item} className="rounded-2xl px-3 py-2" style={{ backgroundColor: 'var(--color-muted)' }}>
-                            <p className="text-sm" style={{ color: 'var(--color-foreground)' }}>{item}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </InlineAccordion>
-
-                    <div className="flex flex-wrap gap-2">
-                      {canExecuteRemediation ? (
-                        <>
-                          <ButtonDefault label="Atribuir owner" icon={User} visual="secondary" />
-                          <ButtonDefault label="Marcar mitigado" icon={ShieldAlert} />
-                        </>
-                      ) : (
-                        <div className="rounded-2xl border px-3 py-2 text-xs" style={{ borderColor: 'var(--color-border)', color: 'var(--color-muted-foreground)', background: 'var(--color-muted)' }}>
-                          Ações de remediação disponíveis somente para admin.
-                        </div>
-                      )}
-                      {selected.githubPrUrl && (
-                        <a href={selected.githubPrUrl} target="_blank" rel="noreferrer">
-                          <ButtonDefault label="Abrir PR" icon={GitPullRequest} visual="secondary" />
-                        </a>
-                      )}
-                      {selected.runbookUrl && (
-                        <a href={selected.runbookUrl} target="_blank" rel="noreferrer">
-                          <ButtonDefault label="Abrir runbook" icon={ExternalLink} visual="secondary" />
-                        </a>
-                      )}
-                    </div>
-                  </DetailPanel>
-                )}
-              </div>
-            )}
-          </section>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between px-1">
+              <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
+                {filtered.length} aplicação{filtered.length !== 1 ? 'ões' : ''} — clique para expandir detalhes
+              </p>
+              {canRemediate && (
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-80"
+                  style={{ color: 'var(--color-primary)', background: 'rgba(var(--color-primary-rgb,99,102,241),0.08)' }}
+                  onClick={() => navigate('/assistant')}
+                >
+                  <MessageSquare size={11} />
+                  Abrir ARIA para diagnóstico
+                </button>
+              )}
+            </div>
+            {filtered.map(w => (
+              <WorkloadCard key={w.id} workload={w} canRemediate={canRemediate} />
+            ))}
+          </div>
         )}
       </div>
     </div>

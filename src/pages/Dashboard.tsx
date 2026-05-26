@@ -270,7 +270,7 @@ export function Dashboard() {
 
                 <div className="flex flex-wrap gap-2">
                   <ButtonDefault label="Abrir degradação" icon={ArrowRight} onClick={() => navigate('/incidents')} />
-                  <ButtonDefault label="Abrir serviço" visual="secondary" onClick={() => navigate(`/applications/${selectedIncident.workloadId}`)} />
+                  <ButtonDefault label="Abrir serviço" visual="secondary" onClick={() => navigate(`/scorecards/${selectedIncident.workloadId}`)} />
                 </div>
               </DetailPanel>
             ) : (
@@ -295,7 +295,7 @@ export function Dashboard() {
                   <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Conformidade</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{formatEnum(selectedWorkload.complianceStatus)}</p></Card>
                   <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Remediação</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{formatEnum(selectedWorkload.remediationStatus)}</p></Card>
                 </div>
-                <ButtonDefault label="Abrir aplicação" icon={ArrowRight} onClick={() => navigate(`/applications/${selectedWorkload.id}`)} />
+                <ButtonDefault label="Abrir aplicação" icon={ArrowRight} onClick={() => navigate(`/scorecards/${selectedWorkload.id}`)} />
               </DetailPanel>
             ) : (
               <Card><EmptyState icon={Layers3} title="Sem workloads críticos" /></Card>
@@ -320,7 +320,7 @@ export function Dashboard() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <ButtonDefault label="Abrir fila" icon={ArrowRight} onClick={() => navigate('/recommendations')} />
-                  <ButtonDefault label="Abrir aplicação" visual="secondary" onClick={() => navigate(`/applications/${selectedRemediation.id}`)} />
+                  <ButtonDefault label="Abrir aplicação" visual="secondary" onClick={() => navigate(`/scorecards/${selectedRemediation.id}`)} />
                 </div>
               </DetailPanel>
             ) : (

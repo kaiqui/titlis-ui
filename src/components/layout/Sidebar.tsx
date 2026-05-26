@@ -1,22 +1,19 @@
 import { NavLink } from 'react-router-dom'
 import {
-  AppWindow,
   Bot,
   ChevronLeft,
   ChevronRight,
   ClipboardCheck,
   GitPullRequest,
   Key,
-  KeyRound,
   LayoutDashboard,
   MessageSquare,
   Network,
-  Server,
+  Plug2,
   Siren,
   SlidersHorizontal,
   Tag,
   Target,
-  Wrench,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/useAuth'
@@ -29,7 +26,6 @@ const displayAppName = appName.replace(/([a-z0-9])([A-Z])/g, '$1 $2')
 const primaryNavItems = [
   { to: '/', icon: LayoutDashboard, label: 'Home', exact: true },
   { to: '/incidents', icon: Siren, label: 'Degradações', featureId: 'nav_incidents' },
-  { to: '/applications', icon: AppWindow, label: 'Services', featureId: 'nav_applications' },
   { to: '/scorecards', icon: ClipboardCheck, label: 'Termômetro de Confiabilidade', featureId: 'nav_scorecards' },
 ]
 
@@ -48,11 +44,9 @@ const settingsNavItems = {
     { to: '/settings/api-keys', icon: Key, label: 'Chaves de API', featureId: 'nav_settings_api_keys' },
   ],
   admin: [
-    { to: '/settings/auth', icon: KeyRound, label: 'Acesso', featureId: 'nav_settings_auth' },
     { to: '/settings/ai', icon: Bot, label: 'Configurar ARIA', featureId: 'nav_settings_ai' },
     { to: '/settings/score-config', icon: SlidersHorizontal, label: 'Score & Regras', featureId: 'nav_settings_score_config' },
-    { to: '/settings/hpa-templates', icon: Server, label: 'Templates HPA', featureId: 'nav_settings_hpa_templates' },
-    { to: '/settings/auto-remediation', icon: Wrench, label: 'Auto-Remediação', featureId: 'nav_settings_auto_remediation' },
+    { to: '/settings/integrations', icon: Plug2, label: 'Integrações', featureId: 'nav_settings_integrations' },
     { to: '/settings/tags', icon: Tag, label: 'Tags', featureId: 'nav_settings_tags' },
   ],
 }
