@@ -1,5 +1,7 @@
 import type {
   ActiveRemediation,
+  AdminOverview,
+  AdminUsersResponse,
   AiConfig,
   Finding,
   PillarScore,
@@ -1062,5 +1064,16 @@ export const api = {
       decisions: { proposalId: string; approved: boolean; editedArgs?: Record<string, unknown> }[],
     ) =>
       streamSse(`/ai/agent/${sessionId}/tools/respond`, { decisions }),
+  },
+  admin: {
+    overview: async (): Promise<AdminOverview> => {
+      const res = await request<AdminOverview>('/admin/overview')
+      if (!res) throw new Error('Sem dados de visão executiva.')
+      return res
+    },
+    users: async (): Promise<AdminUsersResponse> => {
+      const res = await request<AdminUsersResponse>('/admin/users')
+      return res ?? { users: [] }
+    },
   },
 }

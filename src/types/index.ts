@@ -161,6 +161,67 @@ export interface NamespaceSummary {
   nonCompliantCount: number
 }
 
+export interface AdminComplianceStats {
+  averageScore: number
+  compliancePercent: number
+  totalWorkloads: number
+  compliantWorkloads: number
+  criticalWorkloads: number
+  totalCriticalFailures: number
+  workloadsWithoutEvaluation: number
+}
+
+export interface AdminRemediationStats {
+  totalAutomated: number
+  merged: number
+  inProgress: number
+  failed: number
+  successRate: number
+}
+
+export interface AdminPillarScore {
+  pillar: string
+  averageScore: number
+}
+
+export interface AdminUserStats {
+  total: number
+  activeLastThirtyDays: number
+  neverAccessed: number
+  byRole: Record<string, number>
+}
+
+export interface AdminAiStats {
+  isConfigured: boolean
+  provider: string | null
+  model: string | null
+  tokensUsedMonth: number
+  monthlyTokenBudget: number | null
+  usagePercent: number | null
+}
+
+export interface AdminOverview {
+  compliance: AdminComplianceStats
+  remediations: AdminRemediationStats
+  pillars: AdminPillarScore[]
+  users: AdminUserStats
+  ai: AdminAiStats
+}
+
+export interface AdminUser {
+  id: number
+  email: string
+  displayName: string | null
+  role: string
+  isActive: boolean
+  lastLoginAt: string | null
+  createdAt: string
+}
+
+export interface AdminUsersResponse {
+  users: AdminUser[]
+}
+
 export interface IncidentItem {
   id: string
   workloadId: string

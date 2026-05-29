@@ -7,6 +7,7 @@ import {
   GitPullRequest,
   Key,
   LayoutDashboard,
+  LineChart,
   MessageSquare,
   Network,
   Plug2,
@@ -44,6 +45,7 @@ const settingsNavItems = {
     { to: '/settings/api-keys', icon: Key, label: 'Chaves de API', featureId: 'nav_settings_api_keys' },
   ],
   admin: [
+    { to: '/admin/overview', icon: LineChart, label: 'Visão Executiva', featureId: 'nav_admin_overview' },
     { to: '/settings/ai', icon: Bot, label: 'Configurar ARIA', featureId: 'nav_settings_ai' },
     { to: '/settings/score-config', icon: SlidersHorizontal, label: 'Score & Regras', featureId: 'nav_settings_score_config' },
     { to: '/settings/integrations', icon: Plug2, label: 'Integrações', featureId: 'nav_settings_integrations' },

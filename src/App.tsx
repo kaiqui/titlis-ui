@@ -23,6 +23,7 @@ import { SettingsTags } from '@/pages/SettingsTags'
 import { GettingStarted } from '@/pages/GettingStarted'
 import { AssistantPage } from '@/pages/AssistantPage'
 import { SettingsIntegrations } from '@/pages/SettingsIntegrations'
+import { AdminOverview } from '@/pages/AdminOverview'
 import { Docs } from '@/pages/Docs'
 
 // Redireciona /applications/:id → /scorecards/:id (compat. com links externos / bookmarks)
@@ -145,6 +146,14 @@ export default function App() {
                   element={(
                     <AuthGate requireAdmin>
                       <SettingsTags />
+                    </AuthGate>
+                  )}
+                />
+                <Route
+                  path="/admin/overview"
+                  element={(
+                    <AuthGate requireAdmin>
+                      <AdminOverview />
                     </AuthGate>
                   )}
                 />

@@ -112,3 +112,19 @@ export function useTagPolicies() {
   })
 }
 
+export function useAdminOverview() {
+  return useQuery({
+    queryKey: ['admin-overview'],
+    queryFn: () => api.admin.overview(),
+    staleTime: 60_000,
+  })
+}
+
+export function useAdminUsers() {
+  return useQuery({
+    queryKey: ['admin-users'],
+    queryFn: () => api.admin.users(),
+    staleTime: 60_000,
+  })
+}
+
