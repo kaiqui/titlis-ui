@@ -26,11 +26,12 @@ export function MetricCard({
 }: MetricCardProps) {
   return (
     <motion.div
+      className="h-full"
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, delay }}
     >
-      <Card className="jeitto-stat-band">
+      <Card className="jeitto-stat-band h-full">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
             <p className="family-neighbor text-[11px] font-extrabold uppercase tracking-[0.18em]" style={{ color: 'var(--color-muted-foreground)' }}>
