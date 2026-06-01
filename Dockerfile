@@ -1,25 +1,17 @@
 FROM node:22-alpine AS build
 WORKDIR /app
 
-ARG VITE_API_URL=/v1
-ARG VITE_APP_ENV=production
-ARG VITE_AUTH_MODE=okta
-ARG VITE_OKTA_ISSUER=https://trial-6259005.okta.com
-ARG VITE_OKTA_CLIENT_ID=0oa12kd682sUjPeZT698
-ARG VITE_OKTA_AUDIENCE=api://default
-ARG VITE_OKTA_REDIRECT_URI=https://localhost:13000/login/callback
-ARG VITE_OKTA_POST_LOGOUT_REDIRECT_URI=https://localhost:13000/login
-ARG VITE_OKTA_TENANT_SLUG=jeitto
-
-ENV VITE_API_URL=${VITE_API_URL}
-ENV VITE_APP_ENV=${VITE_APP_ENV}
-ENV VITE_AUTH_MODE=${VITE_AUTH_MODE}
-ENV VITE_OKTA_ISSUER=${VITE_OKTA_ISSUER}
-ENV VITE_OKTA_CLIENT_ID=${VITE_OKTA_CLIENT_ID}
-ENV VITE_OKTA_AUDIENCE=${VITE_OKTA_AUDIENCE}
-ENV VITE_OKTA_REDIRECT_URI=${VITE_OKTA_REDIRECT_URI}
-ENV VITE_OKTA_POST_LOGOUT_REDIRECT_URI=${VITE_OKTA_POST_LOGOUT_REDIRECT_URI}
-ENV VITE_OKTA_TENANT_SLUG=${VITE_OKTA_TENANT_SLUG}
+ENV VITE_API_URL=https://api.confia.jeitto.com.br/v1
+ENV VITE_APP_NAME=JeittoConfia
+ENV VITE_APP_ENV=production
+ENV VITE_AUTH_MODE=okta
+ENV VITE_OKTA_ISSUER=https://jeitto.okta.com
+ENV VITE_OKTA_CLIENT_ID=0oa22earki9XZ2BhX1d8
+ENV VITE_OKTA_AUDIENCE=api://default
+ENV VITE_OKTA_REDIRECT_URI=https://confia.jeitto.com.br/login/callback
+ENV VITE_OKTA_POST_LOGOUT_REDIRECT_URI=https://confia.jeitto.com.br/login
+ENV VITE_OKTA_TENANT_SLUG=jeitto
+# ENV VITE_HIDDEN_FEATURES=nav_incidents,nav_applications,nav_slos,nav_recommendations
 
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -27,10 +19,12 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-FROM nginx:alpine
-COPY --from=build /app/dist /usr/share/nginx/html
-COPY nginx.conf.template /etc/nginx/templates/default.conf.template
+FROM node:22-alpine
+WORKDIR /app
 
-ENV API_UPSTREAM=http://titlis-api:8080
+RUN npm install -g serve
 
-EXPOSE 80
+COPY --from=build /app/dist ./dist
+
+EXPOSE 3000
+CMD ["serve", "-s", "dist", "-l", "3000"]
