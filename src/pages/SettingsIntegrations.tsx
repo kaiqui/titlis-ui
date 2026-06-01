@@ -115,7 +115,7 @@ export function SettingsIntegrations() {
     const branchUnchanged = githubBranch === (config?.githubBaseBranch ?? 'main')
     const modeUnchanged = githubAuthMode === (config?.githubAuthMode ?? 'pat')
     if (githubAuthMode === 'pat') return !githubToken.trim() && branchUnchanged && modeUnchanged
-    return !githubAppId.trim() && !githubAppPrivateKey.trim() && !githubAppInstallationId.trim() && branchUnchanged && modeUnchanged
+    return !githubAppId.trim() && !githubAppPrivateKey.trim() && branchUnchanged && modeUnchanged
   })()
 
   const inputCls = 'mt-2 w-full rounded-2xl px-4 py-3 text-sm outline-none'
@@ -241,13 +241,13 @@ export function SettingsIntegrations() {
               </div>
               <div>
                 <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>
-                  Installation ID *
+                  Installation ID <span style={{ color: '#6366f1', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(opcional — descoberto automaticamente)</span>
                 </label>
                 <input
                   type="text"
                   value={githubAppInstallationId}
                   onChange={e => setGithubAppInstallationId(e.target.value)}
-                  placeholder={config?.hasGithubApp ? '••• (deixe vazio para manter)' : 'Ex: 45678901'}
+                  placeholder={config?.hasGithubApp ? '••• (deixe vazio para manter)' : 'Auto-detectado via API do GitHub'}
                   className={inputCls}
                   style={inputStyle}
                 />
