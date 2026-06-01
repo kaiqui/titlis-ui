@@ -17,6 +17,20 @@ server {
         proxy_read_timeout 300s;
     }
 
+    # Hashed assets (JS/CSS) — cache forever since filenames change on each build
+    location ~* ^/assets/.*\.(js|css)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        try_files $uri =404;
+    }
+
+    # index.html — never cache so browsers always fetch the latest version
+    location = /index.html {
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        add_header Pragma "no-cache";
+        try_files $uri =404;
+    }
+
     location / {
         try_files $uri $uri/ /index.html;
     }
