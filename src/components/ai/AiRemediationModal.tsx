@@ -1,5 +1,59 @@
 import { useRef, useState } from 'react'
-import { CheckCircle2, ExternalLink, GitPullRequest, Loader2, X } from 'lucide-react'
+import { CheckCircle2, ExternalLink, GitPullRequest, Loader2, RotateCcw, X } from 'lucide-react'
+
+type DiffLine = { type: 'added' | 'removed' | 'unchanged'; line: string }
+
+function diffLines(oldText: string, newText: string): DiffLine[] {
+  const a = oldText.split('\n')
+  const b = newText.split('\n')
+  const m = a.length
+  const n = b.length
+  const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0))
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] + 1 : Math.max(dp[i - 1][j], dp[i][j - 1])
+    }
+  }
+  const result: DiffLine[] = []
+  let i = m, j = n
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && a[i - 1] === b[j - 1]) {
+      result.unshift({ type: 'unchanged', line: a[i - 1] }); i--; j--
+    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+      result.unshift({ type: 'added', line: b[j - 1] }); j--
+    } else {
+      result.unshift({ type: 'removed', line: a[i - 1] }); i--
+    }
+  }
+  return result
+}
+
+function DiffView({ current, patched }: { current: string; patched: string }) {
+  const lines = diffLines(current, patched)
+  const hasChanges = lines.some(l => l.type !== 'unchanged')
+  return (
+    <div className="overflow-auto rounded-2xl font-mono text-xs" style={{ backgroundColor: 'var(--app-background)', border: '1px solid var(--color-border)', maxHeight: '340px' }}>
+      {!hasChanges && (
+        <p className="px-4 py-3 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Nenhuma diferença detectada.</p>
+      )}
+      {lines.map((l, i) => (
+        <div
+          key={i}
+          className="flex px-3 py-0.5 leading-5"
+          style={{
+            backgroundColor: l.type === 'added' ? 'rgba(16,185,129,0.1)' : l.type === 'removed' ? 'rgba(239,68,68,0.08)' : 'transparent',
+            color: l.type === 'added' ? '#059669' : l.type === 'removed' ? '#dc2626' : 'var(--color-foreground)',
+          }}
+        >
+          <span className="mr-3 select-none opacity-50 w-3 shrink-0">
+            {l.type === 'added' ? '+' : l.type === 'removed' ? '−' : ' '}
+          </span>
+          <span className="whitespace-pre">{l.line}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
 import { ButtonDefault } from '@/components/jeitto/ButtonDefault'
 import { api } from '@/lib/api'
 import type { Finding, WorkloadDetail } from '@/types'
@@ -202,10 +256,49 @@ export function AiRemediationModal({ workload, remediableFindings, onClose }: Pr
     }
   }
 
+  // Botões de ação separados do conteúdo scrollável para ficarem sempre visíveis
+  const footer = (() => {
+    if (step === 'config') return (
+      <div className="flex justify-end gap-2">
+        <ButtonDefault label="Cancelar" visual="secondary" onClick={onClose} />
+        <ButtonDefault label="Iniciar remediação" onClick={() => void startRemediation()} disabled={!repoUrl.trim() || selectedIds.length === 0} />
+      </div>
+    )
+    if (step === 'path_resolution') return (
+      <div className="flex justify-end gap-2">
+        <ButtonDefault label="Cancelar" visual="secondary" onClick={onClose} />
+        <ButtonDefault label="Confirmar e continuar" onClick={() => void submitManifestPath()} disabled={!manifestPath.trim()} />
+      </div>
+    )
+    if (step === 'review') return (
+      <div className="flex justify-end gap-2">
+        <ButtonDefault label="Rejeitar" visual="secondary" onClick={() => void confirmRemediation(false)} />
+        <ButtonDefault label="Confirmar e abrir PR" onClick={() => void confirmRemediation(true)} />
+      </div>
+    )
+    if (step === 'done') return (
+      <div className="flex items-center gap-2">
+        {(prResult?.prUrl || existingPrUrl) && (
+          <a href={prResult?.prUrl ?? existingPrUrl ?? ''} target="_blank" rel="noreferrer">
+            <ButtonDefault label={prResult ? `Abrir PR #${prResult.prNumber}` : 'Ver PR existente'} icon={ExternalLink} />
+          </a>
+        )}
+        <ButtonDefault label="Fechar" visual="secondary" onClick={onClose} />
+      </div>
+    )
+    if (step === 'error') return (
+      <div className="flex gap-2">
+        <ButtonDefault label="Tentar novamente" icon={RotateCcw} onClick={() => setStep('config')} />
+        <ButtonDefault label="Fechar" visual="secondary" onClick={onClose} />
+      </div>
+    )
+    return null
+  })()
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}>
       <div className="flex w-full max-w-2xl flex-col rounded-3xl shadow-2xl" style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)', maxHeight: '90vh' }}>
-        <div className="flex items-center justify-between gap-4 border-b px-6 py-5" style={{ borderColor: 'var(--color-border)' }}>
+        <div className="flex shrink-0 items-center justify-between gap-4 border-b px-6 py-5" style={{ borderColor: 'var(--color-border)' }}>
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-2xl" style={{ backgroundColor: 'rgba(var(--color-primary-rgb, 99,102,241),0.1)' }}>
               <GitPullRequest size={16} style={{ color: 'var(--color-primary)' }} />
@@ -220,7 +313,7 @@ export function AiRemediationModal({ workload, remediableFindings, onClose }: Pr
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5 space-y-4">
           {step === 'config' && (
             <>
               <div className="space-y-4">
@@ -236,7 +329,7 @@ export function AiRemediationModal({ workload, remediableFindings, onClose }: Pr
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>Caminho do manifesto</label>
+                  <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>Caminho do manifesto (sobrescrito pelo .titlis/service.yaml se existir)</label>
                   <input
                     type="text"
                     value={manifestPath}
@@ -256,7 +349,7 @@ export function AiRemediationModal({ workload, remediableFindings, onClose }: Pr
                         type="checkbox"
                         checked={selectedIds.includes(f.ruleId)}
                         onChange={() => toggleFinding(f.ruleId)}
-                        className="h-4 w-4 accent-[var(--color-primary)]"
+                        className="h-4 w-4 accent-primary"
                       />
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold" style={{ color: 'var(--color-foreground)' }}>{f.ruleName}</p>
@@ -265,15 +358,6 @@ export function AiRemediationModal({ workload, remediableFindings, onClose }: Pr
                     </label>
                   ))}
                 </div>
-              </div>
-
-              <div className="flex justify-end gap-2">
-                <ButtonDefault label="Cancelar" visual="secondary" onClick={onClose} />
-                <ButtonDefault
-                  label="Iniciar remediação"
-                  onClick={() => void startRemediation()}
-                  disabled={!repoUrl.trim() || selectedIds.length === 0}
-                />
               </div>
             </>
           )}
@@ -304,7 +388,7 @@ export function AiRemediationModal({ workload, remediableFindings, onClose }: Pr
                 <p className="text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{pathRequired.detectedEnvironment}</p>
               </div>
               <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
-                Em qual arquivo de manifesto devo aplicar a correção para este ambiente?
+                Não encontrei .titlis/service.yaml no repositório. Em qual arquivo de manifesto devo aplicar a correção?
               </p>
               <div>
                 <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>Caminho do manifesto *</label>
@@ -317,40 +401,29 @@ export function AiRemediationModal({ workload, remediableFindings, onClose }: Pr
                   style={{ backgroundColor: 'var(--color-muted)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}
                 />
               </div>
-              <div className="flex justify-end gap-2">
-                <ButtonDefault label="Cancelar" visual="secondary" onClick={onClose} />
-                <ButtonDefault
-                  label="Confirmar e continuar"
-                  onClick={() => void submitManifestPath()}
-                  disabled={!manifestPath.trim()}
-                />
-              </div>
             </div>
           )}
 
           {step === 'review' && fixReady && (
-            <div className="space-y-4">
-              <p className="text-sm font-semibold" style={{ color: 'var(--color-foreground)' }}>Revise o patch gerado pela IA</p>
-
-              <div className="space-y-3">
-                <div>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-widest" style={{ color: '#ef4444' }}>Atual</p>
-                  <pre className="overflow-auto rounded-2xl p-4 text-xs" style={{ backgroundColor: 'rgba(239,68,68,0.06)', color: 'var(--color-foreground)', maxHeight: '180px' }}>
-                    {fixReady.currentManifest || 'Não disponível'}
-                  </pre>
-                </div>
-                <div>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-widest" style={{ color: '#10b981' }}>Proposto</p>
-                  <pre className="overflow-auto rounded-2xl p-4 text-xs" style={{ backgroundColor: 'rgba(16,185,129,0.06)', color: 'var(--color-foreground)', maxHeight: '180px' }}>
-                    {fixReady.patchedManifest || 'Não disponível'}
-                  </pre>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold" style={{ color: 'var(--color-foreground)' }}>Diff gerado pela IA</p>
+                <div className="flex items-center gap-3 text-[10px] font-semibold uppercase tracking-widest">
+                  <span className="flex items-center gap-1" style={{ color: '#059669' }}><span>+</span> adicionado</span>
+                  <span className="flex items-center gap-1" style={{ color: '#dc2626' }}><span>−</span> removido</span>
                 </div>
               </div>
-
-              <div className="flex justify-end gap-2">
-                <ButtonDefault label="Rejeitar" visual="secondary" onClick={() => void confirmRemediation(false)} />
-                <ButtonDefault label="Confirmar e abrir PR" onClick={() => void confirmRemediation(true)} />
-              </div>
+              {fixReady.currentManifest
+                ? <DiffView current={fixReady.currentManifest} patched={fixReady.patchedManifest} />
+                : (
+                  <div className="space-y-2">
+                    <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Manifest atual não disponível — exibindo apenas o proposto.</p>
+                    <pre className="max-w-full overflow-auto rounded-2xl p-4 text-xs" style={{ backgroundColor: 'rgba(16,185,129,0.06)', color: 'var(--color-foreground)', maxHeight: '300px' }}>
+                      {fixReady.patchedManifest || 'Não disponível'}
+                    </pre>
+                  </div>
+                )
+              }
             </div>
           )}
 
@@ -364,37 +437,26 @@ export function AiRemediationModal({ workload, remediableFindings, onClose }: Pr
           )}
 
           {step === 'done' && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <CheckCircle2 size={20} style={{ color: '#10b981' }} />
-                <p className="text-sm font-semibold" style={{ color: 'var(--color-foreground)' }}>
-                  {prResult ? 'Pull Request criado com sucesso!' : existingPrUrl ? 'PR existente encontrado' : 'Concluído'}
-                </p>
-              </div>
-              {(prResult?.prUrl || existingPrUrl) && (
-                <a href={prResult?.prUrl ?? existingPrUrl ?? ''} target="_blank" rel="noreferrer">
-                  <ButtonDefault
-                    label={prResult ? `Abrir PR #${prResult.prNumber}` : 'Ver PR existente'}
-                    icon={ExternalLink}
-                  />
-                </a>
-              )}
-              <ButtonDefault label="Fechar" visual="secondary" onClick={onClose} />
+            <div className="flex items-center gap-3">
+              <CheckCircle2 size={20} style={{ color: '#10b981' }} />
+              <p className="text-sm font-semibold" style={{ color: 'var(--color-foreground)' }}>
+                {prResult ? 'Pull Request criado com sucesso!' : existingPrUrl ? 'PR existente encontrado' : 'Concluído'}
+              </p>
             </div>
           )}
 
           {step === 'error' && (
-            <div className="space-y-4">
-              <div className="rounded-2xl px-4 py-3 text-sm" style={{ backgroundColor: 'rgba(239,68,68,0.08)', color: '#dc2626' }}>
-                {error}
-              </div>
-              <div className="flex gap-2">
-                <ButtonDefault label="Tentar novamente" onClick={() => setStep('config')} />
-                <ButtonDefault label="Fechar" visual="secondary" onClick={onClose} />
-              </div>
+            <div className="rounded-2xl px-4 py-3 text-sm" style={{ backgroundColor: 'rgba(239,68,68,0.08)', color: '#dc2626' }}>
+              {error}
             </div>
           )}
         </div>
+
+        {footer && (
+          <div className="shrink-0 border-t px-6 py-4" style={{ borderColor: 'var(--color-border)' }}>
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   )

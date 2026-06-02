@@ -105,11 +105,53 @@ export function ToolProposalCard({ proposal, decision, onApprove, onReject, disa
               />
               {argsError && <p className="mt-1 text-xs" style={{ color: '#dc2626' }}>{argsError}</p>}
             </>
-          ) : (
-            <pre className="overflow-auto rounded-xl px-3 py-2 font-mono text-xs" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-foreground)', maxHeight: '140px' }}>
-              {JSON.stringify(proposal.args, null, 2)}
-            </pre>
-          )}
+          ) : (() => {
+            // Separa args simples (escalares / arrays sem content multiline) de args com texto longo
+            const multilineEntries: Array<{ key: string; label: string; content: string }> = []
+            const fileEntries: Array<{ path?: string; content?: string }> = []
+            const scalarArgs: Record<string, unknown> = {}
+
+            for (const [key, value] of Object.entries(proposal.args)) {
+              if (key === 'files' && Array.isArray(value)) {
+                fileEntries.push(...(value as Array<{ path?: string; content?: string }>))
+              } else if (typeof value === 'string' && value.includes('\n')) {
+                multilineEntries.push({ key, label: key, content: value })
+              } else {
+                scalarArgs[key] = value
+              }
+            }
+
+            const hasExtras = multilineEntries.length > 0 || fileEntries.length > 0
+            return (
+              <div className="space-y-2">
+                {(Object.keys(scalarArgs).length > 0 || !hasExtras) && (
+                  <pre className="max-w-full overflow-auto rounded-xl px-3 py-2 font-mono text-xs" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-foreground)', maxHeight: '120px' }}>
+                    {JSON.stringify(scalarArgs, null, 2)}
+                  </pre>
+                )}
+                {multilineEntries.map(({ key, label, content }) => (
+                  <div key={key} className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--color-border)' }}>
+                    <p className="px-3 py-1.5 text-[10px] font-semibold" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)', borderBottom: '1px solid var(--color-border)' }}>
+                      {label}
+                    </p>
+                    <pre className="max-w-full overflow-auto px-3 py-2 font-mono text-xs" style={{ color: 'var(--color-foreground)', maxHeight: '160px', backgroundColor: 'var(--app-background)' }}>
+                      {content}
+                    </pre>
+                  </div>
+                ))}
+                {fileEntries.map((f, i) => (
+                  <div key={i} className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--color-border)' }}>
+                    <p className="px-3 py-1.5 text-[10px] font-semibold truncate" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)', borderBottom: '1px solid var(--color-border)' }}>
+                      {f.path ?? `arquivo ${i + 1}`}
+                    </p>
+                    <pre className="max-w-full overflow-auto px-3 py-2 font-mono text-xs" style={{ color: 'var(--color-foreground)', maxHeight: '140px', backgroundColor: 'var(--app-background)' }}>
+                      {f.content ?? ''}
+                    </pre>
+                  </div>
+                ))}
+              </div>
+            )
+          })()}
         </div>
       )}
 

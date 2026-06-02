@@ -17,6 +17,11 @@ interface ToolResult {
   error?: string
 }
 
+interface SubmittedDecision {
+  approved: boolean
+  args: Record<string, unknown>
+}
+
 interface Message {
   id: string
   role: MessageRole
@@ -24,6 +29,8 @@ interface Message {
   thinking?: string
   proposals?: ToolProposal[]
   toolResults?: ToolResult[]
+  // Preenchido quando o batch de propostas é submetido; torna os cards imutáveis
+  submittedDecisions?: Record<string, SubmittedDecision>
 }
 
 interface AuditEntry {
@@ -124,7 +131,7 @@ export function AssistantPage() {
     const assistantMsg = appendMessage({ role: 'assistant', content: '' })
 
     try {
-      const stream = api.ai.agentChat(sessionId.current, msg)
+      const stream = api.ai.agentChat(sessionId.current, msg, workloadCtx?.workloadId)
       let assistantText = ''
       let thinkingText = ''
       let gotProposals = false
@@ -175,8 +182,21 @@ export function AssistantPage() {
     if (!pendingSessionId) return
     setLoading(true)
 
-    const proposalsMsg = [...messages].reverse().find((m: Message) => m.role === 'proposals')
+    // Encontra o último batch de propostas ainda não submetido
+    const proposalsMsg = [...messages].reverse().find(
+      (m: Message) => m.role === 'proposals' && !m.submittedDecisions,
+    )
     const proposals = proposalsMsg?.proposals ?? []
+
+    // Persiste as decisões dentro da mensagem antes de chamar a API,
+    // tornando este batch imutável independentemente do estado global
+    if (proposalsMsg) {
+      setMessages(prev =>
+        prev.map(m =>
+          m.id === proposalsMsg.id ? { ...m, submittedDecisions: { ...decisions } } : m,
+        ),
+      )
+    }
 
     const decisionsPayload = proposals.map((p: ToolProposal) => {
       const d = decisions[p.proposal_id]
@@ -304,7 +324,7 @@ export function AssistantPage() {
 
       <div className="flex flex-1 overflow-hidden">
         <div className="flex flex-1 flex-col px-4 pb-4 lg:px-8">
-          <div className="flex-1 overflow-y-auto space-y-4 py-4" style={{ minHeight: 0 }}>
+          <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-4 py-4" style={{ minHeight: 0 }}>
             {messages.length === 0 && !loading && (
               <div className="flex flex-col items-center justify-center py-20 text-center">
                 <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl" style={{ backgroundColor: 'rgba(var(--color-primary-rgb,99,102,241),0.1)' }}>
@@ -404,20 +424,29 @@ export function AssistantPage() {
                     <div className="flex items-center gap-2 px-1">
                       <Bot size={14} style={{ color: 'var(--color-primary)' }} />
                       <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>
-                        Ações propostas — aprove ou rejeite cada uma
+                        {msg.submittedDecisions ? 'Ações executadas' : 'Ações propostas — aprove ou rejeite cada uma'}
                       </p>
                     </div>
-                    {msg.proposals.map(p => (
-                      <ToolProposalCard
-                        key={p.proposal_id}
-                        proposal={p}
-                        decision={decisionFor(p.proposal_id)}
-                        onApprove={handleApprove}
-                        onReject={handleReject}
-                        disabled={loading || pendingSessionId === null}
-                      />
-                    ))}
-                    {pendingSessionId && allDecided(msg.proposals) && !loading && (
+                    {msg.proposals.map(p => {
+                      // Batch já submetido: usa decisão gravada na mensagem (imutável)
+                      // Batch ativo: usa o estado global de decisões
+                      const submitted = msg.submittedDecisions
+                      const decision: Decision = submitted
+                        ? (submitted[p.proposal_id]?.approved ? 'approved' : submitted[p.proposal_id] ? 'rejected' : 'pending')
+                        : decisionFor(p.proposal_id)
+                      return (
+                        <ToolProposalCard
+                          key={p.proposal_id}
+                          proposal={p}
+                          decision={decision}
+                          onApprove={handleApprove}
+                          onReject={handleReject}
+                          disabled={loading || !!submitted || pendingSessionId === null}
+                        />
+                      )
+                    })}
+                    {/* Botão só aparece no batch ativo, nunca em batches já submetidos */}
+                    {!msg.submittedDecisions && pendingSessionId && allDecided(msg.proposals) && !loading && (
                       <button
                         type="button"
                         onClick={() => void submitDecisions()}

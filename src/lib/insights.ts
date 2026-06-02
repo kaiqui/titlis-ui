@@ -134,7 +134,11 @@ export function buildNamespaceSummaries(workloads: WorkloadSummary[]): Namespace
 
 export function buildRemediationQueue(workloads: WorkloadSummary[]): WorkloadSummary[] {
   return workloads
-    .filter(workload => workload.remediationStatus !== null || workload.complianceStatus === 'NON_COMPLIANT')
+    .filter(workload =>
+      workload.remediationStatus !== null ||
+      workload.complianceStatus === 'NON_COMPLIANT' ||
+      (workload.overallScore !== null && workload.overallScore < 100),
+    )
     .sort((left, right) => {
       const leftScore = left.overallScore ?? -1
       const rightScore = right.overallScore ?? -1

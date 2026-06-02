@@ -28,7 +28,7 @@ spec:
           image: __DOCKERHUB_USER__/titlis-ui:__IMAGE_TAG__
           imagePullPolicy: __IMAGE_PULL_POLICY__
           ports:
-            - containerPort: 80
+            - containerPort: 3000
               name: http
           readinessProbe:
             httpGet:

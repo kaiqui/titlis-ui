@@ -33,11 +33,11 @@ const primaryNavItems = [
 const secondaryNavItems = [
   { to: '/slos', icon: Target, label: 'SLOs', featureId: 'nav_slos' },
   { to: '/topology', icon: Network, label: 'Topologia', featureId: 'nav_topology' },
+  { to: '/assistant', icon: MessageSquare, label: 'ARIA', featureId: 'nav_assistant' },
 ]
 
 const remediationNavItems = [
   { to: '/recommendations', icon: GitPullRequest, label: 'Remediação', featureId: 'nav_recommendations' },
-  { to: '/assistant', icon: MessageSquare, label: 'ARIA', featureId: 'nav_assistant' },
 ]
 
 const settingsNavItems = {

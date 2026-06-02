@@ -41,6 +41,7 @@ export function SettingsIntegrations() {
   // Datadog
   const [ddApiKey, setDdApiKey] = useState('')
   const [ddAppKey, setDdAppKey] = useState('')
+  const [ddSite, setDdSite] = useState('datadoghq.com')
   const [showDdApiKey, setShowDdApiKey] = useState(false)
   const [showDdAppKey, setShowDdAppKey] = useState(false)
   const [ddSaving, setDdSaving] = useState(false)
@@ -99,6 +100,7 @@ export function SettingsIntegrations() {
       await api.datadogConfig.save({
         ddApiKey: ddApiKey.trim(),
         ddAppKey: ddAppKey.trim() || undefined,
+        site: ddSite,
       })
       await queryClient.invalidateQueries({ queryKey: ['datadog-config-status'] })
       setDdApiKey('')
@@ -364,6 +366,24 @@ export function SettingsIntegrations() {
                   {showDdAppKey ? <EyeOff size={14} /> : <Eye size={14} />}
                 </button>
               </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>
+                Site do Datadog *
+              </label>
+              <select
+                value={ddSite}
+                onChange={e => setDdSite(e.target.value)}
+                className="mt-2 w-full rounded-2xl px-4 py-3 text-sm outline-none"
+                style={inputStyle}
+              >
+                <option value="datadoghq.com">US1 — datadoghq.com</option>
+                <option value="us3.datadoghq.com">US3 — us3.datadoghq.com</option>
+                <option value="us5.datadoghq.com">US5 — us5.datadoghq.com</option>
+                <option value="datadoghq.eu">EU — datadoghq.eu</option>
+                <option value="ap1.datadoghq.com">AP1 — ap1.datadoghq.com</option>
+              </select>
             </div>
           </div>
 

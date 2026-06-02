@@ -22,7 +22,7 @@ type RemediationFocus = 'overview' | 'signals' | 'actions'
 export function Recommendations() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState<RemediationFilter>('active')
+  const [filter, setFilter] = useState<RemediationFilter>('all')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [focus, setFocus] = useState<RemediationFocus>('overview')
 

@@ -916,7 +916,7 @@ export const api = {
     },
   },
   datadogConfig: {
-    save: async (payload: { ddApiKey: string; ddAppKey?: string }): Promise<void> => {
+    save: async (payload: { ddApiKey: string; ddAppKey?: string; site?: string }): Promise<void> => {
       await request('/settings/datadog', {
         method: 'POST' as const,
         body: payload,
@@ -1057,8 +1057,8 @@ export const api = {
       streamSse(`/ai/remediate/${threadId}/confirm`, { approved }),
     setManifestPath: (threadId: string, manifestPath: string) =>
       streamSse(`/ai/remediate/${threadId}/set-path`, { manifestPath }),
-    agentChat: (sessionId: string, message: string) =>
-      streamSse('/ai/agent/chat', { sessionId, message }),
+    agentChat: (sessionId: string, message: string, workloadId?: string) =>
+      streamSse('/ai/agent/chat', { sessionId, message, ...(workloadId ? { workloadId } : {}) }),
     agentToolsRespond: (
       sessionId: string,
       decisions: { proposalId: string; approved: boolean; editedArgs?: Record<string, unknown> }[],
