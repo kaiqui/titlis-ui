@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { Activity, AlertOctagon, AlertTriangle, BarChart3, CheckCircle2, ChevronLeft, ChevronRight, GitMerge, ShieldAlert, Users } from 'lucide-react'
+import { Activity, AlertOctagon, AlertTriangle, BarChart3, CheckCircle2, ChevronLeft, ChevronRight, Download, GitMerge, ShieldAlert, Users } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle } from '@/components/jeitto/Card'
 import { MetricCard } from '@/components/jeitto/MetricCard'
 import { PageError, PageLoading } from '@/components/jeitto/PageState'
 import { useAdminOverview, useAdminUsers } from '@/hooks/useApi'
+import { exportUsersCsv } from '@/lib/exportCsv'
 import { cn, formatDate } from '@/lib/utils'
 
 const PAGE_SIZE = 10
@@ -162,9 +163,20 @@ export function AdminOverview() {
         {/* Bloco 2 — Usuários da Plataforma (tabela com paginação) */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users size={15} /> Usuários da Plataforma
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Users size={15} /> Usuários da Plataforma
+              </CardTitle>
+              <button
+                onClick={() => exportUsersCsv(userList)}
+                disabled={userList.length === 0}
+                className="flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-border disabled:opacity-40"
+                style={{ borderColor: 'var(--color-border)', color: 'var(--color-muted-foreground)' }}
+              >
+                <Download size={13} />
+                Exportar CSV
+              </button>
+            </div>
           </CardHeader>
           {userList.length === 0 ? (
             <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
