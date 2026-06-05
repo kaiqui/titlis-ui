@@ -121,14 +121,7 @@ export function ApplicationDetail({
               <ButtonDefault
                 label="Corrigir com ARIA"
                 icon={Bot}
-                onClick={() => navigate('/assistant', {
-                  state: {
-                    workloadId: workload.id,
-                    workloadName: workload.name,
-                    namespace: workload.namespace,
-                    findingIds: failedFindings.map(f => f.ruleId),
-                  },
-                })}
+                onClick={() => navigate(`/scorecards/${workload.id}/remediate`)}
               />
             </FeatureGuard>
           )}

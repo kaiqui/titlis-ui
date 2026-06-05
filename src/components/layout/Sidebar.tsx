@@ -8,11 +8,11 @@ import {
   Key,
   LayoutDashboard,
   LineChart,
-  MessageSquare,
   Network,
   Plug2,
   Siren,
   SlidersHorizontal,
+  Sparkles,
   Tag,
   Target,
 } from 'lucide-react'
@@ -33,11 +33,11 @@ const primaryNavItems = [
 const secondaryNavItems = [
   { to: '/slos', icon: Target, label: 'SLOs', featureId: 'nav_slos' },
   { to: '/topology', icon: Network, label: 'Topologia', featureId: 'nav_topology' },
-  { to: '/assistant', icon: MessageSquare, label: 'ARIA', featureId: 'nav_assistant' },
 ]
 
 const remediationNavItems = [
-  { to: '/recommendations', icon: GitPullRequest, label: 'Remediação', featureId: 'nav_recommendations' },
+  { to: '/aria', icon: Sparkles, label: 'ARIA', featureId: 'nav_aria' },
+  { to: '/recommendations', icon: GitPullRequest, label: 'Fila de PRs', featureId: 'nav_recommendations' },
 ]
 
 const settingsNavItems = {

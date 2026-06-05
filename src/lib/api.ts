@@ -850,6 +850,40 @@ export const api = {
       })
       return response ? mapRemediationItem(response) : null
     },
+    githubLink: async (id: string): Promise<{ linked: boolean; repoUrl?: string; serviceYamlPath?: string } | null> =>
+      request<{ linked: boolean; repo_url?: string; service_yaml_path?: string }>(
+        `/workloads/${id}/github-link`,
+        { optional: true },
+      ).then(r => r ? { linked: !!(r.linked ?? r.repo_url), repoUrl: r.repo_url, serviceYamlPath: r.service_yaml_path } : null),
+    setGithubLink: async (
+      id: string,
+      repoUrl: string,
+      serviceYamlPath = '.titlis/service.yaml',
+    ): Promise<{ linked: boolean; repoUrl: string; serviceYamlPath: string; serviceYamlFound: boolean }> => {
+      const r = await request<{
+        linked: boolean
+        repo_url: string
+        service_yaml_path: string
+        service_yaml_found: boolean
+      }>(`/workloads/${id}/github-link`, { method: 'POST', body: { repoUrl, serviceYamlPath } })
+      return {
+        linked: r!.linked,
+        repoUrl: r!.repo_url,
+        serviceYamlPath: r!.service_yaml_path,
+        serviceYamlFound: r!.service_yaml_found,
+      }
+    },
+    removeGithubLink: (id: string) =>
+      request<void>(`/workloads/${id}/github-link`, { method: 'DELETE' }),
+  },
+  github: {
+    searchRepos: async (q: string): Promise<{ fullName: string; htmlUrl: string; description: string }[]> => {
+      const r = await request<{ items: { full_name: string; html_url: string; description: string }[] }>(
+        `/github/repos/search?q=${encodeURIComponent(q)}`,
+        { optional: true },
+      )
+      return (r?.items ?? []).map(i => ({ fullName: i.full_name, htmlUrl: i.html_url, description: i.description }))
+    },
   },
   apiKeys: {
     list: async () => {
@@ -1046,12 +1080,13 @@ export const api = {
       }, signal),
     remediateStream: (
       workloadId: string,
-      body: { findingIds: string[]; repoUrl: string; deployManifestPath?: string },
+      body: { findingIds: string[]; repoUrl: string; deployManifestPath?: string; serviceYamlPath?: string },
     ) =>
       streamSse(`/ai/workloads/${workloadId}/remediate`, {
         findingIds: body.findingIds,
         repoUrl: body.repoUrl,
         deployManifestPath: body.deployManifestPath ?? 'manifests/kubernetes/main/deploy.yaml',
+        serviceYamlPath: body.serviceYamlPath ?? '.titlis/service.yaml',
       }),
     confirmRemediation: (threadId: string, approved: boolean) =>
       streamSse(`/ai/remediate/${threadId}/confirm`, { approved }),

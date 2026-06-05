@@ -21,7 +21,8 @@ import { SettingsAi } from '@/pages/SettingsAi'
 import { SettingsScoreConfig } from '@/pages/SettingsScoreConfig'
 import { SettingsTags } from '@/pages/SettingsTags'
 import { GettingStarted } from '@/pages/GettingStarted'
-import { AssistantPage } from '@/pages/AssistantPage'
+import { RemediatePage } from '@/pages/RemediatePage'
+import { AriaPage } from '@/pages/AriaPage'
 import { SettingsIntegrations } from '@/pages/SettingsIntegrations'
 import { AdminOverview } from '@/pages/AdminOverview'
 import { Docs } from '@/pages/Docs'
@@ -98,7 +99,8 @@ export default function App() {
                     </AuthGate>
                   )}
                 />
-                <Route path="/assistant" element={<AssistantPage />} />
+                <Route path="/aria" element={<AriaPage />} />
+                <Route path="/scorecards/:id/remediate" element={<RemediatePage />} />
                 <Route
                   path="/settings/hpa-templates"
                   element={<Navigate to="/settings/score-config" replace />}

@@ -24,6 +24,15 @@ export function useWorkloadRemediation(id: string) {
   })
 }
 
+export function useWorkloadGithubLink(id: string) {
+  return useQuery({
+    queryKey: ['workload', id, 'github-link'],
+    queryFn: () => api.workloads.githubLink(id),
+    enabled: Boolean(id),
+    staleTime: 60_000,
+  })
+}
+
 export function useSloLookup(namespace: string, name: string, enabled: boolean) {
   return useQuery({
     queryKey: ['slo', namespace, name],

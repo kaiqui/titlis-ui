@@ -22,7 +22,7 @@ type RemediationFocus = 'overview' | 'signals' | 'actions'
 export function Recommendations() {
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState<RemediationFilter>('all')
+  const [filter, setFilter] = useState<RemediationFilter>('with_pr')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [focus, setFocus] = useState<RemediationFocus>('overview')
 
@@ -223,11 +223,32 @@ export function Recommendations() {
                       <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>PR</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{selected.githubPrUrl ? 'Disponível' : 'Não publicado'}</p></Card>
                     </div>
 
+                    {selected.githubPrUrl && (
+                      <a
+                        href={selected.githubPrUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-3 rounded-2xl border px-4 py-3 transition-opacity hover:opacity-80"
+                        style={{ borderColor: 'rgba(59,130,246,0.3)', backgroundColor: 'rgba(59,130,246,0.05)' }}
+                      >
+                        <GitPullRequest size={16} style={{ color: '#3b82f6', flexShrink: 0 }} />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold truncate" style={{ color: '#3b82f6' }}>
+                            Ver Pull Request no GitHub
+                          </p>
+                          <p className="text-xs truncate mt-0.5" style={{ color: 'var(--color-muted-foreground)' }}>
+                            {selected.githubPrUrl}
+                          </p>
+                        </div>
+                        <ExternalLink size={12} style={{ color: '#3b82f6', flexShrink: 0 }} />
+                      </a>
+                    )}
+
                     <InlineAccordion title="Resumo" defaultOpen>
                       <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
                         {selected.githubPrUrl
                           ? 'Existe uma trilha aberta de correção. O foco agora é acompanhar merge, rollout e validação.'
-                          : 'Ainda não existe PR vinculado. Use o assistente ARIA para abrir um PR de remediação conversacional.'}
+                          : 'Ainda não existe PR vinculado. Use o assistente ARIA para abrir um PR de remediação.'}
                       </p>
                     </InlineAccordion>
                   </DetailPanel>
