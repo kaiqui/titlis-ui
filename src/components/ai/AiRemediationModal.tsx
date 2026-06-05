@@ -1,78 +1,25 @@
 import { useRef, useState } from 'react'
-import { CheckCircle2, ExternalLink, GitPullRequest, Loader2, RotateCcw, X } from 'lucide-react'
-
-type DiffLine = { type: 'added' | 'removed' | 'unchanged'; line: string }
-
-function diffLines(oldText: string, newText: string): DiffLine[] {
-  const a = oldText.split('\n')
-  const b = newText.split('\n')
-  const m = a.length
-  const n = b.length
-  const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0))
-  for (let i = 1; i <= m; i++) {
-    for (let j = 1; j <= n; j++) {
-      dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] + 1 : Math.max(dp[i - 1][j], dp[i][j - 1])
-    }
-  }
-  const result: DiffLine[] = []
-  let i = m, j = n
-  while (i > 0 || j > 0) {
-    if (i > 0 && j > 0 && a[i - 1] === b[j - 1]) {
-      result.unshift({ type: 'unchanged', line: a[i - 1] }); i--; j--
-    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
-      result.unshift({ type: 'added', line: b[j - 1] }); j--
-    } else {
-      result.unshift({ type: 'removed', line: a[i - 1] }); i--
-    }
-  }
-  return result
-}
-
-function DiffView({ current, patched }: { current: string; patched: string }) {
-  const lines = diffLines(current, patched)
-  const hasChanges = lines.some(l => l.type !== 'unchanged')
-  return (
-    <div className="overflow-auto rounded-2xl font-mono text-xs" style={{ backgroundColor: 'var(--app-background)', border: '1px solid var(--color-border)', maxHeight: '340px' }}>
-      {!hasChanges && (
-        <p className="px-4 py-3 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Nenhuma diferença detectada.</p>
-      )}
-      {lines.map((l, i) => (
-        <div
-          key={i}
-          className="flex px-3 py-0.5 leading-5"
-          style={{
-            backgroundColor: l.type === 'added' ? 'rgba(16,185,129,0.1)' : l.type === 'removed' ? 'rgba(239,68,68,0.08)' : 'transparent',
-            color: l.type === 'added' ? '#059669' : l.type === 'removed' ? '#dc2626' : 'var(--color-foreground)',
-          }}
-        >
-          <span className="mr-3 select-none opacity-50 w-3 shrink-0">
-            {l.type === 'added' ? '+' : l.type === 'removed' ? '−' : ' '}
-          </span>
-          <span className="whitespace-pre">{l.line}</span>
-        </div>
-      ))}
-    </div>
-  )
-}
+import { CheckCircle2, ChevronDown, ChevronRight, ExternalLink, GitPullRequest, Loader2, RotateCcw, ShieldAlert, X } from 'lucide-react'
 import { ButtonDefault } from '@/components/jeitto/ButtonDefault'
+import { CodeDiffView } from '@/components/ai/CodeDiffView'
 import { api } from '@/lib/api'
-import type { Finding, WorkloadDetail } from '@/types'
+import type { Finding, RemediationDiffFile, ServiceYamlPrefill, WorkloadDetail } from '@/types'
 
-type Step = 'config' | 'running' | 'path_resolution' | 'review' | 'confirming' | 'done' | 'error'
+type Step = 'config' | 'running' | 'service_yaml_form' | 'review' | 'confirming' | 'done' | 'error'
 
-interface PathRequired {
+interface ServiceYamlRequired {
   threadId: string
   detectedEnvironment: string
-  suggestedPath: string
   deploymentName: string
   namespace: string
+  prefill: ServiceYamlPrefill
 }
 
 interface FixReady {
   threadId: string
   patchedManifest: string
   currentManifest: string
-  findings: unknown[]
+  files?: RemediationDiffFile[]
 }
 
 interface PrCreated {
@@ -106,8 +53,11 @@ export function AiRemediationModal({ workload, remediableFindings, onClose }: Pr
   const [selectedIds, setSelectedIds] = useState<string[]>(remediableFindings.map(f => f.ruleId))
   const [currentNode, setCurrentNode] = useState<string | null>(null)
   const [completedNodes, setCompletedNodes] = useState<string[]>([])
-  const [pathRequired, setPathRequired] = useState<PathRequired | null>(null)
+  const [serviceYamlRequired, setServiceYamlRequired] = useState<ServiceYamlRequired | null>(null)
+  const [svcForm, setSvcForm] = useState<ServiceYamlPrefill | null>(null)
+  const [svcFormAdvanced, setSvcFormAdvanced] = useState(false)
   const [fixReady, setFixReady] = useState<FixReady | null>(null)
+  const [consentChecked, setConsentChecked] = useState(false)
   const [prResult, setPrResult] = useState<PrCreated | null>(null)
   const [existingPrUrl, setExistingPrUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -117,6 +67,16 @@ export function AiRemediationModal({ workload, remediableFindings, onClose }: Pr
     setSelectedIds(prev =>
       prev.includes(ruleId) ? prev.filter(id => id !== ruleId) : [...prev, ruleId],
     )
+  }
+
+  function _parseFixReadyFiles(event: Record<string, unknown>): RemediationDiffFile[] | undefined {
+    const rawFiles = event.files as Array<Record<string, unknown>> | undefined
+    return rawFiles?.map(f => ({
+      path: String(f.path ?? ''),
+      current: String(f.current ?? ''),
+      patched: String(f.patched ?? ''),
+      isNew: Boolean(f.is_new),
+    }))
   }
 
   const startRemediation = async () => {
@@ -140,25 +100,35 @@ export function AiRemediationModal({ workload, remediableFindings, onClose }: Pr
         if (event.type === 'progress' && typeof event.node === 'string') {
           setCurrentNode(event.node)
           setCompletedNodes(prev => [...prev, event.node as string])
-        } else if (event.type === 'path_required') {
-          const suggested = String(event.suggested_path ?? '')
-          setPathRequired({
+        } else if (event.type === 'service_yaml_required') {
+          const p = event.prefill as Record<string, unknown>
+          const prefill: ServiceYamlPrefill = {
+            name: String(p?.name ?? ''),
+            team: String(p?.team ?? ''),
+            namePattern: String(p?.name_pattern ?? ''),
+            namespaces: (p?.namespaces as string[]) ?? [],
+            env: String(p?.env ?? 'dev'),
+            path: String(p?.path ?? ''),
+            baseBranch: String(p?.base_branch ?? 'main'),
+          }
+          setServiceYamlRequired({
             threadId: String(event.thread_id),
             detectedEnvironment: String(event.detected_environment ?? 'desconhecido'),
-            suggestedPath: suggested,
             deploymentName: String(event.deployment_name ?? ''),
             namespace: String(event.namespace ?? ''),
+            prefill,
           })
-          setManifestPath(suggested)
-          setStep('path_resolution')
+          setSvcForm(prefill)
+          setStep('service_yaml_form')
           return
         } else if (event.type === 'fix_ready') {
           setFixReady({
             threadId: String(event.thread_id),
             patchedManifest: String(event.patched_manifest ?? ''),
             currentManifest: String(event.current_manifest ?? ''),
-            findings: (event.findings ?? []) as unknown[],
+            files: _parseFixReadyFiles(event as Record<string, unknown>),
           })
+          setConsentChecked(false)
           setStep('review')
           return
         } else if (event.type === 'existing_pr') {
@@ -175,6 +145,58 @@ export function AiRemediationModal({ workload, remediableFindings, onClose }: Pr
     } catch (err) {
       if (!abortRef.current) {
         setError(err instanceof Error ? err.message : 'Erro no pipeline de remediação')
+        setStep('error')
+      }
+    }
+  }
+
+  const submitServiceYaml = async () => {
+    if (!serviceYamlRequired || !svcForm) return
+    abortRef.current = false
+    setStep('running')
+    setError(null)
+
+    try {
+      const stream = api.ai.submitServiceYaml(serviceYamlRequired.threadId, {
+        manifestPath: svcForm.path,
+        baseBranch: svcForm.baseBranch,
+        name: svcForm.name,
+        team: svcForm.team,
+        namespaces: svcForm.namespaces,
+        namePattern: svcForm.namePattern,
+        env: svcForm.env,
+      })
+
+      for await (const event of stream) {
+        if (abortRef.current) break
+
+        if (event.type === 'progress' && typeof event.node === 'string') {
+          setCurrentNode(event.node)
+          setCompletedNodes(prev => [...prev, event.node as string])
+        } else if (event.type === 'fix_ready') {
+          setFixReady({
+            threadId: String(event.thread_id),
+            patchedManifest: String(event.patched_manifest ?? ''),
+            currentManifest: String(event.current_manifest ?? ''),
+            files: _parseFixReadyFiles(event as Record<string, unknown>),
+          })
+          setConsentChecked(false)
+          setStep('review')
+          return
+        } else if (event.type === 'existing_pr') {
+          setExistingPrUrl(String(event.pr_url))
+          setStep('done')
+          return
+        } else if (event.type === 'error') {
+          throw new Error(String(event.error ?? 'Erro no pipeline'))
+        } else if (event.type === 'done') {
+          break
+        }
+      }
+      if (!abortRef.current) setStep('done')
+    } catch (err) {
+      if (!abortRef.current) {
+        setError(err instanceof Error ? err.message : 'Erro ao continuar pipeline')
         setStep('error')
       }
     }
@@ -213,50 +235,6 @@ export function AiRemediationModal({ workload, remediableFindings, onClose }: Pr
     }
   }
 
-  const submitManifestPath = async () => {
-    if (!pathRequired || !manifestPath.trim()) return
-    abortRef.current = false
-    setStep('running')
-    setError(null)
-
-    try {
-      const stream = api.ai.setManifestPath(pathRequired.threadId, manifestPath.trim())
-
-      for await (const event of stream) {
-        if (abortRef.current) break
-
-        if (event.type === 'progress' && typeof event.node === 'string') {
-          setCurrentNode(event.node)
-          setCompletedNodes(prev => [...prev, event.node as string])
-        } else if (event.type === 'fix_ready') {
-          setFixReady({
-            threadId: String(event.thread_id),
-            patchedManifest: String(event.patched_manifest ?? ''),
-            currentManifest: String(event.current_manifest ?? ''),
-            findings: (event.findings ?? []) as unknown[],
-          })
-          setStep('review')
-          return
-        } else if (event.type === 'existing_pr') {
-          setExistingPrUrl(String(event.pr_url))
-          setStep('done')
-          return
-        } else if (event.type === 'error') {
-          throw new Error(String(event.error ?? 'Erro no pipeline'))
-        } else if (event.type === 'done') {
-          break
-        }
-      }
-      if (!abortRef.current) setStep('done')
-    } catch (err) {
-      if (!abortRef.current) {
-        setError(err instanceof Error ? err.message : 'Erro ao continuar pipeline')
-        setStep('error')
-      }
-    }
-  }
-
-  // Botões de ação separados do conteúdo scrollável para ficarem sempre visíveis
   const footer = (() => {
     if (step === 'config') return (
       <div className="flex justify-end gap-2">
@@ -264,16 +242,16 @@ export function AiRemediationModal({ workload, remediableFindings, onClose }: Pr
         <ButtonDefault label="Iniciar remediação" onClick={() => void startRemediation()} disabled={!repoUrl.trim() || selectedIds.length === 0} />
       </div>
     )
-    if (step === 'path_resolution') return (
+    if (step === 'service_yaml_form') return (
       <div className="flex justify-end gap-2">
         <ButtonDefault label="Cancelar" visual="secondary" onClick={onClose} />
-        <ButtonDefault label="Confirmar e continuar" onClick={() => void submitManifestPath()} disabled={!manifestPath.trim()} />
+        <ButtonDefault label="Continuar" onClick={() => void submitServiceYaml()} disabled={!svcForm?.name.trim() || !svcForm?.path.trim()} />
       </div>
     )
     if (step === 'review') return (
       <div className="flex justify-end gap-2">
         <ButtonDefault label="Rejeitar" visual="secondary" onClick={() => void confirmRemediation(false)} />
-        <ButtonDefault label="Confirmar e abrir PR" onClick={() => void confirmRemediation(true)} />
+        <ButtonDefault label="Confirmar e abrir PR" disabled={!consentChecked} onClick={() => void confirmRemediation(true)} />
       </div>
     )
     if (step === 'done') return (
@@ -381,49 +359,131 @@ export function AiRemediationModal({ workload, remediableFindings, onClose }: Pr
             </div>
           )}
 
-          {step === 'path_resolution' && pathRequired && (
-            <div className="space-y-4">
-              <div className="rounded-2xl px-4 py-3" style={{ backgroundColor: 'rgba(var(--color-primary-rgb, 99,102,241),0.08)' }}>
-                <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: 'var(--color-muted-foreground)' }}>Ambiente detectado</p>
-                <p className="text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{pathRequired.detectedEnvironment}</p>
+          {step === 'service_yaml_form' && serviceYamlRequired && svcForm && (
+            <div className="space-y-5">
+              <div className="rounded-2xl px-4 py-3 text-xs" style={{ backgroundColor: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.2)', color: 'var(--color-muted-foreground)' }}>
+                <p className="font-semibold mb-1" style={{ color: 'var(--color-foreground)' }}>
+                  .titlis/service.yaml não encontrado — vamos criá-lo na mesma PR
+                </p>
+                <p>Ambiente detectado: <strong style={{ color: 'var(--color-foreground)' }}>{serviceYamlRequired.detectedEnvironment}</strong></p>
               </div>
-              <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
-                Não encontrei .titlis/service.yaml no repositório. Em qual arquivo de manifesto devo aplicar a correção?
-              </p>
-              <div>
-                <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>Caminho do manifesto *</label>
-                <input
-                  type="text"
-                  value={manifestPath}
-                  onChange={e => setManifestPath(e.target.value)}
-                  placeholder="ex: manifests/kubernetes/dev/deploy.yaml"
-                  className="mt-2 w-full rounded-2xl px-4 py-3 text-sm outline-none transition-colors"
-                  style={{ backgroundColor: 'var(--color-muted)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}
-                />
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>Nome *</label>
+                  <input type="text" value={svcForm.name} onChange={e => setSvcForm(p => p ? { ...p, name: e.target.value } : p)}
+                    className="mt-1.5 w-full rounded-2xl px-4 py-2.5 text-sm outline-none font-mono"
+                    style={{ backgroundColor: 'var(--color-muted)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }} />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>Time *</label>
+                  <input type="text" value={svcForm.team} onChange={e => setSvcForm(p => p ? { ...p, team: e.target.value } : p)}
+                    className="mt-1.5 w-full rounded-2xl px-4 py-2.5 text-sm outline-none"
+                    style={{ backgroundColor: 'var(--color-muted)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }} />
+                </div>
               </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>Caminho do manifesto *</label>
+                  <input type="text" value={svcForm.path} onChange={e => setSvcForm(p => p ? { ...p, path: e.target.value } : p)}
+                    className="mt-1.5 w-full rounded-2xl px-4 py-2.5 text-sm outline-none font-mono"
+                    style={{ backgroundColor: 'var(--color-muted)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }} />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>Branch base *</label>
+                  <input type="text" value={svcForm.baseBranch} onChange={e => setSvcForm(p => p ? { ...p, baseBranch: e.target.value } : p)}
+                    className="mt-1.5 w-full rounded-2xl px-4 py-2.5 text-sm outline-none font-mono"
+                    style={{ backgroundColor: 'var(--color-muted)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }} />
+                </div>
+              </div>
+
+              <button
+                onClick={() => setSvcFormAdvanced(v => !v)}
+                className="flex items-center gap-2 text-xs font-semibold transition-opacity hover:opacity-70"
+                style={{ color: 'var(--color-muted-foreground)' }}
+              >
+                {svcFormAdvanced ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                Configurações avançadas
+              </button>
+
+              {svcFormAdvanced && (
+                <div className="space-y-4 pl-2" style={{ borderLeft: '2px solid var(--color-border)' }}>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>Ambiente</label>
+                      <input type="text" value={svcForm.env} onChange={e => setSvcForm(p => p ? { ...p, env: e.target.value } : p)}
+                        className="mt-1.5 w-full rounded-2xl px-4 py-2.5 text-sm outline-none font-mono"
+                        style={{ backgroundColor: 'var(--color-muted)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }} />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>Padrão de nome (regex)</label>
+                      <input type="text" value={svcForm.namePattern} onChange={e => setSvcForm(p => p ? { ...p, namePattern: e.target.value } : p)}
+                        className="mt-1.5 w-full rounded-2xl px-4 py-2.5 text-sm outline-none font-mono"
+                        style={{ backgroundColor: 'var(--color-muted)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>Namespaces (separados por vírgula)</label>
+                    <input type="text"
+                      value={svcForm.namespaces.join(', ')}
+                      onChange={e => setSvcForm(p => p ? { ...p, namespaces: e.target.value.split(',').map(s => s.trim()).filter(Boolean) } : p)}
+                      className="mt-1.5 w-full rounded-2xl px-4 py-2.5 text-sm outline-none font-mono"
+                      style={{ backgroundColor: 'var(--color-muted)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }} />
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
           {step === 'review' && fixReady && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold" style={{ color: 'var(--color-foreground)' }}>Diff gerado pela IA</p>
-                <div className="flex items-center gap-3 text-[10px] font-semibold uppercase tracking-widest">
-                  <span className="flex items-center gap-1" style={{ color: '#059669' }}><span>+</span> adicionado</span>
-                  <span className="flex items-center gap-1" style={{ color: '#dc2626' }}><span>−</span> removido</span>
-                </div>
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold" style={{ color: 'var(--color-foreground)' }}>
+                  {fixReady.files && fixReady.files.length > 1 ? `${fixReady.files.length} arquivos — revise o diff` : 'Diff gerado pela IA'}
+                </p>
               </div>
-              {fixReady.currentManifest
-                ? <DiffView current={fixReady.currentManifest} patched={fixReady.patchedManifest} />
-                : (
-                  <div className="space-y-2">
-                    <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Manifest atual não disponível — exibindo apenas o proposto.</p>
-                    <pre className="max-w-full overflow-auto rounded-2xl p-4 text-xs" style={{ backgroundColor: 'rgba(16,185,129,0.06)', color: 'var(--color-foreground)', maxHeight: '300px' }}>
-                      {fixReady.patchedManifest || 'Não disponível'}
-                    </pre>
+
+              <div className="space-y-3">
+                {fixReady.files && fixReady.files.length > 0
+                  ? fixReady.files.map((f, i) => <CodeDiffView key={i} file={f} />)
+                  : (
+                    fixReady.currentManifest
+                      ? <CodeDiffView file={{ path: 'deploy.yaml', current: fixReady.currentManifest, patched: fixReady.patchedManifest, isNew: false }} />
+                      : (
+                        <div className="space-y-2">
+                          <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Manifest atual não disponível — exibindo apenas o proposto.</p>
+                          <pre className="max-w-full overflow-auto rounded-2xl p-4 text-xs" style={{ backgroundColor: 'rgba(16,185,129,0.06)', color: 'var(--color-foreground)', maxHeight: '300px' }}>
+                            {fixReady.patchedManifest || 'Não disponível'}
+                          </pre>
+                        </div>
+                      )
+                  )
+                }
+              </div>
+
+              {/* Consent gate */}
+              <div className="rounded-2xl px-4 py-3 space-y-3" style={{ backgroundColor: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.2)' }}>
+                <div className="flex items-start gap-2">
+                  <ShieldAlert size={14} style={{ color: '#f59e0b', flexShrink: 0, marginTop: 1 }} />
+                  <div className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
+                    <p className="font-semibold mb-1" style={{ color: 'var(--color-foreground)' }}>Ação sensível — abrirá PR no repositório</p>
+                    <ul className="space-y-0.5">
+                      {(fixReady.files?.length ? fixReady.files : [{ path: 'deploy.yaml', isNew: false }]).map((f, i) => (
+                        <li key={i} className="flex items-center gap-2 font-mono">
+                          {(f as RemediationDiffFile).isNew ? <span style={{ color: '#10b981' }}>+</span> : <span style={{ color: '#f59e0b' }}>~</span>}
+                          {f.path}
+                          {(f as RemediationDiffFile).isNew && <span style={{ color: '#10b981' }}>(novo)</span>}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                )
-              }
+                </div>
+                <label className="flex cursor-pointer items-center gap-2.5">
+                  <input type="checkbox" checked={consentChecked} onChange={e => setConsentChecked(e.target.checked)} className="h-4 w-4 accent-primary" />
+                  <span className="text-sm font-semibold" style={{ color: 'var(--color-foreground)' }}>Revisei e aprovo os arquivos desta PR</span>
+                </label>
+              </div>
             </div>
           )}
 

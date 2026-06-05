@@ -1,5 +1,22 @@
 export type Severity = 'critical' | 'error' | 'warning' | 'info'
 
+export interface RemediationDiffFile {
+  path: string
+  current: string
+  patched: string
+  isNew: boolean
+}
+
+export interface ServiceYamlPrefill {
+  name: string
+  team: string
+  namePattern: string
+  namespaces: string[]
+  env: string
+  path: string
+  baseBranch: string
+}
+
 export interface PillarScore {
   pillar: string
   score: number | null

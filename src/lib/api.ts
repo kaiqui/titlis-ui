@@ -1092,6 +1092,31 @@ export const api = {
       streamSse(`/ai/remediate/${threadId}/confirm`, { approved }),
     setManifestPath: (threadId: string, manifestPath: string) =>
       streamSse(`/ai/remediate/${threadId}/set-path`, { manifestPath }),
+    submitServiceYaml: (
+      threadId: string,
+      form: {
+        manifestPath: string
+        baseBranch: string
+        name: string
+        team: string
+        namespaces: string[]
+        namePattern: string
+        env: string
+        contacts?: Array<Record<string, unknown>>
+        extraPaths?: Record<string, unknown>
+      },
+    ) =>
+      streamSse(`/ai/remediate/${threadId}/submit-service-yaml`, {
+        manifest_path: form.manifestPath,
+        base_branch: form.baseBranch,
+        name: form.name,
+        team: form.team,
+        namespaces: form.namespaces,
+        name_pattern: form.namePattern,
+        env: form.env,
+        contacts: form.contacts ?? null,
+        extra_paths: form.extraPaths ?? null,
+      }),
     agentChat: (sessionId: string, message: string, workloadId?: string) =>
       streamSse('/ai/agent/chat', { sessionId, message, ...(workloadId ? { workloadId } : {}) }),
     agentToolsRespond: (
