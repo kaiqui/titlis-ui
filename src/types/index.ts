@@ -73,6 +73,7 @@ export interface WorkloadSummary {
   complianceStatus: string | null
   remediationStatus: string | null
   githubPrUrl: string | null
+  isFavorite: boolean
 }
 
 export interface WorkloadDetail extends WorkloadSummary {

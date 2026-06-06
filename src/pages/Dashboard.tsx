@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ArrowRight, GitPullRequest, Layers3, Search, Siren, Target } from 'lucide-react'
+import { ArrowRight, GitPullRequest, Layers3, Search, Siren, Star, Target } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Header } from '@/components/layout/Header'
 import { ButtonDefault } from '@/components/jeitto/ButtonDefault'
@@ -16,11 +16,12 @@ import { SelectionList } from '@/components/sre/SelectionList'
 import { SummaryStrip } from '@/components/sre/SummaryStrip'
 import { useDashboardWorkloads, useSloCatalog } from '@/hooks/useApi'
 import { buildClusterSummaries, buildCriticalWorkloads, buildPlatformSummary, buildRemediationQueue } from '@/lib/insights'
+import { FavoriteStar } from '@/components/sre/FavoriteStar'
 import { buildIncidents } from '@/lib/incidents'
 import { formatEnum, formatNumber, statusTone } from '@/lib/utils'
 import type { SloListItem } from '@/types'
 
-type DashboardFocus = 'incidents' | 'workloads' | 'remediation' | 'coverage' | 'slos'
+type DashboardFocus = 'incidents' | 'workloads' | 'remediation' | 'coverage' | 'slos' | 'meus_servicos'
 
 export function Dashboard() {
   const navigate = useNavigate()
@@ -30,6 +31,7 @@ export function Dashboard() {
   const { data: slos } = useSloCatalog()
   const workloadList = workloads ?? []
   const sloList: SloListItem[] = slos ?? []
+  const myServices = workloadList.filter(w => w.isFavorite)
   const summary = buildPlatformSummary(workloadList)
   const incidents = buildIncidents(workloadList)
   const criticalWorkloads = buildCriticalWorkloads(workloadList)
@@ -38,7 +40,24 @@ export function Dashboard() {
   const slosWithError = sloList.filter(s => s.datadogSloState === 'error').length
   const slosNotSynced = sloList.filter(s => !s.datadogSloId).length
 
+  const [selectedMyServiceId, setSelectedMyServiceId] = useState<string | null>(myServices[0]?.id ?? null)
+
   const focusItems = useMemo(() => ({
+    meus_servicos: myServices.map(item => ({
+      id: item.id,
+      title: item.name,
+      subtitle: `${item.namespace} · ${item.cluster}`,
+      badges: (
+        <>
+          <ScoreBadge score={item.overallScore} size="sm" />
+          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone(item.complianceStatus)}`}>
+            {formatEnum(item.complianceStatus)}
+          </span>
+        </>
+      ),
+      meta: <ScoreRing score={item.overallScore} size={48} strokeWidth={5} />,
+      action: <FavoriteStar workloadId={item.id} isFavorite={item.isFavorite} />,
+    })),
     incidents: incidents.map(item => ({
       id: item.id,
       title: item.title,
@@ -119,6 +138,7 @@ export function Dashboard() {
       item.title.toLowerCase().includes(searchTerm) ||
       item.subtitle.toLowerCase().includes(searchTerm)
     return {
+      meus_servicos: focusItems.meus_servicos.filter(match),
       incidents: focusItems.incidents.filter(match),
       workloads: focusItems.workloads.filter(match),
       remediation: focusItems.remediation.filter(match),
@@ -208,6 +228,7 @@ export function Dashboard() {
               active={focus}
               onChange={id => setFocus(id as DashboardFocus)}
               items={[
+                { id: 'meus_servicos', label: 'Meus serviços', count: myServices.length },
                 { id: 'incidents', label: 'Degradações', count: incidents.length },
                 { id: 'workloads', label: 'Services', count: criticalWorkloads.length },
                 { id: 'remediation', label: 'Remediação', count: remediationQueue.length },
@@ -226,6 +247,65 @@ export function Dashboard() {
             icon={Search}
           />
         </Card>
+
+        {focus === 'meus_servicos' && (
+          <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+            <Card>
+              {filteredFocusItems.meus_servicos.length === 0 ? (
+                <EmptyState
+                  icon={Star}
+                  title="Nenhum serviço favorito"
+                  description="Marque serviços com a estrela na lista de scorecards para acompanhá-los aqui."
+                />
+              ) : (
+                <SelectionList
+                  items={filteredFocusItems.meus_servicos}
+                  activeId={selectedMyServiceId}
+                  onSelect={setSelectedMyServiceId}
+                />
+              )}
+            </Card>
+            {(() => {
+              const sel = myServices.find(w => w.id === selectedMyServiceId) ?? myServices[0] ?? null
+              if (!sel) return null
+              return (
+                <DetailPanel
+                  title={sel.name}
+                  subtitle={`${sel.namespace} · ${sel.cluster} · ${formatEnum(sel.environment)}`}
+                  headerMeta={
+                    <ButtonDefault
+                      label="Ver scorecard"
+                      visual="secondary"
+                      icon={ArrowRight}
+                      onClick={() => navigate(`/scorecards/${sel.id}`)}
+                    />
+                  }
+                >
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <Card>
+                      <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Score</p>
+                      <p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>
+                        {sel.overallScore === null ? 'N/D' : sel.overallScore.toFixed(1)}
+                      </p>
+                    </Card>
+                    <Card>
+                      <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Conformidade</p>
+                      <p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>
+                        {formatEnum(sel.complianceStatus)}
+                      </p>
+                    </Card>
+                    <Card>
+                      <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Remediação</p>
+                      <p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>
+                        {formatEnum(sel.remediationStatus) || 'Nenhuma'}
+                      </p>
+                    </Card>
+                  </div>
+                </DetailPanel>
+              )
+            })()}
+          </section>
+        )}
 
         {focus === 'incidents' && (
           <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">

@@ -44,6 +44,7 @@ interface ApiDashboardItem {
   compliance_status: string | null
   remediation_status: string | null
   github_pr_url: string | null
+  is_favorite: boolean
 }
 
 interface ApiScorecardItem {
@@ -253,7 +254,9 @@ async function request<T>(
     throw new Error(parsedError || message || `API error ${response.status}`)
   }
 
-  return response.json() as Promise<T>
+  const text = await response.text()
+  if (!text) return null as unknown as T
+  return JSON.parse(text) as T
 }
 
 function mapDashboardItem(item: ApiDashboardItem): WorkloadSummary {
@@ -267,6 +270,7 @@ function mapDashboardItem(item: ApiDashboardItem): WorkloadSummary {
     complianceStatus: item.compliance_status,
     remediationStatus: item.remediation_status,
     githubPrUrl: item.github_pr_url,
+    isFavorite: item.is_favorite ?? false,
   }
 }
 
@@ -329,6 +333,7 @@ function mapScorecardItem(item: ApiScorecardItem): WorkloadDetail {
     complianceStatus: item.compliance_status,
     remediationStatus: null,
     githubPrUrl: null,
+    isFavorite: false,
     version: item.version,
     evaluatedAt: item.evaluated_at,
     totalRules: item.total_rules ?? 0,
@@ -827,6 +832,14 @@ export const api = {
         }
         throw cause
       }
+    },
+  },
+  favorites: {
+    add: async (workloadId: string) => {
+      await request<null>(`/workloads/${workloadId}/favorite`, { method: 'POST' })
+    },
+    remove: async (workloadId: string) => {
+      await request<null>(`/workloads/${workloadId}/favorite`, { method: 'DELETE' })
     },
   },
   dashboard: {

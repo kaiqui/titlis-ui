@@ -12,13 +12,14 @@ import { Header } from '@/components/layout/Header'
 import { DetailPanel } from '@/components/sre/DetailPanel'
 import { FocusTabs } from '@/components/sre/FocusTabs'
 import { InlineAccordion } from '@/components/sre/InlineAccordion'
+import { FavoriteStar } from '@/components/sre/FavoriteStar'
 import { SelectionList } from '@/components/sre/SelectionList'
 import { SummaryStrip } from '@/components/sre/SummaryStrip'
 import { useDashboardWorkloads, useWorkloadScorecard } from '@/hooks/useApi'
 import { buildPlatformSummary } from '@/lib/insights'
 import { formatDate, formatEnum, formatNumber, statusTone } from '@/lib/utils'
 
-type ComplianceFilter = 'all' | 'non_compliant' | 'compliant' | 'unknown'
+type ComplianceFilter = 'all' | 'non_compliant' | 'compliant' | 'unknown' | 'favorites'
 type ScorecardFocus = 'overview' | 'pillars' | 'executive'
 
 export function Scorecards() {
@@ -42,6 +43,7 @@ export function Scorecards() {
         || workload.namespace.toLowerCase().includes(term)
         || workload.cluster.toLowerCase().includes(term)
       const matchesCompliance = complianceFilter === 'all'
+        || (complianceFilter === 'favorites' && workload.isFavorite)
         || (complianceFilter === 'non_compliant' && workload.complianceStatus === 'NON_COMPLIANT')
         || (complianceFilter === 'compliant' && workload.complianceStatus === 'COMPLIANT')
         || (complianceFilter === 'unknown' && workload.complianceStatus !== 'NON_COMPLIANT' && workload.complianceStatus !== 'COMPLIANT')
@@ -119,6 +121,7 @@ export function Scorecards() {
               onChange={id => setComplianceFilter(id as ComplianceFilter)}
               items={[
                 { id: 'all', label: 'Todos', count: clusterScopedWorkloads.length },
+                { id: 'favorites', label: 'Meus serviços', count: clusterScopedWorkloads.filter(w => w.isFavorite).length },
                 { id: 'non_compliant', label: 'Não conformes', count: summary.nonCompliantCount },
                 { id: 'compliant', label: 'Conformes', count: summary.compliantCount },
                 { id: 'unknown', label: 'Sem classificação', count: clusterScopedWorkloads.length - summary.nonCompliantCount - summary.compliantCount },
@@ -172,6 +175,7 @@ export function Scorecards() {
                       </>
                     ),
                     meta: <ScoreBadge score={workload.overallScore} size="sm" />,
+                    action: <FavoriteStar workloadId={workload.id} isFavorite={workload.isFavorite} />,
                   }))}
                   activeId={selectedId}
                   onSelect={id => {

@@ -1,10 +1,34 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
+import type { WorkloadSummary } from '@/types'
 
 export function useDashboardWorkloads(cluster?: string) {
   return useQuery({
     queryKey: ['dashboard', cluster],
     queryFn: () => api.dashboard.list(cluster),
+  })
+}
+
+export function useToggleFavorite() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ workloadId, isFavorite }: { workloadId: string; isFavorite: boolean }) =>
+      isFavorite ? api.favorites.remove(workloadId) : api.favorites.add(workloadId),
+    onMutate: async ({ workloadId, isFavorite }) => {
+      await queryClient.cancelQueries({ queryKey: ['dashboard'] })
+      const previous = queryClient.getQueriesData<WorkloadSummary[]>({ queryKey: ['dashboard'] })
+      queryClient.setQueriesData<WorkloadSummary[]>({ queryKey: ['dashboard'] }, old =>
+        old?.map(w => w.id === workloadId ? { ...w, isFavorite: !isFavorite } : w),
+      )
+      return { previous }
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        for (const [key, data] of context.previous) {
+          queryClient.setQueryData(key, data)
+        }
+      }
+    },
   })
 }
 
