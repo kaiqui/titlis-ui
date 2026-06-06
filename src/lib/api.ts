@@ -1107,15 +1107,15 @@ export const api = {
       },
     ) =>
       streamSse(`/ai/remediate/${threadId}/submit-service-yaml`, {
-        manifest_path: form.manifestPath,
-        base_branch: form.baseBranch,
+        manifestPath: form.manifestPath,
+        baseBranch: form.baseBranch,
         name: form.name,
         team: form.team,
         namespaces: form.namespaces,
-        name_pattern: form.namePattern,
+        namePattern: form.namePattern,
         env: form.env,
         contacts: form.contacts ?? null,
-        extra_paths: form.extraPaths ?? null,
+        extraPaths: form.extraPaths ?? null,
       }),
     agentChat: (sessionId: string, message: string, workloadId?: string) =>
       streamSse('/ai/agent/chat', { sessionId, message, ...(workloadId ? { workloadId } : {}) }),

@@ -19,11 +19,18 @@ vi.mock('@/lib/api', () => ({
       remediateStream: vi.fn(),
       confirmRemediation: vi.fn(),
       setManifestPath: vi.fn(),
+      submitServiceYaml: vi.fn(),
     },
     github: {
       searchRepos: vi.fn(),
     },
   },
+}))
+
+// react-diff-viewer-continued é mockado no nível da lib para evitar crash em jsdom (Web Workers).
+vi.mock('react-diff-viewer-continued', () => ({
+  default: () => null,
+  DiffMethod: { LINES: 'LINES' },
 }))
 
 import { api } from '@/lib/api'
@@ -191,7 +198,7 @@ describe('RemediatePage — fix_ready persiste no step reviewing', () => {
       }
     })
 
-    const { user } = renderRemediatePage()
+    renderRemediatePage()
 
     // Aguarda step selecting
     await waitFor(() => screen.getByText(/Gerar remediação com ARIA/i))
