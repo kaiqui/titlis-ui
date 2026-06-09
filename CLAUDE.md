@@ -142,8 +142,7 @@ src/
 **Proteção de rotas:** `<AuthGate>` em torno de todas as rotas autenticadas.
 `<AuthGate requireAdmin>` para admin-only (redireciona para `/` se não for admin).
 
-*`/assistant` é visível para qualquer usuário autenticado, mas o link na sidebar só aparece
-para usuários com `canRemediate` (role admin/engineer). A lógica de permissão de tools é no backend.
+*`/aria` é visível para qualquer usuário autenticado — o link ARIA aparece na sidebar para todos os roles. `/recommendations` (Fila de PRs) continua restrito a `canRemediate` (admin/engineer). A lógica de permissão de tools é no backend.
 
 ---
 
@@ -449,7 +448,7 @@ O titlis-ai expõe três fluxos SSE consumidos pela UI:
 
 ### Agente Conversacional (`AssistantPage.tsx`)
 
-**Página:** `/assistant` — acessível via sidebar (ícone `MessageSquare`, visível para `canRemediate`).
+**Página:** `/aria` — acessível via sidebar para todos os roles autenticados (ícone `Sparkles`).
 
 **Acesso via botão "Corrigir com IA":** em `ApplicationDetail`, o botão navega para `/assistant`
 passando via router state: `{ workloadId, workloadName, namespace, findingIds }`. A página detecta
@@ -515,7 +514,7 @@ Página `/settings/ai` — admin configura por tenant:
 
 - Leia SSE com `fetch()` + `ReadableStream` — não use `EventSource` (não suporta POST)
 - Nunca armazene `api_key` ou `github_token` no state da UI — são write-only
-- `canRemediate` (derivado do role) controla visibilidade do link na sidebar e do botão "Corrigir com IA"
+- `canRemediate` (derivado do role) controla visibilidade de `/recommendations` na sidebar e do botão "Corrigir com IA" — não controla mais o link da ARIA, que é visível para todos os roles
 - O `thread_id` do LangGraph vem do evento `fix_ready` — guarde em `useState` para o confirm posterior
 - O `sessionId` do agente conversacional vem do `sessionStorage` — nunca do `localStorage`
 

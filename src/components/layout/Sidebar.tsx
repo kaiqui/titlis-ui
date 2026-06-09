@@ -35,8 +35,9 @@ const secondaryNavItems = [
   { to: '/topology', icon: Network, label: 'Topologia', featureId: 'nav_topology' },
 ]
 
+const ariaNavItem = { to: '/aria', icon: Sparkles, label: 'ARIA', featureId: 'nav_aria' }
+
 const remediationNavItems = [
-  { to: '/aria', icon: Sparkles, label: 'ARIA', featureId: 'nav_aria' },
   { to: '/recommendations', icon: GitPullRequest, label: 'Fila de PRs', featureId: 'nav_recommendations' },
 ]
 
@@ -135,7 +136,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const navItems = [
     ...primaryNavItems,
     ...secondaryNavItems,
-    ...(user?.canRemediate ? remediationNavItems : []),
+    ariaNavItem,
+    ...remediationNavItems,
   ]
   const configurationItems = [
     ...(user?.role === 'admin' ? settingsNavItems.admin : []),
