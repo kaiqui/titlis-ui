@@ -1,5 +1,138 @@
 export type Severity = 'critical' | 'error' | 'warning' | 'info'
 
+export type LifecycleState = 'DISCOVERING' | 'LEARNING' | 'MONITORING'
+
+export interface QueueSummary {
+  id: string
+  provider: string
+  externalId: string
+  displayName: string
+  projectId: string | null
+  topicId: string | null
+  isDlq: boolean
+  lifecycleState: LifecycleState
+  observationCount: number
+  learningTarget: number
+  overallScore: number | null
+  complianceStatus: string | null
+  sendMessageCountRate: number | null
+  pullMessageCountRate: number | null
+  lastSeenAt: string | null
+  serviceDefinitionId: number | null
+  serviceName: string | null
+  team: string | null
+  linkSource: string | null
+  suggestionCount: number
+}
+
+export interface QueueLinkSuggestion {
+  serviceDefinitionId: number
+  serviceName: string
+  team: string | null
+  confidence: number
+  source: string
+}
+
+export interface ServiceOption {
+  serviceDefinitionId: number
+  serviceName: string
+  team: string | null
+}
+
+export interface ReliabilityNode {
+  path: string
+  kind: string // estate | product | team | service
+  name: string
+  ri: number | null
+  debt: number
+  weight: number
+  coverage: number
+  scoredLeaves: number
+  totalLeaves: number
+  criticalBreach: boolean
+  hasChildren: boolean
+  children: ReliabilityNode[]
+}
+
+export interface ReliabilityFinding {
+  leafKind: string // workload | queue
+  leafName: string
+  workloadUid: string | null
+  ruleId: string
+  pillar: string | null
+  severity: string | null
+  message: string | null
+  actualValue: string | null
+  debt: number
+  riGainService: number
+  remediable: boolean
+}
+
+export interface ReliabilityTrendPoint {
+  date: string
+  ri: number
+}
+
+export interface QueueThresholds {
+  backlogWarning: number
+  backlogCritical: number
+  ageWarningSec: number
+  ageCriticalSec: number
+  p50Backlog: number
+  p75Backlog: number
+  p95Backlog: number
+  p50AgeSec: number
+  p75AgeSec: number
+  p95AgeSec: number
+  calculatedAt: string
+  observationCount: number
+}
+
+export interface QueueFinding {
+  ruleId: string
+  ruleName: string
+  pillar: string
+  severity: Severity
+  passed: boolean
+  message: string | null
+  actualValue: string | null
+}
+
+export interface QueueScorecard {
+  queueId: string
+  overallScore: number | null
+  complianceStatus: string | null
+  totalRules: number
+  passedRules: number
+  failedRules: number
+  criticalFailures: number
+  errorCount: number
+  warningCount: number
+  evaluatedAt: string | null
+  pillarScores: PillarScore[]
+  findings: QueueFinding[]
+}
+
+export interface LabelRegistryEntry {
+  id: number
+  labelKey: string
+  labelValue: string
+  isActive: boolean
+  createdAt: string
+}
+
+export interface DatadogQueueSettings {
+  configured: boolean
+  hasAppKey: boolean
+  site: string
+  queueMonitoringEnabled: boolean
+  monitorCreationEnabled: boolean
+  lastCollectedAt: string | null
+  activeMonitorCount: number
+  queuesByState: { discovering: number; learning: number; monitoring: number }
+  probeStatus: 'ok' | 'error' | 'not_configured'
+}
+
 export interface RemediationDiffFile {
   path: string
   current: string

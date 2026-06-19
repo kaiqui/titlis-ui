@@ -4,7 +4,8 @@ import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle } from '@/components/jeitto/Card'
 import { MetricCard } from '@/components/jeitto/MetricCard'
 import { PageError, PageLoading } from '@/components/jeitto/PageState'
-import { useAdminOverview, useAdminUsers } from '@/hooks/useApi'
+import { useAdminOverview, useAdminUsers, useUpdateUserRole } from '@/hooks/useApi'
+import { useAuth } from '@/contexts/useAuth'
 import { exportUsersCsv } from '@/lib/exportCsv'
 import { cn, formatDate } from '@/lib/utils'
 
@@ -21,17 +22,13 @@ const PILLAR_LABELS: Record<string, string> = {
 }
 
 const ROLE_LABELS: Record<string, string> = {
-  'titlis.admin': 'Admin',
-  'titlis.engineer': 'Engenheiro',
-  'titlis.pm': 'PM',
-  'titlis.viewer': 'Observador',
+  admin: 'Admin',
+  viewer: 'Observador',
 }
 
 const ROLE_COLORS: Record<string, string> = {
-  'titlis.admin': 'bg-purple-500/15 text-purple-400',
-  'titlis.engineer': 'bg-blue-500/15 text-blue-400',
-  'titlis.pm': 'bg-amber-500/15 text-amber-400',
-  'titlis.viewer': 'bg-slate-500/15 text-slate-400',
+  admin: 'bg-purple-500/15 text-purple-400',
+  viewer: 'bg-slate-500/15 text-slate-400',
 }
 
 function scoreTextColor(score: number) {
@@ -95,10 +92,15 @@ function SectionRow({ icon, iconClass, label, value }: { icon: React.ReactNode; 
   )
 }
 
-export function AdminOverview() {
+type PendingChange = { userId: number; targetRole: 'admin' | 'viewer' }
+
+export function AdminOverview({ standalone = true }: { standalone?: boolean }) {
+  const { user: currentUser } = useAuth()
   const { data: overview, isLoading: loadingOverview, error: errorOverview, refetch } = useAdminOverview()
   const { data: usersData, isLoading: loadingUsers } = useAdminUsers()
+  const updateRole = useUpdateUserRole()
   const [page, setPage] = useState(0)
+  const [pendingChange, setPendingChange] = useState<PendingChange | null>(null)
 
   if (loadingOverview || loadingUsers) return <PageLoading />
   if (errorOverview) {
@@ -118,10 +120,12 @@ export function AdminOverview() {
 
   return (
     <div className="flex flex-col">
-      <Header
-        title="Visão Executiva"
-        subtitle="Panorama de compliance, automação e adoção da plataforma."
-      />
+      {standalone && (
+        <Header
+          title="Visão Executiva"
+          subtitle="Panorama de compliance, automação e adoção da plataforma."
+        />
+      )}
 
       <div className="space-y-6 px-4 py-6 lg:px-8">
 
@@ -196,7 +200,11 @@ export function AdminOverview() {
                     </tr>
                   </thead>
                   <tbody>
-                    {pagedUsers.map(user => (
+                    {pagedUsers.map(user => {
+                      const isSelf = user.id === currentUser?.id
+                      const isPending = pendingChange?.userId === user.id
+                      const targetRole = pendingChange?.targetRole
+                      return (
                       <tr key={user.id} className="border-b last:border-0" style={{ borderColor: 'var(--color-border)' }}>
                         <td className="py-3 pr-4">
                           <p className="font-semibold" style={{ color: 'var(--color-foreground)' }}>
@@ -209,9 +217,51 @@ export function AdminOverview() {
                           )}
                         </td>
                         <td className="py-3 pr-4">
-                          <span className={cn('inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold', ROLE_COLORS[user.role] ?? 'bg-slate-500/15 text-slate-400')}>
-                            {ROLE_LABELS[user.role] ?? user.role}
-                          </span>
+                          {isPending ? (
+                            <div className="flex items-center gap-2">
+                              <span className={cn('inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold', ROLE_COLORS[targetRole!] ?? 'bg-slate-500/15 text-slate-400')}>
+                                {ROLE_LABELS[targetRole!] ?? targetRole}
+                              </span>
+                              <button
+                                onClick={() => {
+                                  updateRole.mutate(
+                                    { userId: user.id, role: targetRole! },
+                                    { onSettled: () => setPendingChange(null) },
+                                  )
+                                }}
+                                disabled={updateRole.isPending}
+                                className="rounded px-2 py-0.5 text-xs font-semibold bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 disabled:opacity-50 transition-colors"
+                              >
+                                {updateRole.isPending ? '...' : 'Confirmar'}
+                              </button>
+                              <button
+                                onClick={() => setPendingChange(null)}
+                                disabled={updateRole.isPending}
+                                className="rounded px-2 py-0.5 text-xs font-medium hover:bg-border transition-colors disabled:opacity-50"
+                                style={{ color: 'var(--color-muted-foreground)' }}
+                              >
+                                Cancelar
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <span className={cn('inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold', ROLE_COLORS[user.role] ?? 'bg-slate-500/15 text-slate-400')}>
+                                {ROLE_LABELS[user.role] ?? user.role}
+                              </span>
+                              {!isSelf && (
+                                <button
+                                  onClick={() => setPendingChange({
+                                    userId: user.id,
+                                    targetRole: user.role === 'admin' ? 'viewer' : 'admin',
+                                  })}
+                                  className="rounded px-2 py-0.5 text-xs font-medium hover:bg-border transition-colors"
+                                  style={{ color: 'var(--color-muted-foreground)' }}
+                                >
+                                  {user.role === 'admin' ? '↓ Rebaixar' : '↑ Promover'}
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </td>
                         <td className="py-3 pr-4">
                           <span
@@ -233,7 +283,7 @@ export function AdminOverview() {
                           </span>
                         </td>
                       </tr>
-                    ))}
+                    )})}
                   </tbody>
                 </table>
               </div>

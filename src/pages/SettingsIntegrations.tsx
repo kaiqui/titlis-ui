@@ -1,22 +1,21 @@
 import { useEffect, useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
-import { Check, Database, Eye, EyeOff, Github, Info } from 'lucide-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Check, CheckCircle, Database, Eye, EyeOff, Github, Info, XCircle } from 'lucide-react'
 import { ButtonDefault } from '@/components/jeitto/ButtonDefault'
 import { Card } from '@/components/jeitto/Card'
 import { PageError, PageLoading } from '@/components/jeitto/PageState'
 import { Header } from '@/components/layout/Header'
 import { useAiConfig } from '@/hooks/useApi'
 import { api } from '@/lib/api'
-import { useQuery } from '@tanstack/react-query'
 
 type GithubAuthMode = 'pat' | 'github_app'
 
 export function SettingsIntegrations() {
   const queryClient = useQueryClient()
   const { data: config, isLoading, error } = useAiConfig()
-  const { data: ddStatus } = useQuery({
-    queryKey: ['datadog-config-status'],
-    queryFn: api.datadogConfig.status,
+  const { data: ddSettings } = useQuery({
+    queryKey: ['datadog-settings'],
+    queryFn: api.datadogSettings.get,
     staleTime: 30_000,
   })
 
@@ -42,11 +41,15 @@ export function SettingsIntegrations() {
   const [ddApiKey, setDdApiKey] = useState('')
   const [ddAppKey, setDdAppKey] = useState('')
   const [ddSite, setDdSite] = useState('datadoghq.com')
+  const [queueEnabled, setQueueEnabled] = useState(false)
+  const [monitorCreationEnabled, setMonitorCreationEnabled] = useState(false)
   const [showDdApiKey, setShowDdApiKey] = useState(false)
   const [showDdAppKey, setShowDdAppKey] = useState(false)
   const [ddSaving, setDdSaving] = useState(false)
   const [ddError, setDdError] = useState<string | null>(null)
   const [ddSaved, setDdSaved] = useState(false)
+  const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null)
+  const [testing, setTesting] = useState(false)
 
   useEffect(() => {
     if (config) {
@@ -54,6 +57,14 @@ export function SettingsIntegrations() {
       setGithubAuthMode((config.githubAuthMode as GithubAuthMode) ?? 'pat')
     }
   }, [config])
+
+  useEffect(() => {
+    if (ddSettings) {
+      setQueueEnabled(ddSettings.queueMonitoringEnabled)
+      setMonitorCreationEnabled(ddSettings.monitorCreationEnabled)
+      if (ddSettings.site) setDdSite(ddSettings.site)
+    }
+  }, [ddSettings])
 
   if (isLoading) return <><Header title="Integrações" /><PageLoading /></>
   if (error) return <><Header title="Integrações" /><PageError message="Não foi possível carregar a configuração." /></>
@@ -92,17 +103,19 @@ export function SettingsIntegrations() {
   }
 
   const handleDatadogSave = async () => {
-    if (!ddApiKey.trim()) return
     setDdSaving(true)
     setDdError(null)
     setDdSaved(false)
+    setTestResult(null)
     try {
-      await api.datadogConfig.save({
-        ddApiKey: ddApiKey.trim(),
-        ddAppKey: ddAppKey.trim() || undefined,
-        site: ddSite,
+      await api.datadogSettings.save({
+        ...(ddApiKey.trim() ? { ddApiKey: ddApiKey.trim() } : {}),
+        ...(ddAppKey.trim() ? { ddAppKey: ddAppKey.trim() } : {}),
+        ...(ddSite ? { ddSite: ddSite } : {}),
+        queueMonitoringEnabled: queueEnabled,
+        monitorCreationEnabled,
       })
-      await queryClient.invalidateQueries({ queryKey: ['datadog-config-status'] })
+      await queryClient.invalidateQueries({ queryKey: ['datadog-settings'] })
       setDdApiKey('')
       setDdAppKey('')
       setDdSaved(true)
@@ -113,6 +126,19 @@ export function SettingsIntegrations() {
     }
   }
 
+  const handleTestConnection = async () => {
+    setTesting(true)
+    setTestResult(null)
+    try {
+      const result = await api.datadogSettings.test()
+      setTestResult(result)
+    } catch {
+      setTestResult({ ok: false, message: 'Erro ao testar conexão.' })
+    } finally {
+      setTesting(false)
+    }
+  }
+
   const githubSaveDisabled = githubSaving || (() => {
     const branchUnchanged = githubBranch === (config?.githubBaseBranch ?? 'main')
     const modeUnchanged = githubAuthMode === (config?.githubAuthMode ?? 'pat')
@@ -120,11 +146,18 @@ export function SettingsIntegrations() {
     return !githubAppId.trim() && !githubAppPrivateKey.trim() && branchUnchanged && modeUnchanged
   })()
 
+  const ddQueueFlagChanged = queueEnabled !== (ddSettings?.queueMonitoringEnabled ?? false)
+  const ddMonitorFlagChanged = monitorCreationEnabled !== (ddSettings?.monitorCreationEnabled ?? false)
+  const ddSaveEnabled = !ddSaving && (!!ddApiKey.trim() || ddQueueFlagChanged || ddMonitorFlagChanged)
+
   const inputCls = 'mt-2 w-full rounded-2xl px-4 py-3 text-sm outline-none'
   const inputStyle = { backgroundColor: 'var(--color-muted)', border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }
   const tabBase = 'flex-1 rounded-xl py-2 text-xs font-semibold transition-colors'
   const tabActive = { backgroundColor: 'var(--color-foreground)', color: 'var(--color-background)' }
   const tabInactive = { backgroundColor: 'transparent', color: 'var(--color-muted-foreground)', border: '1px solid var(--color-border)' }
+
+  const queuesByState = ddSettings?.queuesByState
+  const hasQueueData = queuesByState && (queuesByState.discovering + queuesByState.learning + queuesByState.monitoring) > 0
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -314,21 +347,22 @@ export function SettingsIntegrations() {
             <div>
               <p className="text-sm font-black" style={{ color: 'var(--color-foreground)' }}>Datadog</p>
               <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
-                {ddStatus?.configured ? 'Credenciais configuradas' : 'Credenciais não configuradas'}
+                {ddSettings?.configured ? 'Credenciais configuradas' : 'Credenciais não configuradas'}
               </p>
             </div>
-            {ddStatus?.configured && (
+            {ddSettings?.configured && (
               <span className="ml-auto rounded-full px-2.5 py-1 text-xs font-semibold" style={{ backgroundColor: 'rgba(16,185,129,0.1)', color: '#059669' }}>
                 Ativo
               </span>
             )}
           </div>
 
-          <p className="mb-4 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
+          <p className="mb-5 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
             Usado pelo assistente ARIA para análise de métricas via MCP Datadog. As credenciais são
             armazenadas de forma criptografada e nunca expostas na UI.
           </p>
 
+          {/* Credenciais */}
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>
@@ -339,7 +373,7 @@ export function SettingsIntegrations() {
                   type={showDdApiKey ? 'text' : 'password'}
                   value={ddApiKey}
                   onChange={e => setDdApiKey(e.target.value)}
-                  placeholder={ddStatus?.configured ? '•••••••••' : 'Cole sua DD API Key'}
+                  placeholder={ddSettings?.configured ? '•••••••••' : 'Cole sua DD API Key'}
                   className="w-full rounded-2xl px-4 py-3 pr-12 text-sm outline-none"
                   style={inputStyle}
                 />
@@ -358,7 +392,7 @@ export function SettingsIntegrations() {
                   type={showDdAppKey ? 'text' : 'password'}
                   value={ddAppKey}
                   onChange={e => setDdAppKey(e.target.value)}
-                  placeholder={ddStatus?.configured ? '•••••••••' : 'Cole sua DD Application Key'}
+                  placeholder={ddSettings?.configured ? '•••••••••' : 'Cole sua DD Application Key'}
                   className="w-full rounded-2xl px-4 py-3 pr-12 text-sm outline-none"
                   style={inputStyle}
                 />
@@ -387,14 +421,109 @@ export function SettingsIntegrations() {
             </div>
           </div>
 
+          {/* Análise de filas */}
+          <div className="mt-5 space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>
+              Análise de filas
+            </p>
+
+            {/* Toggle 1: habilitar coleta */}
+            <div
+              className="flex items-start gap-3 rounded-2xl px-4 py-4"
+              style={{ backgroundColor: 'var(--color-muted)', border: '1px solid var(--color-border)' }}
+            >
+              <input
+                id="queue-enabled"
+                type="checkbox"
+                checked={queueEnabled}
+                onChange={e => {
+                  setQueueEnabled(e.target.checked)
+                  if (!e.target.checked) setMonitorCreationEnabled(false)
+                }}
+                className="mt-0.5 h-4 w-4 shrink-0 rounded accent-[var(--color-primary)]"
+              />
+              <label htmlFor="queue-enabled" className="cursor-pointer">
+                <p className="text-sm font-semibold" style={{ color: 'var(--color-foreground)' }}>
+                  Habilitar coleta e aprendizado de filas
+                </p>
+                <p className="mt-0.5 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
+                  O sistema começa em <strong>modo de aprendizado</strong> — observa volumetria, avalia regras de
+                  conformidade e exibe scores e findings imediatamente. Nenhum monitor é criado no Datadog
+                  enquanto esta opção estiver ativa sem a opção abaixo.
+                </p>
+              </label>
+            </div>
+
+            {/* Toggle 2: criar monitores */}
+            {queueEnabled && (
+              <div
+                className="flex items-start gap-3 rounded-2xl px-4 py-4"
+                style={{ backgroundColor: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.25)' }}
+              >
+                <input
+                  id="monitor-creation-enabled"
+                  type="checkbox"
+                  checked={monitorCreationEnabled}
+                  onChange={e => setMonitorCreationEnabled(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded accent-[var(--color-primary)]"
+                />
+                <label htmlFor="monitor-creation-enabled" className="cursor-pointer">
+                  <p className="text-sm font-semibold" style={{ color: 'var(--color-foreground)' }}>
+                    Criar monitores no Datadog após aprendizado
+                  </p>
+                  <p className="mt-0.5 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
+                    Depois que os ciclos de aprendizado forem concluídos, o sistema promove automaticamente
+                    as filas para modo ativo e cria os monitores de backlog, idade e DLQ no Datadog.
+                    Ative somente após revisar os scores e thresholds sugeridos.
+                  </p>
+                </label>
+              </div>
+            )}
+
+            {/* Distribuição por estado */}
+            {ddSettings?.configured && hasQueueData && (
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { label: 'Descoberta', value: queuesByState!.discovering, color: 'rgba(99,102,241,0.12)', text: '#6366f1' },
+                  { label: 'Aprendendo', value: queuesByState!.learning, color: 'rgba(245,158,11,0.12)', text: '#d97706' },
+                  { label: 'Monitorando', value: queuesByState!.monitoring, color: 'rgba(16,185,129,0.12)', text: '#059669' },
+                ].map(({ label, value, color, text }) => (
+                  <div key={label} className="rounded-2xl px-3 py-2.5 text-center" style={{ backgroundColor: color }}>
+                    <p className="text-lg font-black" style={{ color: text }}>{value}</p>
+                    <p className="text-[11px]" style={{ color: 'var(--color-muted-foreground)' }}>{label}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Feedback de conexão */}
+          {testResult && (
+            <div className={`mt-4 flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium ${testResult.ok ? 'bg-emerald-900/20 text-emerald-400' : 'bg-red-900/20 text-red-400'}`}>
+              {testResult.ok ? <CheckCircle size={15} /> : <XCircle size={15} />}
+              {testResult.message}
+            </div>
+          )}
+
           {ddError && <p className="mt-3 text-sm" style={{ color: '#dc2626' }}>{ddError}</p>}
 
-          <div className="mt-5 flex items-center gap-3">
+          <div className="mt-5 flex flex-wrap items-center gap-3">
             <ButtonDefault
               label={ddSaving ? 'Salvando...' : 'Salvar Datadog'}
               onClick={() => void handleDatadogSave()}
-              disabled={ddSaving || !ddApiKey.trim()}
+              disabled={!ddSaveEnabled}
             />
+            {ddSettings?.configured && (
+              <button
+                type="button"
+                onClick={() => void handleTestConnection()}
+                disabled={testing}
+                className="inline-flex h-10 items-center gap-2 rounded-xl border px-4 text-sm font-semibold transition-opacity disabled:opacity-50"
+                style={{ borderColor: 'var(--color-border)', color: 'var(--color-foreground)' }}
+              >
+                {testing ? 'Testando…' : 'Testar Conexão'}
+              </button>
+            )}
             {ddSaved && (
               <div className="flex items-center gap-1.5 text-sm" style={{ color: '#10b981' }}>
                 <Check size={14} />

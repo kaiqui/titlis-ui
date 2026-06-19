@@ -1,10 +1,11 @@
-import { useDeferredValue, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
+import { Pagination } from '@/components/jeitto/Pagination'
+import { usePagination } from '@/hooks/usePagination'
 import { useNavigate } from 'react-router-dom'
-import { Activity, ArrowRight, ClipboardCheck, Layers3, Search, ShieldAlert, ShieldCheck } from 'lucide-react'
+import { Activity, ArrowRight, ClipboardCheck, Layers3, ShieldAlert, ShieldCheck } from 'lucide-react'
 import { ButtonDefault } from '@/components/jeitto/ButtonDefault'
 import { Card } from '@/components/jeitto/Card'
 import { EmptyState } from '@/components/jeitto/EmptyState'
-import { Input } from '@/components/jeitto/Input'
 import { PageError, PageLoading } from '@/components/jeitto/PageState'
 import { ScoreBadge } from '@/components/jeitto/ScoreBadge'
 import { ScoreRing } from '@/components/jeitto/ScoreRing'
@@ -15,33 +16,37 @@ import { InlineAccordion } from '@/components/sre/InlineAccordion'
 import { FavoriteStar } from '@/components/sre/FavoriteStar'
 import { SelectionList } from '@/components/sre/SelectionList'
 import { SummaryStrip } from '@/components/sre/SummaryStrip'
-import { useDashboardWorkloads, useWorkloadScorecard } from '@/hooks/useApi'
+import { useAvailableTags, useDashboardWorkloads, useWorkloadScorecard } from '@/hooks/useApi'
+import { isKeyValue, TagFilterInput } from '@/components/sre/TagFilterInput'
 import { buildPlatformSummary } from '@/lib/insights'
-import { formatDate, formatEnum, formatNumber, statusTone } from '@/lib/utils'
+import { formatDate, formatEnum, formatEnvironment, formatNumber, statusTone } from '@/lib/utils'
 
 type ComplianceFilter = 'all' | 'non_compliant' | 'compliant' | 'unknown' | 'favorites'
 type ScorecardFocus = 'overview' | 'pillars' | 'executive'
 
 export function Scorecards() {
   const navigate = useNavigate()
-  const [search, setSearch] = useState('')
   const [cluster, setCluster] = useState('all')
   const [complianceFilter, setComplianceFilter] = useState<ComplianceFilter>('all')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [focus, setFocus] = useState<ScorecardFocus>('overview')
-  const deferredSearch = useDeferredValue(search)
-  const { data: workloads, isLoading, error, refetch } = useDashboardWorkloads()
+  const [activeChips, setActiveChips] = useState<string[]>([])
+  const tagChips = activeChips.filter(isKeyValue)
+  const textChips = activeChips.filter(c => !isKeyValue(c))
+  const { data: workloads, isLoading, error, refetch } = useDashboardWorkloads(undefined, tagChips.length > 0 ? tagChips : undefined)
+  const { data: availableTags = [] } = useAvailableTags('workload')
   const workloadList = workloads ?? []
   const clusters = ['all', ...new Set(workloadList.map(workload => workload.cluster))]
   const clusterScopedWorkloads = workloadList.filter(workload => cluster === 'all' || workload.cluster === cluster)
   const summary = buildPlatformSummary(clusterScopedWorkloads)
   const filtered = clusterScopedWorkloads
     .filter(workload => {
-      const term = deferredSearch.trim().toLowerCase()
-      const matchesSearch = term.length === 0
-        || workload.name.toLowerCase().includes(term)
-        || workload.namespace.toLowerCase().includes(term)
-        || workload.cluster.toLowerCase().includes(term)
+      const matchesSearch = textChips.length === 0 || textChips.some(chip => {
+        const term = chip.toLowerCase()
+        return workload.name.toLowerCase().includes(term)
+          || workload.namespace.toLowerCase().includes(term)
+          || workload.cluster.toLowerCase().includes(term)
+      })
       const matchesCompliance = complianceFilter === 'all'
         || (complianceFilter === 'favorites' && workload.isFavorite)
         || (complianceFilter === 'non_compliant' && workload.complianceStatus === 'NON_COMPLIANT')
@@ -64,6 +69,7 @@ export function Scorecards() {
     }
   }, [filtered, selectedId])
 
+  const pagination = usePagination(filtered, 25)
   const selectedWorkload = filtered.find(workload => workload.id === selectedId) ?? null
   const scorecardQuery = useWorkloadScorecard(selectedWorkload?.id ?? '')
   const detail = scorecardQuery.data
@@ -94,18 +100,19 @@ export function Scorecards() {
         />
 
         <Card>
-          <div className="grid gap-4 xl:grid-cols-[1.4fr_0.8fr]">
-            <Input
-              value={search}
-              onChange={event => setSearch(event.target.value)}
-              placeholder="Buscar por workload, namespace ou cluster"
-              icon={Search}
-            />
-
+          <div className="flex flex-wrap items-start gap-3">
+            <div className="flex-1" style={{ minWidth: '220px' }}>
+              <TagFilterInput
+                value={activeChips}
+                onChange={setActiveChips}
+                suggestions={availableTags}
+                placeholder="Buscar nome, namespace ou tag (ex: env:prod)"
+              />
+            </div>
             <select
               value={cluster}
               onChange={event => setCluster(event.target.value)}
-              className="jc-select px-4 py-3 text-sm outline-none"
+              className="jc-select px-4 py-3 text-sm outline-none shrink-0"
             >
               {clusters.map(option => (
                 <option key={option} value={option}>
@@ -160,10 +167,10 @@ export function Scorecards() {
 
               <div className="mt-4">
                 <SelectionList
-                  items={filtered.map(workload => ({
+                  items={pagination.paginatedItems.map(workload => ({
                     id: workload.id,
                     title: workload.name,
-                    subtitle: `${workload.namespace} · ${workload.cluster} · ${formatEnum(workload.environment)}`,
+                    subtitle: `${workload.namespace} · ${workload.cluster} · ${formatEnvironment(workload.environment)}`,
                     badges: (
                       <>
                         <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${statusTone(workload.complianceStatus)}`}>
@@ -182,6 +189,16 @@ export function Scorecards() {
                     setSelectedId(id)
                     setFocus('overview')
                   }}
+                />
+                <Pagination
+                  page={pagination.page}
+                  pageSize={pagination.pageSize}
+                  totalItems={pagination.totalItems}
+                  totalPages={pagination.totalPages}
+                  startIndex={pagination.startIndex}
+                  endIndex={pagination.endIndex}
+                  onPageChange={pagination.setPage}
+                  onPageSizeChange={pagination.changePageSize}
                 />
               </div>
             </Card>
@@ -202,7 +219,7 @@ export function Scorecards() {
                           </span>
                         </div>
                         <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
-                          {selectedWorkload.namespace} · {selectedWorkload.cluster} · {formatEnum(selectedWorkload.environment)}
+                          {selectedWorkload.namespace} · {selectedWorkload.cluster} · {formatEnvironment(selectedWorkload.environment)}
                         </p>
                       </div>
                     </div>

@@ -24,7 +24,10 @@ import { GettingStarted } from '@/pages/GettingStarted'
 import { RemediatePage } from '@/pages/RemediatePage'
 import { AriaPage } from '@/pages/AriaPage'
 import { SettingsIntegrations } from '@/pages/SettingsIntegrations'
-import { AdminOverview } from '@/pages/AdminOverview'
+import { SettingsLabels } from '@/pages/SettingsLabels'
+import { Queues } from '@/pages/Queues'
+import { Reliability } from '@/pages/Reliability'
+import { Governance } from '@/pages/Governance'
 import { Docs } from '@/pages/Docs'
 
 // Redireciona /applications/:id → /scorecards/:id (compat. com links externos / bookmarks)
@@ -99,6 +102,15 @@ export default function App() {
                     </AuthGate>
                   )}
                 />
+                <Route path="/history" element={<Navigate to="/governance" replace />} />
+                <Route
+                  path="/governance"
+                  element={(
+                    <AuthGate requireAdmin>
+                      <Governance />
+                    </AuthGate>
+                  )}
+                />
                 <Route path="/aria" element={<AriaPage />} />
                 <Route path="/scorecards/:id/remediate" element={<RemediatePage />} />
                 <Route
@@ -117,6 +129,8 @@ export default function App() {
                     </AuthGate>
                   )}
                 />
+                <Route path="/queues" element={<Queues />} />
+                <Route path="/reliability" element={<Reliability />} />
                 <Route path="/topology" element={<Squads />} />
                 <Route path="/squads" element={<Navigate to="/topology" replace />} />
                 <Route
@@ -144,6 +158,18 @@ export default function App() {
                   )}
                 />
                 <Route
+                  path="/settings/datadog"
+                  element={<Navigate to="/settings/integrations" replace />}
+                />
+                <Route
+                  path="/settings/labels"
+                  element={(
+                    <AuthGate requireAdmin>
+                      <SettingsLabels />
+                    </AuthGate>
+                  )}
+                />
+                <Route
                   path="/settings/tags"
                   element={(
                     <AuthGate requireAdmin>
@@ -151,14 +177,7 @@ export default function App() {
                     </AuthGate>
                   )}
                 />
-                <Route
-                  path="/admin/overview"
-                  element={(
-                    <AuthGate requireAdmin>
-                      <AdminOverview />
-                    </AuthGate>
-                  )}
-                />
+                <Route path="/admin/overview" element={<Navigate to="/governance" replace />} />
               </Route>
             </Routes>
           </BrowserRouter>

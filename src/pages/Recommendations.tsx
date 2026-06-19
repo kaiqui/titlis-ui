@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Pagination } from '@/components/jeitto/Pagination'
+import { usePagination } from '@/hooks/usePagination'
 import { ArrowRight, ExternalLink, GitPullRequest, RefreshCw, Search, Sparkles, Wrench } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Header } from '@/components/layout/Header'
@@ -14,7 +16,7 @@ import { SelectionList } from '@/components/sre/SelectionList'
 import { SummaryStrip } from '@/components/sre/SummaryStrip'
 import { useDashboardWorkloads } from '@/hooks/useApi'
 import { buildRemediationQueue } from '@/lib/insights'
-import { formatDate, formatEnum, formatNumber, statusTone } from '@/lib/utils'
+import { formatDate, formatEnum, formatEnvironment, formatNumber, statusTone } from '@/lib/utils'
 
 type RemediationFilter = 'active' | 'with_pr' | 'without_pr' | 'all'
 type RemediationFocus = 'overview' | 'signals' | 'actions'
@@ -58,6 +60,7 @@ export function Recommendations() {
     }
   }, [filtered, selectedId])
 
+  const pagination = usePagination(filtered, 25)
   const selected = filtered.find(item => item.id === selectedId) ?? null
   const summary = useMemo(() => {
     const scored = queue.filter(item => item.overallScore !== null)
@@ -147,10 +150,10 @@ export function Recommendations() {
 
               <div className="mt-4">
                 <SelectionList
-                  items={filtered.map(item => ({
+                  items={pagination.paginatedItems.map(item => ({
                     id: item.id,
                     title: item.name,
-                    subtitle: `${item.namespace} · ${item.cluster} · ${formatEnum(item.environment)}`,
+                    subtitle: `${item.namespace} · ${item.cluster} · ${formatEnvironment(item.environment)}`,
                     badges: (
                       <>
                         <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone(item.remediationStatus ?? item.complianceStatus)}`}>
@@ -175,6 +178,16 @@ export function Recommendations() {
                     setFocus('overview')
                   }}
                 />
+                <Pagination
+                  page={pagination.page}
+                  pageSize={pagination.pageSize}
+                  totalItems={pagination.totalItems}
+                  totalPages={pagination.totalPages}
+                  startIndex={pagination.startIndex}
+                  endIndex={pagination.endIndex}
+                  onPageChange={pagination.setPage}
+                  onPageSizeChange={pagination.changePageSize}
+                />
               </div>
             </Card>
 
@@ -190,7 +203,7 @@ export function Recommendations() {
                         </span>
                       </div>
                       <p className="mt-2 text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
-                        {selected.namespace} · {selected.cluster} · {formatEnum(selected.environment)}
+                        {selected.namespace} · {selected.cluster} · {formatEnvironment(selected.environment)}
                       </p>
                     </div>
 
@@ -261,7 +274,7 @@ export function Recommendations() {
                         {[
                           `Namespace: ${selected.namespace}`,
                           `Cluster: ${selected.cluster}`,
-                          `Ambiente: ${formatEnum(selected.environment)}`,
+                          `Ambiente: ${formatEnvironment(selected.environment)}`,
                           `Status atual: ${formatEnum(selected.remediationStatus ?? selected.complianceStatus)}`,
                           `Última leitura: ${formatDate(new Date().toISOString())}`,
                         ].map(item => (

@@ -1,4 +1,6 @@
 import { useState, useMemo } from 'react'
+import { Pagination } from '@/components/jeitto/Pagination'
+import { usePagination } from '@/hooks/usePagination'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Activity,
@@ -468,6 +470,8 @@ function CoverageView({ onRefresh }: { onRefresh: () => void }) {
     })
   }, [items, filter, search])
 
+  const coveragePagination = usePagination(filtered, 25)
+
   if (isLoading) return <PageLoading />
   if (error) return <PageError message={error instanceof Error ? error.message : undefined} onRetry={onRefresh} />
 
@@ -561,9 +565,19 @@ function CoverageView({ onRefresh }: { onRefresh: () => void }) {
         </Card>
       ) : (
         <div className="space-y-2">
-          {filtered.map(item => (
+          {coveragePagination.paginatedItems.map(item => (
             <CoverageCard key={item.workloadId} item={item} />
           ))}
+          <Pagination
+            page={coveragePagination.page}
+            pageSize={coveragePagination.pageSize}
+            totalItems={coveragePagination.totalItems}
+            totalPages={coveragePagination.totalPages}
+            startIndex={coveragePagination.startIndex}
+            endIndex={coveragePagination.endIndex}
+            onPageChange={coveragePagination.setPage}
+            onPageSizeChange={coveragePagination.changePageSize}
+          />
         </div>
       )}
     </div>
@@ -609,6 +623,8 @@ export function SLOs() {
       return matchesFilter && matchesSearch
     })
   }, [catalog, filter, search])
+
+  const sloPagination = usePagination(filtered, 25)
 
   if (isLoading && view === 'slos') return <><Header title="SLOs" /><PageLoading /></>
   if (error && view === 'slos') {
@@ -768,9 +784,19 @@ export function SLOs() {
             </Card>
           ) : (
             <div className="space-y-3">
-              {filtered.map(slo => (
+              {sloPagination.paginatedItems.map(slo => (
                 <SloCard key={slo.sloConfigId} slo={slo} canAdmin={canAdmin} />
               ))}
+              <Pagination
+                page={sloPagination.page}
+                pageSize={sloPagination.pageSize}
+                totalItems={sloPagination.totalItems}
+                totalPages={sloPagination.totalPages}
+                startIndex={sloPagination.startIndex}
+                endIndex={sloPagination.endIndex}
+                onPageChange={sloPagination.setPage}
+                onPageSizeChange={sloPagination.changePageSize}
+              />
             </div>
           )}
         </div>

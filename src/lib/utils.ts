@@ -64,6 +64,31 @@ export function formatEnum(value?: string | null): string {
     .join(' ')
 }
 
+const ENV_LABEL_MAP: Record<string, string> = {
+  prd:            'Produção',
+  prod:           'Produção',
+  production:     'Produção',
+  hml:            'Homologação',
+  homolog:        'Homologação',
+  homologacao:    'Homologação',
+  staging:        'Homologação',
+  stg:            'Homologação',
+  dev:            'Desenvolvimento',
+  development:    'Desenvolvimento',
+  desenvolvimento:'Desenvolvimento',
+  tst:            'Teste',
+  test:           'Teste',
+  testing:        'Teste',
+  qa:             'QA',
+  uat:            'UAT',
+  sandbox:        'Sandbox',
+}
+
+export function formatEnvironment(value?: string | null): string {
+  if (!value || value === 'unknown') return 'Não informado'
+  return ENV_LABEL_MAP[value.toLowerCase()] ?? value
+}
+
 export function statusTone(value?: string | null): string {
   const normalized = value?.toUpperCase()
   if (!normalized) return 'bg-slate-500/10 text-slate-500'

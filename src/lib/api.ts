@@ -3,9 +3,22 @@ import type {
   AdminOverview,
   AdminUsersResponse,
   AiConfig,
+  DatadogQueueSettings,
   Finding,
+  LabelRegistryEntry,
+  LifecycleState,
   PillarScore,
+  QueueFinding,
+  QueueLinkSuggestion,
+  QueueScorecard,
+  QueueSummary,
+  QueueThresholds,
+  ReliabilityFinding,
+  ReliabilityNode,
+  ReliabilityTrendPoint,
+  ServiceOption,
   RemediationDetail,
+  Severity,
   SloListItem,
   SloLookupResult,
   WorkloadDetail,
@@ -205,7 +218,7 @@ async function request<T>(
   options?: {
     params?: Record<string, string | undefined>
     optional?: boolean
-    method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
+    method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
     body?: unknown
   },
 ): Promise<T | null> {
@@ -505,6 +518,30 @@ interface AiConfigUpsertPayload {
   monthlyTokenBudget?: number | null
 }
 
+export interface RemediationTimelineItem {
+  workload: string
+  namespace: string
+  cluster: string
+  environment: string
+  status: string
+  github_pr_number: number | null
+  github_pr_url: string | null
+  triggered_at: string
+  resolved_at: string | null
+}
+
+export interface RemediationTimelineResponse {
+  period_days: number
+  summary: {
+    total_prs: number
+    merged: number
+    failed: number
+    in_progress: number
+    success_rate: number | null
+  }
+  items: RemediationTimelineItem[]
+}
+
 export interface ClusterItem {
   id: number
   name: string
@@ -704,6 +741,293 @@ function mapAiConfig(item: AiConfigApiResponse): AiConfig {
   }
 }
 
+interface ApiQueueSummaryItem {
+  queueId: string | number
+  provider: string
+  externalId: string
+  displayName: string
+  isDlq: boolean
+  lifecycleState: string
+  observationCount: number
+  overallScore: number | null
+  complianceStatus: string | null
+  firstSeenAt: string
+  lastSeenAt: string
+  serviceDefinitionId?: number | null
+  serviceName?: string | null
+  team?: string | null
+  linkSource?: string | null
+  suggestionCount?: number | null
+}
+
+interface ApiQueueLinkSuggestion {
+  serviceDefinitionId: number
+  serviceName: string
+  team: string | null
+  confidence: number
+  source: string
+}
+
+interface ApiServiceOption {
+  serviceDefinitionId: number
+  serviceName: string
+  team: string | null
+}
+
+interface ApiReliabilityNode {
+  path: string
+  kind: string
+  name: string
+  ri: number | null
+  debt: number | null
+  weight: number | null
+  coverage: number | null
+  scoredLeaves: number | null
+  totalLeaves: number | null
+  criticalBreach: boolean
+  hasChildren: boolean
+  children?: ApiReliabilityNode[]
+}
+
+interface ApiReliabilityFinding {
+  leafKind: string
+  leafName: string
+  workloadUid: string | null
+  ruleId: string
+  pillar: string | null
+  severity: string | null
+  message: string | null
+  actualValue: string | null
+  debt: number | null
+  riGainService: number | null
+  remediable: boolean
+}
+
+interface ApiReliabilityTrendPoint {
+  date: string
+  ri: number | null
+}
+
+interface ApiQueuePillarScoreItem {
+  pillar: string
+  pillarScore: number | string | null
+  passedChecks: number | null
+  failedChecks: number | null
+  weightedScore: number | string | null
+}
+
+interface ApiQueueScorecardItem {
+  queueId: string | number
+  overallScore: number | string | null
+  complianceStatus: string | null
+  totalRules: number | null
+  passedRules: number | null
+  failedRules: number | null
+  criticalFailures: number | null
+  errorCount: number | null
+  warningCount: number | null
+  evaluatedAt: string | null
+  pillarScores: ApiQueuePillarScoreItem[]
+  validationResults: ApiQueueFindingItem[]
+}
+
+interface ApiQueueFindingItem {
+  ruleId: string
+  ruleName: string | null
+  pillar: string | null
+  severity: string | null
+  rulePassed: boolean
+  resultMessage: string | null
+  actualValue: string | null
+}
+
+interface ApiQueueThresholdsItem {
+  backlogWarning: number
+  backlogCritical: number
+  ageWarningSec: number
+  ageCriticalSec: number
+  p50Backlog: number
+  p75Backlog: number
+  p95Backlog: number
+  p50AgeSec: number
+  p75AgeSec: number
+  p95AgeSec: number
+  calculatedAt: string
+  observationCount: number
+}
+
+interface ApiDatadogQueueSettings {
+  hasApiKey: boolean
+  hasAppKey: boolean
+  site: string
+  queueMonitoringEnabled: boolean
+  monitorCreationEnabled: boolean
+  queueCounts: { discovering: number; learning: number; monitoring: number }
+}
+
+interface ApiLabelRegistryEntry {
+  labelRegistryId: number
+  labelKey: string
+  labelValue: string
+  isActive: boolean
+}
+
+function mapQueueSummary(item: ApiQueueSummaryItem): QueueSummary {
+  return {
+    id: String(item.queueId),
+    provider: item.provider,
+    externalId: item.externalId,
+    displayName: item.displayName,
+    projectId: null,
+    topicId: null,
+    isDlq: item.isDlq,
+    lifecycleState: (item.lifecycleState as LifecycleState) ?? 'DISCOVERING',
+    observationCount: item.observationCount ?? 0,
+    learningTarget: 7,
+    overallScore: parseNumber(item.overallScore),
+    complianceStatus: item.complianceStatus,
+    sendMessageCountRate: null,
+    pullMessageCountRate: null,
+    lastSeenAt: item.lastSeenAt,
+    serviceDefinitionId: item.serviceDefinitionId ?? null,
+    serviceName: item.serviceName ?? null,
+    team: item.team ?? null,
+    linkSource: item.linkSource ?? null,
+    suggestionCount: item.suggestionCount ?? 0,
+  }
+}
+
+function mapQueueLinkSuggestion(item: ApiQueueLinkSuggestion): QueueLinkSuggestion {
+  return {
+    serviceDefinitionId: item.serviceDefinitionId,
+    serviceName: item.serviceName,
+    team: item.team ?? null,
+    confidence: parseNumber(item.confidence) ?? 0,
+    source: item.source,
+  }
+}
+
+function mapServiceOption(item: ApiServiceOption): ServiceOption {
+  return {
+    serviceDefinitionId: item.serviceDefinitionId,
+    serviceName: item.serviceName,
+    team: item.team ?? null,
+  }
+}
+
+function mapReliabilityNode(item: ApiReliabilityNode): ReliabilityNode {
+  return {
+    path: item.path,
+    kind: item.kind,
+    name: item.name,
+    ri: item.ri ?? null,
+    debt: item.debt ?? 0,
+    weight: item.weight ?? 0,
+    coverage: item.coverage ?? 0,
+    scoredLeaves: item.scoredLeaves ?? 0,
+    totalLeaves: item.totalLeaves ?? 0,
+    criticalBreach: item.criticalBreach ?? false,
+    hasChildren: item.hasChildren ?? false,
+    children: (item.children ?? []).map(mapReliabilityNode),
+  }
+}
+
+function mapReliabilityFinding(item: ApiReliabilityFinding): ReliabilityFinding {
+  return {
+    leafKind: item.leafKind,
+    leafName: item.leafName,
+    workloadUid: item.workloadUid ?? null,
+    ruleId: item.ruleId,
+    pillar: item.pillar ?? null,
+    severity: item.severity ?? null,
+    message: item.message ?? null,
+    actualValue: item.actualValue ?? null,
+    debt: item.debt ?? 0,
+    riGainService: item.riGainService ?? 0,
+    remediable: item.remediable ?? false,
+  }
+}
+
+function mapQueuePillarScoreItem(item: ApiQueuePillarScoreItem): PillarScore {
+  return {
+    pillar: item.pillar,
+    score: parseNumber(item.pillarScore) ?? 0,
+    passedChecks: item.passedChecks ?? 0,
+    failedChecks: item.failedChecks ?? 0,
+    weightedScore: parseNumber(item.weightedScore),
+  }
+}
+
+function mapQueueFinding(item: ApiQueueFindingItem): QueueFinding {
+  return {
+    ruleId: item.ruleId,
+    ruleName: item.ruleName ?? '',
+    pillar: item.pillar ?? '',
+    severity: mapSeverity(item.severity ?? '') as Severity,
+    passed: item.rulePassed,
+    message: item.resultMessage,
+    actualValue: item.actualValue,
+  }
+}
+
+function mapQueueScorecard(item: ApiQueueScorecardItem): QueueScorecard {
+  return {
+    queueId: String(item.queueId),
+    overallScore: parseNumber(item.overallScore),
+    complianceStatus: item.complianceStatus,
+    totalRules: item.totalRules ?? 0,
+    passedRules: item.passedRules ?? 0,
+    failedRules: item.failedRules ?? 0,
+    criticalFailures: item.criticalFailures ?? 0,
+    errorCount: item.errorCount ?? 0,
+    warningCount: item.warningCount ?? 0,
+    evaluatedAt: item.evaluatedAt,
+    pillarScores: (item.pillarScores ?? []).map(mapQueuePillarScoreItem),
+    findings: (item.validationResults ?? []).map(mapQueueFinding),
+  }
+}
+
+function mapQueueThresholds(item: ApiQueueThresholdsItem): QueueThresholds {
+  return {
+    backlogWarning: item.backlogWarning,
+    backlogCritical: item.backlogCritical,
+    ageWarningSec: item.ageWarningSec,
+    ageCriticalSec: item.ageCriticalSec,
+    p50Backlog: item.p50Backlog,
+    p75Backlog: item.p75Backlog,
+    p95Backlog: item.p95Backlog,
+    p50AgeSec: item.p50AgeSec,
+    p75AgeSec: item.p75AgeSec,
+    p95AgeSec: item.p95AgeSec,
+    calculatedAt: item.calculatedAt,
+    observationCount: item.observationCount,
+  }
+}
+
+function mapDatadogSettings(item: ApiDatadogQueueSettings): DatadogQueueSettings {
+  return {
+    configured: item.hasApiKey,
+    hasAppKey: item.hasAppKey,
+    site: item.site ?? 'datadoghq.com',
+    queueMonitoringEnabled: item.queueMonitoringEnabled,
+    monitorCreationEnabled: item.monitorCreationEnabled ?? false,
+    lastCollectedAt: null,
+    activeMonitorCount: 0,
+    queuesByState: item.queueCounts ?? { discovering: 0, learning: 0, monitoring: 0 },
+    probeStatus: item.hasApiKey ? 'ok' : 'not_configured',
+  }
+}
+
+function mapLabelRegistryEntry(item: ApiLabelRegistryEntry): LabelRegistryEntry {
+  return {
+    id: item.labelRegistryId,
+    labelKey: item.labelKey,
+    labelValue: item.labelValue,
+    isActive: item.isActive,
+    createdAt: '',
+  }
+}
+
 export const api = {
   auth: {
     bootstrapStatus: async () => {
@@ -843,11 +1167,29 @@ export const api = {
     },
   },
   dashboard: {
-    list: async (cluster?: string) => {
-      const response = await request<ApiDashboardItem[]>('/dashboard', {
-        params: { cluster },
+    list: async (cluster?: string, tags?: string[]) => {
+      const url = buildUrl('/dashboard')
+      if (cluster) url.searchParams.set('cluster', cluster)
+      tags?.forEach(t => url.searchParams.append('tag', t))
+      const token = getStoredAccessToken()
+      const authMode = getAuthMode()
+      const devAuth = getDevAuthConfig()
+      const response = await fetch(url.toString(), {
+        headers: {
+          ...(authMode === 'mock'
+            ? {
+                'X-Dev-Auth': 'true',
+                'X-Dev-Tenant-Id': String(devAuth.tenantId),
+                'X-Dev-User': devAuth.email,
+                'X-Dev-Roles': devAuth.roles.join(','),
+              }
+            : {}),
+          ...(authMode !== 'mock' && token ? { Authorization: `Bearer ${token}` } : {}),
+        },
       })
-      return (response ?? []).map(mapDashboardItem)
+      if (!response.ok) throw new Error(`API error ${response.status}`)
+      const data = await response.json() as ApiDashboardItem[]
+      return data.map(mapDashboardItem)
     },
   },
   workloads: {
@@ -1036,6 +1378,10 @@ export const api = {
     },
   },
   tags: {
+    available: async (resourceType = 'workload'): Promise<string[]> => {
+      const res = await request<string[]>(`/tags/available?resourceType=${encodeURIComponent(resourceType)}`, { optional: true })
+      return res ?? []
+    },
     list: async (resourceType: string): Promise<ResourceTagItem[]> => {
       const res = await request<ResourceTagItem[]>(`/settings/tags/${resourceType}`, { optional: true })
       return res ?? []
@@ -1138,6 +1484,111 @@ export const api = {
     ) =>
       streamSse(`/ai/agent/${sessionId}/tools/respond`, { decisions }),
   },
+  remediation: {
+    history: async (days = 30): Promise<RemediationTimelineResponse> => {
+      const res = await request<RemediationTimelineResponse>(`/remediation/history?days=${days}`)
+      return res ?? { period_days: days, summary: { total_prs: 0, merged: 0, failed: 0, in_progress: 0, success_rate: null }, items: [] }
+    },
+  },
+
+  queues: {
+    list: async (filters?: { compliance?: string; lifecycle?: string; type?: string; search?: string }): Promise<QueueSummary[]> => {
+      const res = await request<ApiQueueSummaryItem[]>('/queues', {
+        params: {
+          compliance: filters?.compliance && filters.compliance !== 'all' ? filters.compliance : undefined,
+          lifecycle: filters?.lifecycle && filters.lifecycle !== 'all' ? filters.lifecycle : undefined,
+          type: filters?.type && filters.type !== 'all' ? filters.type : undefined,
+          search: filters?.search || undefined,
+        },
+        optional: true,
+      })
+      return (res ?? []).map(mapQueueSummary)
+    },
+    scorecard: async (id: string): Promise<QueueScorecard | null> => {
+      const res = await request<ApiQueueScorecardItem>(`/queues/${id}/scorecard`, { optional: true })
+      return res ? mapQueueScorecard(res) : null
+    },
+    thresholds: async (id: string): Promise<QueueThresholds | null> => {
+      const res = await request<ApiQueueThresholdsItem>(`/queues/${id}/thresholds`, { optional: true })
+      return res ? mapQueueThresholds(res) : null
+    },
+    suggestions: async (id: string): Promise<QueueLinkSuggestion[]> => {
+      const res = await request<ApiQueueLinkSuggestion[]>(`/queues/${id}/suggestions`, { optional: true })
+      return (res ?? []).map(mapQueueLinkSuggestion)
+    },
+    services: async (): Promise<ServiceOption[]> => {
+      const res = await request<ApiServiceOption[]>('/queues/services', { optional: true })
+      return (res ?? []).map(mapServiceOption)
+    },
+    link: async (id: string, serviceDefinitionId: number): Promise<void> => {
+      await request<null>(`/queues/${id}/link`, { method: 'POST', body: { serviceDefinitionId } })
+    },
+  },
+
+  reliability: {
+    // Abordagem A (titlis-ui): puxa a árvore inteira de uma vez (depth=all) e navega in-memory.
+    tree: async (depth: string = 'all', root?: string): Promise<ReliabilityNode | null> => {
+      const res = await request<ApiReliabilityNode>('/reliability/tree', {
+        params: { depth, root: root || undefined },
+        optional: true,
+      })
+      return res ? mapReliabilityNode(res) : null
+    },
+    serviceFindings: async (serviceDefinitionId: string): Promise<ReliabilityFinding[]> => {
+      const res = await request<ApiReliabilityFinding[]>(`/reliability/services/${serviceDefinitionId}/findings`, { optional: true })
+      return (res ?? []).map(mapReliabilityFinding)
+    },
+    trend: async (root?: string, days = 14): Promise<ReliabilityTrendPoint[]> => {
+      const res = await request<ApiReliabilityTrendPoint[]>('/reliability/trend', {
+        params: { root: root || undefined, days: String(days) },
+        optional: true,
+      })
+      return (res ?? []).map((p) => ({ date: p.date, ri: p.ri ?? 0 }))
+    },
+  },
+
+  datadogSettings: {
+    get: async (): Promise<DatadogQueueSettings> => {
+      const res = await request<ApiDatadogQueueSettings>('/settings/datadog', { optional: true })
+      return res ? mapDatadogSettings(res) : {
+        configured: false,
+        hasAppKey: false,
+        site: 'datadoghq.com',
+        queueMonitoringEnabled: false,
+        monitorCreationEnabled: false,
+        lastCollectedAt: null,
+        activeMonitorCount: 0,
+        queuesByState: { discovering: 0, learning: 0, monitoring: 0 },
+        probeStatus: 'not_configured' as const,
+      }
+    },
+    save: async (payload: { ddApiKey?: string; ddAppKey?: string; ddSite?: string; queueMonitoringEnabled?: boolean; monitorCreationEnabled?: boolean }): Promise<void> => {
+      await request('/settings/datadog', { method: 'PUT' as const, body: payload })
+    },
+    test: async (): Promise<{ ok: boolean; message: string }> => {
+      const res = await request<{ ok: boolean; message: string }>('/settings/datadog/test', { optional: true })
+      return res ?? { ok: false, message: 'Sem resposta do servidor.' }
+    },
+  },
+
+  labelRegistry: {
+    list: async (): Promise<LabelRegistryEntry[]> => {
+      const res = await request<ApiLabelRegistryEntry[]>('/settings/labels', { optional: true })
+      return (res ?? []).map(mapLabelRegistryEntry)
+    },
+    add: async (labelKey: string, labelValue: string): Promise<LabelRegistryEntry> => {
+      const res = await request<ApiLabelRegistryEntry>('/settings/labels', {
+        method: 'POST' as const,
+        body: { label_key: labelKey, label_value: labelValue },
+      })
+      if (!res) throw new Error('Não foi possível adicionar o valor.')
+      return mapLabelRegistryEntry(res)
+    },
+    remove: async (id: number): Promise<void> => {
+      await request(`/settings/labels/${id}`, { method: 'DELETE' as const })
+    },
+  },
+
   admin: {
     overview: async (): Promise<AdminOverview> => {
       const res = await request<AdminOverview>('/admin/overview')
@@ -1147,6 +1598,12 @@ export const api = {
     users: async (): Promise<AdminUsersResponse> => {
       const res = await request<AdminUsersResponse>('/admin/users')
       return res ?? { users: [] }
+    },
+    updateUserRole: async (userId: number, role: 'admin' | 'viewer'): Promise<void> => {
+      await request(`/admin/users/${userId}/role`, {
+        method: 'PATCH',
+        body: JSON.stringify({ role }),
+      })
     },
   },
 }

@@ -8,7 +8,7 @@ import { PageError, PageLoading } from '@/components/jeitto/PageState'
 import { ScoreBadge } from '@/components/jeitto/ScoreBadge'
 import { Header } from '@/components/layout/Header'
 import { useDashboardWorkloads } from '@/hooks/useApi'
-import { formatEnum, statusTone } from '@/lib/utils'
+import { formatEnum, formatEnvironment, statusTone } from '@/lib/utils'
 
 export function AriaPage() {
   const navigate = useNavigate()
@@ -99,7 +99,7 @@ export function AriaPage() {
                     {w.name}
                   </p>
                   <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted-foreground)' }}>
-                    {w.namespace} · {w.cluster} · {formatEnum(w.environment)}
+                    {w.namespace} · {w.cluster} · {formatEnvironment(w.environment)}
                   </p>
                 </div>
 

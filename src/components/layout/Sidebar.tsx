@@ -4,10 +4,11 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardCheck,
+  Gauge,
   GitPullRequest,
+  Inbox,
   Key,
   LayoutDashboard,
-  LineChart,
   Network,
   Plug2,
   Siren,
@@ -15,6 +16,7 @@ import {
   Sparkles,
   Tag,
   Target,
+  TrendingUp,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/useAuth'
@@ -28,6 +30,8 @@ const primaryNavItems = [
   { to: '/', icon: LayoutDashboard, label: 'Home', exact: true },
   { to: '/incidents', icon: Siren, label: 'Degradações', featureId: 'nav_incidents' },
   { to: '/scorecards', icon: ClipboardCheck, label: 'Termômetro de Confiabilidade', featureId: 'nav_scorecards' },
+  { to: '/reliability', icon: Gauge, label: 'Confiabilidade', featureId: 'nav_reliability' },
+  { to: '/queues', icon: Inbox, label: 'Filas', featureId: 'nav_queues' },
 ]
 
 const secondaryNavItems = [
@@ -41,15 +45,17 @@ const remediationNavItems = [
   { to: '/recommendations', icon: GitPullRequest, label: 'Fila de PRs', featureId: 'nav_recommendations' },
 ]
 
+const governanceNavItem = { to: '/governance', icon: TrendingUp, label: 'Governança', featureId: 'nav_governance' }
+
 const settingsNavItems = {
   base: [
     { to: '/settings/api-keys', icon: Key, label: 'Chaves de API', featureId: 'nav_settings_api_keys' },
   ],
   admin: [
-    { to: '/admin/overview', icon: LineChart, label: 'Visão Executiva', featureId: 'nav_admin_overview' },
     { to: '/settings/ai', icon: Bot, label: 'Configurar ARIA', featureId: 'nav_settings_ai' },
     { to: '/settings/score-config', icon: SlidersHorizontal, label: 'Score & Regras', featureId: 'nav_settings_score_config' },
     { to: '/settings/integrations', icon: Plug2, label: 'Integrações', featureId: 'nav_settings_integrations' },
+    { to: '/settings/labels', icon: Tag, label: 'Labels', featureId: 'nav_settings_labels' },
     { to: '/settings/tags', icon: Tag, label: 'Tags', featureId: 'nav_settings_tags' },
   ],
 }
@@ -138,6 +144,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     ...secondaryNavItems,
     ariaNavItem,
     ...remediationNavItems,
+    ...(user?.role === 'admin' ? [governanceNavItem] : []),
   ]
   const configurationItems = [
     ...(user?.role === 'admin' ? settingsNavItems.admin : []),

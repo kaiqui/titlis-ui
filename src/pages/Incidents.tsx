@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { Pagination } from '@/components/jeitto/Pagination'
+import { usePagination } from '@/hooks/usePagination'
 import { useNavigate } from 'react-router-dom'
 import {
   AlertCircle,
@@ -22,7 +24,7 @@ import { ScoreBadge } from '@/components/jeitto/ScoreBadge'
 import { FocusTabs } from '@/components/sre/FocusTabs'
 import { SummaryStrip } from '@/components/sre/SummaryStrip'
 import { useDashboardWorkloads } from '@/hooks/useApi'
-import { formatEnum } from '@/lib/utils'
+import { formatEnum, formatEnvironment } from '@/lib/utils'
 import { useAuth } from '@/contexts/useAuth'
 import type { WorkloadSummary } from '@/types'
 import { cn } from '@/lib/utils'
@@ -103,7 +105,7 @@ function WorkloadCard({ workload, canRemediate }: { workload: WorkloadSummary; c
               )}
             </div>
             <p className="mt-0.5 text-xs truncate" style={{ color: 'var(--color-muted-foreground)' }}>
-              {workload.namespace} · {workload.cluster} · {formatEnum(workload.environment)}
+              {workload.namespace} · {workload.cluster} · {formatEnvironment(workload.environment)}
             </p>
           </div>
 
@@ -246,6 +248,8 @@ export function Incidents() {
     return matchesTerm && matchesFilter
   })
 
+  const pagination = usePagination(filtered, 25)
+
   if (isLoading) return <><Header title="Degradações" /><PageLoading /></>
   if (error || !workloads) {
     return (
@@ -328,9 +332,19 @@ export function Incidents() {
                 </button>
               )}
             </div>
-            {filtered.map(w => (
+            {pagination.paginatedItems.map(w => (
               <WorkloadCard key={w.id} workload={w} canRemediate={canRemediate} />
             ))}
+            <Pagination
+              page={pagination.page}
+              pageSize={pagination.pageSize}
+              totalItems={pagination.totalItems}
+              totalPages={pagination.totalPages}
+              startIndex={pagination.startIndex}
+              endIndex={pagination.endIndex}
+              onPageChange={pagination.setPage}
+              onPageSizeChange={pagination.changePageSize}
+            />
           </div>
         )}
       </div>

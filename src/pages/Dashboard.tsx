@@ -1,11 +1,10 @@
 import { useMemo, useState } from 'react'
-import { ArrowRight, GitPullRequest, Layers3, Search, Siren, Star, Target } from 'lucide-react'
+import { ArrowRight, GitPullRequest, Layers3, Siren, Star, Target } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Header } from '@/components/layout/Header'
 import { ButtonDefault } from '@/components/jeitto/ButtonDefault'
 import { Card } from '@/components/jeitto/Card'
 import { EmptyState } from '@/components/jeitto/EmptyState'
-import { Input } from '@/components/jeitto/Input'
 import { PageError, PageLoading } from '@/components/jeitto/PageState'
 import { ScoreBadge } from '@/components/jeitto/ScoreBadge'
 import { ScoreRing } from '@/components/jeitto/ScoreRing'
@@ -14,11 +13,14 @@ import { FocusTabs } from '@/components/sre/FocusTabs'
 import { InlineAccordion } from '@/components/sre/InlineAccordion'
 import { SelectionList } from '@/components/sre/SelectionList'
 import { SummaryStrip } from '@/components/sre/SummaryStrip'
-import { useDashboardWorkloads, useSloCatalog } from '@/hooks/useApi'
+import { useAvailableTags, useDashboardWorkloads, useSloCatalog } from '@/hooks/useApi'
+import { isKeyValue, TagFilterInput } from '@/components/sre/TagFilterInput'
+import { Pagination } from '@/components/jeitto/Pagination'
+import { usePagination } from '@/hooks/usePagination'
 import { buildClusterSummaries, buildCriticalWorkloads, buildPlatformSummary, buildRemediationQueue } from '@/lib/insights'
 import { FavoriteStar } from '@/components/sre/FavoriteStar'
 import { buildIncidents } from '@/lib/incidents'
-import { formatEnum, formatNumber, statusTone } from '@/lib/utils'
+import { formatEnum, formatEnvironment, formatNumber, statusTone } from '@/lib/utils'
 import type { SloListItem } from '@/types'
 
 type DashboardFocus = 'incidents' | 'workloads' | 'remediation' | 'coverage' | 'slos' | 'meus_servicos'
@@ -26,8 +28,11 @@ type DashboardFocus = 'incidents' | 'workloads' | 'remediation' | 'coverage' | '
 export function Dashboard() {
   const navigate = useNavigate()
   const [focus, setFocus] = useState<DashboardFocus>('incidents')
-  const [search, setSearch] = useState('')
-  const { data: workloads, isLoading, error, refetch } = useDashboardWorkloads()
+  const [activeChips, setActiveChips] = useState<string[]>([])
+  const tagChips = activeChips.filter(isKeyValue)
+  const textChips = activeChips.filter(c => !isKeyValue(c))
+  const { data: workloads, isLoading, error, refetch } = useDashboardWorkloads(undefined, tagChips.length > 0 ? tagChips : undefined)
+  const { data: availableTags = [] } = useAvailableTags('workload')
   const { data: slos } = useSloCatalog()
   const workloadList = workloads ?? []
   const sloList: SloListItem[] = slos ?? []
@@ -61,7 +66,7 @@ export function Dashboard() {
     incidents: incidents.map(item => ({
       id: item.id,
       title: item.title,
-      subtitle: `${item.namespace} · ${item.cluster} · ${formatEnum(item.environment)}`,
+      subtitle: `${item.namespace} · ${item.cluster} · ${formatEnvironment(item.environment)}`,
       badges: (
         <>
           <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone(item.status)}`}>{formatEnum(item.status)}</span>
@@ -101,7 +106,7 @@ export function Dashboard() {
     coverage: coverage.map(item => ({
       id: item.key,
       title: item.cluster,
-      subtitle: `${formatEnum(item.environment)} · ${item.workloadCount} workloads`,
+      subtitle: `${formatEnvironment(item.environment)} · ${item.workloadCount} workloads`,
       badges: (
         <>
           <span className="rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
@@ -131,12 +136,13 @@ export function Dashboard() {
     })),
   }), [coverage, criticalWorkloads, incidents, remediationQueue, sloList])
 
-  const searchTerm = search.trim().toLowerCase()
   const filteredFocusItems = useMemo(() => {
-    if (!searchTerm) return focusItems
+    if (textChips.length === 0) return focusItems
     const match = (item: { title: string; subtitle: string }) =>
-      item.title.toLowerCase().includes(searchTerm) ||
-      item.subtitle.toLowerCase().includes(searchTerm)
+      textChips.some(chip => {
+        const term = chip.toLowerCase()
+        return item.title.toLowerCase().includes(term) || item.subtitle.toLowerCase().includes(term)
+      })
     return {
       meus_servicos: focusItems.meus_servicos.filter(match),
       incidents: focusItems.incidents.filter(match),
@@ -145,7 +151,10 @@ export function Dashboard() {
       coverage: focusItems.coverage.filter(match),
       slos: focusItems.slos.filter(match),
     }
-  }, [focusItems, searchTerm])
+  }, [focusItems, textChips])
+
+  const activeFocusItems = filteredFocusItems[focus]
+  const focusPagination = usePagination(activeFocusItems, 25, focus)
 
   const [selectedIncidentId, setSelectedIncidentId] = useState(incidents[0]?.id ?? null)
   const [selectedWorkloadId, setSelectedWorkloadId] = useState(criticalWorkloads[0]?.id ?? null)
@@ -240,11 +249,11 @@ export function Dashboard() {
         </Card>
 
         <Card>
-          <Input
-            value={search}
-            onChange={event => setSearch(event.target.value)}
-            placeholder="Filtrar por nome, namespace ou cluster"
-            icon={Search}
+          <TagFilterInput
+            value={activeChips}
+            onChange={setActiveChips}
+            suggestions={availableTags}
+            placeholder="Buscar nome, namespace ou tag (ex: env:prod)"
           />
         </Card>
 
@@ -258,11 +267,19 @@ export function Dashboard() {
                   description="Marque serviços com a estrela na lista de scorecards para acompanhá-los aqui."
                 />
               ) : (
-                <SelectionList
-                  items={filteredFocusItems.meus_servicos}
-                  activeId={selectedMyServiceId}
-                  onSelect={setSelectedMyServiceId}
-                />
+                <>
+                  <SelectionList
+                    items={focusPagination.paginatedItems}
+                    activeId={selectedMyServiceId}
+                    onSelect={setSelectedMyServiceId}
+                  />
+                  <Pagination
+                    page={focusPagination.page} pageSize={focusPagination.pageSize}
+                    totalItems={focusPagination.totalItems} totalPages={focusPagination.totalPages}
+                    startIndex={focusPagination.startIndex} endIndex={focusPagination.endIndex}
+                    onPageChange={focusPagination.setPage} onPageSizeChange={focusPagination.changePageSize}
+                  />
+                </>
               )}
             </Card>
             {(() => {
@@ -271,7 +288,7 @@ export function Dashboard() {
               return (
                 <DetailPanel
                   title={sel.name}
-                  subtitle={`${sel.namespace} · ${sel.cluster} · ${formatEnum(sel.environment)}`}
+                  subtitle={`${sel.namespace} · ${sel.cluster} · ${formatEnvironment(sel.environment)}`}
                   headerMeta={
                     <ButtonDefault
                       label="Ver scorecard"
@@ -310,7 +327,13 @@ export function Dashboard() {
         {focus === 'incidents' && (
           <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
             <Card>
-              <SelectionList items={filteredFocusItems.incidents} activeId={selectedIncident?.id ?? null} onSelect={setSelectedIncidentId} />
+              <SelectionList items={focusPagination.paginatedItems} activeId={selectedIncident?.id ?? null} onSelect={setSelectedIncidentId} />
+              <Pagination
+                page={focusPagination.page} pageSize={focusPagination.pageSize}
+                totalItems={focusPagination.totalItems} totalPages={focusPagination.totalPages}
+                startIndex={focusPagination.startIndex} endIndex={focusPagination.endIndex}
+                onPageChange={focusPagination.setPage} onPageSizeChange={focusPagination.changePageSize}
+              />
             </Card>
 
             {selectedIncident ? (
@@ -362,12 +385,18 @@ export function Dashboard() {
         {focus === 'workloads' && (
           <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
             <Card>
-              <SelectionList items={filteredFocusItems.workloads} activeId={selectedWorkload?.id ?? null} onSelect={setSelectedWorkloadId} />
+              <SelectionList items={focusPagination.paginatedItems} activeId={selectedWorkload?.id ?? null} onSelect={setSelectedWorkloadId} />
+              <Pagination
+                page={focusPagination.page} pageSize={focusPagination.pageSize}
+                totalItems={focusPagination.totalItems} totalPages={focusPagination.totalPages}
+                startIndex={focusPagination.startIndex} endIndex={focusPagination.endIndex}
+                onPageChange={focusPagination.setPage} onPageSizeChange={focusPagination.changePageSize}
+              />
             </Card>
             {selectedWorkload ? (
               <DetailPanel
                 title={selectedWorkload.name}
-                subtitle={`${selectedWorkload.namespace} · ${selectedWorkload.cluster} · ${formatEnum(selectedWorkload.environment)}`}
+                subtitle={`${selectedWorkload.namespace} · ${selectedWorkload.cluster} · ${formatEnvironment(selectedWorkload.environment)}`}
                 headerMeta={<ScoreBadge score={selectedWorkload.overallScore} />}
               >
                 <div className="grid gap-3 md:grid-cols-3">
@@ -386,7 +415,13 @@ export function Dashboard() {
         {focus === 'remediation' && (
           <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
             <Card>
-              <SelectionList items={filteredFocusItems.remediation} activeId={selectedRemediation?.id ?? null} onSelect={setSelectedRemediationId} />
+              <SelectionList items={focusPagination.paginatedItems} activeId={selectedRemediation?.id ?? null} onSelect={setSelectedRemediationId} />
+              <Pagination
+                page={focusPagination.page} pageSize={focusPagination.pageSize}
+                totalItems={focusPagination.totalItems} totalPages={focusPagination.totalPages}
+                startIndex={focusPagination.startIndex} endIndex={focusPagination.endIndex}
+                onPageChange={focusPagination.setPage} onPageSizeChange={focusPagination.changePageSize}
+              />
             </Card>
             {selectedRemediation ? (
               <DetailPanel
@@ -412,12 +447,18 @@ export function Dashboard() {
         {focus === 'coverage' && (
           <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
             <Card>
-              <SelectionList items={filteredFocusItems.coverage} activeId={selectedCoverage?.key ?? null} onSelect={setSelectedCoverageId} />
+              <SelectionList items={focusPagination.paginatedItems} activeId={selectedCoverage?.key ?? null} onSelect={setSelectedCoverageId} />
+              <Pagination
+                page={focusPagination.page} pageSize={focusPagination.pageSize}
+                totalItems={focusPagination.totalItems} totalPages={focusPagination.totalPages}
+                startIndex={focusPagination.startIndex} endIndex={focusPagination.endIndex}
+                onPageChange={focusPagination.setPage} onPageSizeChange={focusPagination.changePageSize}
+              />
             </Card>
             {selectedCoverage ? (
               <DetailPanel
                 title={selectedCoverage.cluster}
-                subtitle={formatEnum(selectedCoverage.environment)}
+                subtitle={formatEnvironment(selectedCoverage.environment)}
                 headerMeta={<span className="rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>{selectedCoverage.namespaces} namespaces</span>}
               >
                 <div className="grid gap-3 md:grid-cols-3">
@@ -455,7 +496,13 @@ export function Dashboard() {
 
             <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
               <Card>
-                <SelectionList items={filteredFocusItems.slos} activeId={selectedSlo?.sloConfigId ?? null} onSelect={setSelectedSloId} />
+                <SelectionList items={focusPagination.paginatedItems} activeId={selectedSlo?.sloConfigId ?? null} onSelect={setSelectedSloId} />
+                <Pagination
+                  page={focusPagination.page} pageSize={focusPagination.pageSize}
+                  totalItems={focusPagination.totalItems} totalPages={focusPagination.totalPages}
+                  startIndex={focusPagination.startIndex} endIndex={focusPagination.endIndex}
+                  onPageChange={focusPagination.setPage} onPageSizeChange={focusPagination.changePageSize}
+                />
               </Card>
               {selectedSlo ? (
                 <DetailPanel

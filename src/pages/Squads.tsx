@@ -12,7 +12,7 @@ import { SelectionList } from '@/components/sre/SelectionList'
 import { SummaryStrip } from '@/components/sre/SummaryStrip'
 import { useDashboardWorkloads } from '@/hooks/useApi'
 import { buildClusterSummaries, buildNamespaceSummaries, buildPlatformSummary } from '@/lib/insights'
-import { formatEnum, formatNumber } from '@/lib/utils'
+import { formatEnvironment, formatNumber } from '@/lib/utils'
 
 type TopologyFocus = 'clusters' | 'namespaces'
 type DetailFocus = 'overview' | 'coverage' | 'risk'
@@ -40,7 +40,7 @@ export function Squads() {
         .map(item => ({
           id: item.key,
           title: item.cluster,
-          subtitle: `${formatEnum(item.environment)} · ${item.workloadCount} workloads`,
+          subtitle: `${formatEnvironment(item.environment)} · ${item.workloadCount} workloads`,
           badges: (
             <>
               <span className="rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
@@ -71,7 +71,7 @@ export function Squads() {
       .map(item => ({
         id: item.key,
         title: item.namespace,
-        subtitle: `${item.cluster} · ${formatEnum(item.environment)}`,
+        subtitle: `${item.cluster} · ${formatEnvironment(item.environment)}`,
         badges: (
           <>
             <span className="rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
@@ -232,7 +232,7 @@ export function Squads() {
                     <div className="grid gap-3 md:grid-cols-4">
                       <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Services</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{selectedCluster.workloadCount}</p></Card>
                       <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Namespaces</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{selectedCluster.namespaces}</p></Card>
-                      <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Ambiente</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{formatEnum(selectedCluster.environment)}</p></Card>
+                      <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Ambiente</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{formatEnvironment(selectedCluster.environment)}</p></Card>
                       <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Score médio</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{formatNumber(selectedCluster.averageScore)}</p></Card>
                     </div>
 
@@ -279,7 +279,7 @@ export function Squads() {
                     <div className="grid gap-3 md:grid-cols-4">
                       <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Services</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{selectedNamespace.workloadCount}</p></Card>
                       <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Cluster</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{selectedNamespace.cluster}</p></Card>
-                      <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Ambiente</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{formatEnum(selectedNamespace.environment)}</p></Card>
+                      <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Ambiente</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{formatEnvironment(selectedNamespace.environment)}</p></Card>
                       <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Score médio</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{formatNumber(selectedNamespace.averageScore)}</p></Card>
                     </div>
 

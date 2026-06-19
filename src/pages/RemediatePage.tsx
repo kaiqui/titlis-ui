@@ -25,7 +25,7 @@ import { Header } from '@/components/layout/Header'
 import { CodeDiffView } from '@/components/ai/CodeDiffView'
 import { useWorkloadGithubLink, useWorkloadScorecard } from '@/hooks/useApi'
 import { api } from '@/lib/api'
-import { formatEnum, severityColor } from '@/lib/utils'
+import { formatEnum, formatEnvironment, severityColor } from '@/lib/utils'
 import type { Finding, RemediationDiffFile, ServiceYamlPrefill } from '@/types'
 
 // ─── tipos locais ───────────────────────────────────────────────────────────
@@ -415,7 +415,7 @@ export function RemediatePage() {
     <div className="flex min-h-screen flex-col">
       <Header
         title="ARIA · Remediação inteligente"
-        subtitle={`${workload.name} · ${workload.namespace} · ${formatEnum(workload.environment)}`}
+        subtitle={`${workload.name} · ${workload.namespace} · ${formatEnvironment(workload.environment)}`}
       />
 
       <div className="flex-1 space-y-6 px-4 py-6 lg:px-8">

@@ -14,7 +14,7 @@ import { FocusTabs } from '@/components/sre/FocusTabs'
 import { InlineAccordion } from '@/components/sre/InlineAccordion'
 import { SummaryStrip } from '@/components/sre/SummaryStrip'
 import { useWorkloadScorecard } from '@/hooks/useApi'
-import { formatDate, formatEnum, statusTone } from '@/lib/utils'
+import { formatDate, formatEnum, formatEnvironment, statusTone } from '@/lib/utils'
 
 type ScorecardFocus = 'overview' | 'pillars' | 'executive'
 type OverviewMetric = { label: string; value: string | number; icon: LucideIcon }
@@ -59,7 +59,7 @@ export function ScorecardDetail() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Header title={`Scorecard · ${workload.name}`} subtitle={`${workload.namespace} · ${workload.cluster} · ${formatEnum(workload.environment)}`} />
+      <Header title={`Scorecard · ${workload.name}`} subtitle={`${workload.namespace} · ${workload.cluster} · ${formatEnvironment(workload.environment)}`} />
 
       <div className="flex-1 space-y-5 px-4 py-6 lg:px-8">
         <div className="flex flex-wrap gap-3">

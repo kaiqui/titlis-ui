@@ -17,7 +17,7 @@ import { SummaryStrip } from '@/components/sre/SummaryStrip'
 import { AiExplainDrawer } from '@/components/ai/AiExplainDrawer'
 import { useScoreConfigOverrides, useWorkloadRemediation, useWorkloadScorecard } from '@/hooks/useApi'
 import { useAuth } from '@/contexts/useAuth'
-import { formatDate, formatEnum, severityColor, statusTone } from '@/lib/utils'
+import { formatDate, formatEnum, formatEnvironment, severityColor, statusTone } from '@/lib/utils'
 import type { ScoreConfigOverride } from '@/lib/api'
 import type { Finding } from '@/types'
 
@@ -96,7 +96,7 @@ export function ApplicationDetail({
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Header title={workload.name} subtitle={`${workload.namespace} · ${workload.cluster} · ${formatEnum(workload.environment)}`} />
+      <Header title={workload.name} subtitle={`${workload.namespace} · ${workload.cluster} · ${formatEnvironment(workload.environment)}`} />
 
       {explainFinding && (
         <AiExplainDrawer
