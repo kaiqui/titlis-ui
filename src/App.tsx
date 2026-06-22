@@ -6,6 +6,7 @@ import { AuthProvider } from '@/contexts/AuthContext'
 import { AuthGate } from '@/components/auth/AuthGate'
 import { Layout } from '@/components/layout/Layout'
 import { Dashboard } from '@/pages/Dashboard'
+import { ServiceHub } from '@/pages/ServiceHub'
 import { Incidents } from '@/pages/Incidents'
 import { ApplicationDetail } from '@/pages/ApplicationDetail'
 import { Scorecards } from '@/pages/Scorecards'
@@ -26,6 +27,7 @@ import { AriaPage } from '@/pages/AriaPage'
 import { SettingsIntegrations } from '@/pages/SettingsIntegrations'
 import { SettingsLabels } from '@/pages/SettingsLabels'
 import { Queues } from '@/pages/Queues'
+import { Coverage } from '@/pages/Coverage'
 import { Reliability } from '@/pages/Reliability'
 import { Governance } from '@/pages/Governance'
 import { Docs } from '@/pages/Docs'
@@ -87,13 +89,15 @@ export default function App() {
                   </AuthGate>
                 )}
               >
-                <Route path="/" element={<Dashboard />} />
+                <Route path="/" element={<ServiceHub />} />
+                <Route path="/overview" element={<Dashboard />} />
                 <Route path="/getting-started" element={<GettingStarted />} />
                 <Route path="/incidents" element={<Incidents />} />
                 <Route path="/scorecards" element={<Scorecards />} />
                 <Route path="/scorecards/:id" element={<ApplicationDetail backPath="/scorecards" backLabel="Voltar para scorecards" showScorecardButton={false} />} />
                 <Route path="/scorecards/:id/scorecard" element={<ScorecardDetail />} />
                 <Route path="/slos" element={<SLOs />} />
+                <Route path="/coverage" element={<Coverage />} />
                 <Route
                   path="/recommendations"
                   element={(

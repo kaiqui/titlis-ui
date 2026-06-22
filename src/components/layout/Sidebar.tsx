@@ -8,9 +8,11 @@ import {
   GitPullRequest,
   Inbox,
   Key,
+  Boxes,
   LayoutDashboard,
   Network,
   Plug2,
+  ShieldCheck,
   Siren,
   SlidersHorizontal,
   Sparkles,
@@ -27,7 +29,8 @@ const appName = import.meta.env.VITE_APP_NAME?.trim() || 'Titlis'
 const displayAppName = appName.replace(/([a-z0-9])([A-Z])/g, '$1 $2')
 
 const primaryNavItems = [
-  { to: '/', icon: LayoutDashboard, label: 'Home', exact: true },
+  { to: '/', icon: LayoutDashboard, label: 'Hub', exact: true },
+  { to: '/overview', icon: Boxes, label: 'Visão geral' },
   { to: '/incidents', icon: Siren, label: 'Degradações', featureId: 'nav_incidents' },
   { to: '/scorecards', icon: ClipboardCheck, label: 'Termômetro de Confiabilidade', featureId: 'nav_scorecards' },
   { to: '/reliability', icon: Gauge, label: 'Confiabilidade', featureId: 'nav_reliability' },
@@ -35,6 +38,7 @@ const primaryNavItems = [
 ]
 
 const secondaryNavItems = [
+  { to: '/coverage', icon: ShieldCheck, label: 'Cobertura', featureId: 'nav_coverage' },
   { to: '/slos', icon: Target, label: 'SLOs', featureId: 'nav_slos' },
   { to: '/topology', icon: Network, label: 'Topologia', featureId: 'nav_topology' },
 ]

@@ -192,6 +192,30 @@ export function useQueues(filters?: QueueFilters) {
   })
 }
 
+export function useCoverage() {
+  return useQuery({
+    queryKey: ['coverage'],
+    queryFn: () => api.coverage.list(),
+    staleTime: 30_000,
+  })
+}
+
+export function useServiceMap() {
+  return useQuery({
+    queryKey: ['service-map'],
+    queryFn: () => api.serviceMap.get(),
+    staleTime: 30_000,
+  })
+}
+
+export function useCoverageTopRisks(limit = 10) {
+  return useQuery({
+    queryKey: ['coverage', 'top-risks', limit],
+    queryFn: () => api.coverage.topRisks(limit),
+    staleTime: 30_000,
+  })
+}
+
 export function useQueueScorecard(id: string) {
   return useQuery({
     queryKey: ['queue', id, 'scorecard'],

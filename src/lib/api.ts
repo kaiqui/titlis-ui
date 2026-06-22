@@ -20,6 +20,8 @@ import type {
   RemediationDetail,
   Severity,
   SloListItem,
+  CoverageScorecard,
+  ServiceMap,
   SloLookupResult,
   WorkloadDetail,
   WorkloadSLOCoverage,
@@ -1028,6 +1030,60 @@ function mapLabelRegistryEntry(item: ApiLabelRegistryEntry): LabelRegistryEntry 
   }
 }
 
+interface ApiCoverageDimension {
+  pillar: string
+  evaluable?: number
+  passed?: number
+  na?: number
+  pct?: number
+  maturity_level?: number
+}
+
+interface ApiCoverageFinding {
+  code: string
+  pillar?: string
+  severity?: string
+  outcome?: string
+  message?: string
+}
+
+interface ApiCoverageScorecard {
+  workloadUid: string
+  serviceName?: string | null
+  cluster?: string | null
+  trustScore?: number | null
+  maturity?: number
+  dimensions?: ApiCoverageDimension[]
+  findings?: ApiCoverageFinding[]
+  evaluatedAt?: string
+}
+
+function mapCoverageScorecard(item: ApiCoverageScorecard): CoverageScorecard {
+  return {
+    workloadUid: item.workloadUid,
+    serviceName: item.serviceName ?? null,
+    cluster: item.cluster ?? null,
+    trustScore: item.trustScore ?? null,
+    maturity: item.maturity ?? 0,
+    dimensions: (item.dimensions ?? []).map((d) => ({
+      pillar: d.pillar,
+      evaluable: d.evaluable ?? 0,
+      passed: d.passed ?? 0,
+      na: d.na ?? 0,
+      pct: d.pct ?? 0,
+      maturityLevel: d.maturity_level ?? 0,
+    })),
+    findings: (item.findings ?? []).map((f) => ({
+      code: f.code,
+      pillar: f.pillar ?? '',
+      severity: f.severity ?? '',
+      outcome: f.outcome ?? '',
+      message: f.message ?? '',
+    })),
+    evaluatedAt: item.evaluatedAt ?? '',
+  }
+}
+
 export const api = {
   auth: {
     bootstrapStatus: async () => {
@@ -1586,6 +1642,28 @@ export const api = {
     },
     remove: async (id: number): Promise<void> => {
       await request(`/settings/labels/${id}`, { method: 'DELETE' as const })
+    },
+  },
+
+  coverage: {
+    list: async (): Promise<CoverageScorecard[]> => {
+      const res = await request<ApiCoverageScorecard[]>('/coverage', { optional: true })
+      return (res ?? []).map(mapCoverageScorecard)
+    },
+    topRisks: async (limit = 10): Promise<CoverageScorecard[]> => {
+      const res = await request<ApiCoverageScorecard[]>('/coverage/top-risks', {
+        params: { limit: String(limit) },
+        optional: true,
+      })
+      return (res ?? []).map(mapCoverageScorecard)
+    },
+  },
+
+  // H1/H2 — service-map do hub (produto → squad → serviço → score + bucket de órfãos).
+  serviceMap: {
+    get: async (): Promise<ServiceMap> => {
+      const res = await request<ServiceMap>('/service-map', { optional: true })
+      return res ?? { products: [], orphans: [] }
     },
   },
 

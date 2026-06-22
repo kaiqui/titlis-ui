@@ -394,3 +394,65 @@ export interface IncidentItem {
   evidence: string[]
   actions: string[]
 }
+
+export interface CoverageDimension {
+  pillar: string
+  evaluable: number
+  passed: number
+  na: number
+  pct: number
+  maturityLevel: number
+}
+
+export interface CoverageFinding {
+  code: string
+  pillar: string
+  severity: string
+  outcome: string
+  message: string
+}
+
+export interface CoverageScorecard {
+  workloadUid: string
+  serviceName: string | null
+  cluster: string | null
+  trustScore: number | null
+  maturity: number
+  dimensions: CoverageDimension[]
+  findings: CoverageFinding[]
+  evaluatedAt: string
+}
+
+// Service-map do hub (H1/H2): produto → squad → serviço → workload (+ bucket de órfãos).
+export interface ServiceMapWorkload {
+  workloadUid: string
+  name: string
+  cluster: string | null
+  score: number | null
+  maturity: number
+}
+
+export interface ServiceMapService {
+  serviceDefinitionId: number
+  serviceName: string
+  repoUrl: string | null
+  score: number | null
+  workloads: ServiceMapWorkload[]
+}
+
+export interface ServiceMapSquad {
+  team: string
+  score: number | null
+  services: ServiceMapService[]
+}
+
+export interface ServiceMapProduct {
+  product: string
+  score: number | null
+  squads: ServiceMapSquad[]
+}
+
+export interface ServiceMap {
+  products: ServiceMapProduct[]
+  orphans: ServiceMapWorkload[]
+}

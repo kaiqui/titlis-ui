@@ -128,6 +128,7 @@ src/
 | `/applications/:id` | ApplicationDetail | sim | não | Detalhe de workload |
 | `/applications/:id/scorecard` | ScorecardDetail | sim | não | Scorecard de workload |
 | `/slos` | SLOs | sim | não | Catálogo de SLOs |
+| `/coverage` | Coverage | sim | não | Cobertura & Confiança: Trust médio/pior, maturidade, Top-10 riscos, tabela de serviços |
 | `/assistant` | AssistantPage | sim | não* | Agente IA conversacional com aprovação de tools |
 | `/recommendations` | Recommendations | sim | **sim** | Fila de remediação (PRs unitários via ARIA) |
 | `/topology` | Squads | sim | não | Topologia de squads |
@@ -216,6 +217,9 @@ api.workloads.remediation(id)
 api.slos.list(filters)
 api.slos.lookup(namespace, name)
 
+api.coverage.list()            // → CoverageScorecard[] (exclui workloads soft-deletados)
+api.coverage.topRisks(limit?)  // → CoverageScorecard[] ordenado por menor Trust Score
+
 api.apiKeys.list()
 api.apiKeys.create(description?)
 api.apiKeys.revoke(id)
@@ -246,6 +250,8 @@ useWorkloadScorecard(id)
 useWorkloadRemediation(id)
 useSloCatalog(namespace?, cluster?)
 useSloLookup(namespace, name, enabled)
+useCoverage()                        // → CoverageScorecard[] (Observability Intelligence / D5)
+useCoverageTopRisks(limit?)          // → Top-N riscos por Trust Score
 useAiConfig()                        // queryKey: ['ai-config'], staleTime: 30s
 // Para status do Datadog: useQuery({ queryKey: ['datadog-config-status'], queryFn: api.datadogConfig.status })
 ```
