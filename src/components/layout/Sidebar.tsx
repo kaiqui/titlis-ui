@@ -3,17 +3,14 @@ import {
   Bot,
   ChevronLeft,
   ChevronRight,
-  ClipboardCheck,
   Gauge,
   GitPullRequest,
   Inbox,
   Key,
-  Boxes,
   LayoutDashboard,
   Network,
   Plug2,
   ShieldCheck,
-  Siren,
   SlidersHorizontal,
   Sparkles,
   Tag,
@@ -30,9 +27,6 @@ const displayAppName = appName.replace(/([a-z0-9])([A-Z])/g, '$1 $2')
 
 const primaryNavItems = [
   { to: '/', icon: LayoutDashboard, label: 'Hub', exact: true },
-  { to: '/overview', icon: Boxes, label: 'Visão geral' },
-  { to: '/incidents', icon: Siren, label: 'Degradações', featureId: 'nav_incidents' },
-  { to: '/scorecards', icon: ClipboardCheck, label: 'Termômetro de Confiabilidade', featureId: 'nav_scorecards' },
   { to: '/reliability', icon: Gauge, label: 'Confiabilidade', featureId: 'nav_reliability' },
   { to: '/queues', icon: Inbox, label: 'Filas', featureId: 'nav_queues' },
 ]

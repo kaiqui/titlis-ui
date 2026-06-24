@@ -1,5 +1,11 @@
 # Scorecards — Termômetro de Confiabilidade
 
+> **Doc legado.** O scorecard por workload foi unificado na **[Cobertura & Confiança](/docs/cobertura)**
+> (Service Scorecard por natureza, com Trust Score e maturidade), e a página `/scorecards` agora
+> redireciona para `/coverage`. A navegação por produto/squad/serviço está no **[Hub](/docs/hub)** e o
+> drill-down por débito na **[Confiabilidade](/docs/confiabilidade)**. Os conceitos de pilares e
+> severidade abaixo seguem valendo — a fonte do score é a Cobertura.
+
 O Termômetro de Confiabilidade avalia cada workload Kubernetes contra um conjunto de
 boas práticas SRE organizadas em pilares. O resultado é um score de 0 a 100 que reflete
 o nível de maturidade operacional do serviço.
@@ -113,14 +119,9 @@ Ao clicar em um workload, você vê:
 
 ## Corrigir um finding
 
-### Via ARIA (um workload por vez)
-Clique em **Corrigir com IA** na tela de detalhe do workload. O ARIA abre um chat
-pré-contextualizado com os findings do workload e pode propor e criar um PR de correção.
-Veja mais em [ARIA](/docs/assistente-ia).
-
-### Via Campanha (múltiplos workloads)
-Para corrigir o mesmo tipo de problema em vários workloads de uma vez, use Campanhas.
-Veja mais em [Campanhas](/docs/campanhas).
+### Via ARIA
+Clique em **Corrigir com IA** no finding. A ARIA propõe um patch unitário e, após sua
+confirmação, abre um PR de correção. Veja mais em [ARIA](/docs/assistente-ia).
 
 ---
 

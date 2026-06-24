@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AlertTriangle, Bot, ChevronRight, Layers3, ShieldAlert, Wrench } from 'lucide-react'
+import { AlertTriangle, Bot, Boxes, CheckCircle2, ChevronRight, Inbox, Layers3, MinusCircle, ShieldAlert, UserX, Wrench } from 'lucide-react'
 import { Card } from '@/components/jeitto/Card'
 import { EmptyState } from '@/components/jeitto/EmptyState'
 import { PageError, PageLoading } from '@/components/jeitto/PageState'
@@ -65,11 +65,14 @@ function lastNumericSegment(path: string): string {
 
 const KIND_LABEL: Record<string, string> = {
   estate: 'Estate', product: 'Produto', team: 'Time', service: 'Serviço',
+  workload: 'Workload', queue: 'Fila',
 }
 
 function NodeRow({ node, parentWeight, onOpen }: { node: ReliabilityNode; parentWeight: number; onOpen: (path: string) => void }) {
   const deltaRi = parentWeight > 0 ? node.debt / parentWeight : 0
   const drillable = node.hasChildren || node.kind === 'service'
+  const KindIcon = node.kind === 'queue' ? Inbox : node.kind === 'workload' ? Boxes : node.kind === 'service' ? Layers3 : null
+  const orphan = node.name === '(sem dono)' || node.name === '(sem produto)'
   return (
     <button
       type="button"
@@ -82,10 +85,16 @@ function NodeRow({ node, parentWeight, onOpen }: { node: ReliabilityNode; parent
       <ScoreRing score={node.ri} size={40} strokeWidth={4} />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
+          {KindIcon && <KindIcon size={14} style={{ color: 'var(--color-muted-foreground)' }} />}
           <p className="truncate text-sm font-semibold" style={{ color: 'var(--color-foreground)' }}>{node.name}</p>
           <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
             {KIND_LABEL[node.kind] ?? node.kind}
           </span>
+          {orphan && (
+            <span className="flex items-center gap-1 rounded-full bg-amber-900/30 px-2 py-0.5 text-[10px] font-semibold text-amber-400">
+              <UserX size={11} /> sem dono
+            </span>
+          )}
           {node.criticalBreach && (
             <span className="flex items-center gap-1 rounded-full bg-red-900/30 px-2 py-0.5 text-[10px] font-semibold text-red-400">
               <ShieldAlert size={11} /> crítico
@@ -108,7 +117,7 @@ function FindingsWorklist({ serviceId }: { serviceId: string }) {
   if (isLoading) return <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>Carregando findings…</p>
   const items = findings ?? []
   if (items.length === 0) {
-    return <EmptyState icon={Layers3} title="Sem findings em aberto" description="Nenhuma regra falhando nas folhas deste serviço." />
+    return <EmptyState icon={Layers3} title="Sem cobertura avaliada" description="Este serviço ainda não tem scorecard de cobertura (discovery)." />
   }
   return (
     <div className="space-y-2" data-testid="reliability-worklist">
@@ -116,16 +125,25 @@ function FindingsWorklist({ serviceId }: { serviceId: string }) {
         const canRemediate = f.remediable && f.leafKind === 'workload' && !!f.workloadUid
         return (
           <div key={`${f.leafName}-${f.ruleId}-${i}`} className="flex items-start gap-3 rounded-2xl border px-4 py-3" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-card)' }}>
-            <ShieldAlert size={16} className="mt-0.5 shrink-0 text-red-500" />
+            {f.outcome === 'pass' ? (
+              <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-emerald-500" />
+            ) : f.outcome === 'na' ? (
+              <MinusCircle size={16} className="mt-0.5 shrink-0" style={{ color: 'var(--color-muted-foreground)' }} />
+            ) : (
+              <ShieldAlert size={16} className="mt-0.5 shrink-0 text-red-500" />
+            )}
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-[13px] font-semibold" style={{ color: 'var(--color-foreground)' }}>{f.ruleId}</p>
                 <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>{f.leafKind}</span>
                 <span className="text-[11px]" style={{ color: 'var(--color-muted-foreground)' }}>{f.leafName}</span>
-                {f.severity && <span className="text-[11px] font-medium text-amber-500">{f.severity}</span>}
+                {f.severity && f.outcome === 'fail' && <span className="text-[11px] font-medium text-amber-500">{f.severity}</span>}
+                {f.outcome === 'na' && <span className="text-[11px] font-medium" style={{ color: 'var(--color-muted-foreground)' }}>N/A</span>}
               </div>
               {f.message && <p className="mt-1 text-[13px]" style={{ color: 'var(--color-muted-foreground)' }}>{f.message}</p>}
-              <p className="mt-1 text-[11px] font-semibold text-emerald-500">↑ {f.riGainService.toFixed(2)} pts de RI no serviço ao corrigir</p>
+              {f.outcome === 'fail' && (
+                <p className="mt-1 text-[11px] font-semibold text-emerald-500">↑ {f.riGainService.toFixed(2)} pts de RI no serviço ao corrigir</p>
+              )}
             </div>
             {canRemediate ? (
               <button
@@ -174,8 +192,14 @@ export function Reliability() {
   }
 
   const trail = trailTo(root, current.path)
-  const children = [...current.children].sort((a, b) => b.debt - a.debt)
+  // Workloads (apps) primeiro, depois filas — senão as filas órfãs (ex.: descobertas do Datadog)
+  // soterram as aplicações no balde "(sem dono)". Dentro de cada grupo, ordena por débito.
+  const children = [...current.children].sort((a, b) =>
+    (a.kind === 'workload' ? 0 : 1) - (b.kind === 'workload' ? 0 : 1) || b.debt - a.debt,
+  )
   const isService = current.kind === 'service'
+  const leafApps = children.filter((c) => c.kind === 'workload').sort((a, b) => b.debt - a.debt)
+  const leafQueues = children.filter((c) => c.kind === 'queue').sort((a, b) => b.debt - a.debt)
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -223,9 +247,34 @@ export function Reliability() {
         </Card>
 
         {isService ? (
-          <DetailPanel title="Correções priorizadas" subtitle="Findings das folhas deste serviço, ordenados por pontos de confiabilidade recuperáveis.">
-            <FindingsWorklist serviceId={serviceId} />
-          </DetailPanel>
+          <>
+            {leafApps.length > 0 && (
+              <DetailPanel title={`Aplicações (${leafApps.length})`} subtitle="Workloads avaliados neste serviço.">
+                <div className="space-y-2">
+                  {leafApps.map((child) => (
+                    <NodeRow key={child.path} node={child} parentWeight={current.weight} onOpen={setPath} />
+                  ))}
+                </div>
+              </DetailPanel>
+            )}
+            {leafQueues.length > 0 && (
+              <DetailPanel title={`Filas (${leafQueues.length})`} subtitle="Filas descobertas (ex.: Datadog) atribuídas a este serviço.">
+                <div className="space-y-2">
+                  {leafQueues.map((child) => (
+                    <NodeRow key={child.path} node={child} parentWeight={current.weight} onOpen={setPath} />
+                  ))}
+                </div>
+              </DetailPanel>
+            )}
+            {serviceId && (
+              <DetailPanel title="Correções priorizadas" subtitle="Findings das folhas deste serviço, ordenados por pontos de confiabilidade recuperáveis.">
+                <FindingsWorklist serviceId={serviceId} />
+              </DetailPanel>
+            )}
+            {children.length === 0 && !serviceId && (
+              <Card><EmptyState icon={Layers3} title="Sem aplicações" description="Nenhum workload avaliado neste serviço." /></Card>
+            )}
+          </>
         ) : children.length === 0 ? (
           <Card><EmptyState icon={Layers3} title="Sem nós abaixo" description="Este nó ainda não tem filhos avaliados." /></Card>
         ) : (

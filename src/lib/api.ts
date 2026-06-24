@@ -20,6 +20,7 @@ import type {
   RemediationDetail,
   Severity,
   SloListItem,
+  CoverageGraph,
   CoverageScorecard,
   ServiceMap,
   SloLookupResult,
@@ -508,8 +509,8 @@ interface AiConfigApiResponse {
 }
 
 interface AiConfigUpsertPayload {
-  provider: string
-  model: string
+  provider?: string
+  model?: string
   apiKey?: string
   githubToken?: string
   githubBaseBranch?: string
@@ -518,6 +519,28 @@ interface AiConfigUpsertPayload {
   githubAppPrivateKey?: string
   githubAppInstallationId?: string
   monthlyTokenBudget?: number | null
+}
+
+const SUPPORTED_AI_PROVIDERS = new Set([
+  'openai',
+  'anthropic',
+  'google',
+  'gemini',
+  'mistral',
+  'cohere',
+  'azure',
+  'ollama',
+])
+
+function sanitizeAiConfigPayload(payload: AiConfigUpsertPayload): AiConfigUpsertPayload {
+  const provider = payload.provider?.trim()
+  const model = payload.model?.trim()
+
+  return {
+    ...payload,
+    provider: provider && SUPPORTED_AI_PROVIDERS.has(provider) ? provider : undefined,
+    model: model && model !== 'pending' ? model : undefined,
+  }
 }
 
 export interface RemediationTimelineItem {
@@ -728,9 +751,10 @@ async function* streamSse(path: string, body: unknown, signal?: AbortSignal): As
 }
 
 function mapAiConfig(item: AiConfigApiResponse): AiConfig {
+  const hasConfiguredProvider = SUPPORTED_AI_PROVIDERS.has(item.provider)
   return {
-    provider: item.provider,
-    model: item.model,
+    provider: hasConfiguredProvider ? item.provider : '',
+    model: hasConfiguredProvider && item.model !== 'pending' ? item.model : '',
     githubBaseBranch: item.githubBaseBranch,
     githubAuthMode: item.githubAuthMode ?? 'pat',
     monthlyTokenBudget: item.monthlyTokenBudget,
@@ -803,6 +827,7 @@ interface ApiReliabilityFinding {
   debt: number | null
   riGainService: number | null
   remediable: boolean
+  outcome?: string | null
 }
 
 interface ApiReliabilityTrendPoint {
@@ -947,6 +972,7 @@ function mapReliabilityFinding(item: ApiReliabilityFinding): ReliabilityFinding 
     debt: item.debt ?? 0,
     riGainService: item.riGainService ?? 0,
     remediable: item.remediable ?? false,
+    outcome: item.outcome ?? 'fail',
   }
 }
 
@@ -1354,7 +1380,7 @@ export const api = {
     upsert: async (payload: AiConfigUpsertPayload): Promise<AiConfig> => {
       const response = await request<AiConfigApiResponse>('/settings/ai-config', {
         method: 'PUT' as const,
-        body: payload,
+        body: sanitizeAiConfigPayload(payload),
       })
       if (!response) throw new Error('Não foi possível salvar a configuração.')
       return mapAiConfig(response)
@@ -1656,6 +1682,14 @@ export const api = {
         optional: true,
       })
       return (res ?? []).map(mapCoverageScorecard)
+    },
+    detail: async (uid: string): Promise<CoverageScorecard | null> => {
+      const res = await request<ApiCoverageScorecard>(`/coverage/${encodeURIComponent(uid)}`, { optional: true })
+      return res ? mapCoverageScorecard(res) : null
+    },
+    graph: async (uid: string): Promise<CoverageGraph> => {
+      const res = await request<CoverageGraph>(`/coverage/${encodeURIComponent(uid)}/graph`, { optional: true })
+      return res ?? { workloadUid: uid, neighbors: [] }
     },
   },
 

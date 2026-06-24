@@ -72,14 +72,11 @@ export function SettingsIntegrations() {
   const githubConfigured = config?.hasGithubToken || config?.hasGithubApp
 
   const handleGithubSave = async () => {
-    if (!config) return
     setGithubSaving(true)
     setGithubError(null)
     setGithubSaved(false)
     try {
       const payload: Parameters<typeof api.aiConfig.upsert>[0] = {
-        provider: config.provider,
-        model: config.model,
         githubBaseBranch: githubBranch.trim() || 'main',
         githubAuthMode,
       }

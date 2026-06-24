@@ -66,6 +66,7 @@ export interface ReliabilityFinding {
   debt: number
   riGainService: number
   remediable: boolean
+  outcome: string // pass | fail | na
 }
 
 export interface ReliabilityTrendPoint {
@@ -455,4 +456,18 @@ export interface ServiceMapProduct {
 export interface ServiceMap {
   products: ServiceMapProduct[]
   orphans: ServiceMapWorkload[]
+}
+
+// U6 — correlação por grafo (blast radius) do serviço.
+export interface CoverageGraphNeighbor {
+  provider: string
+  kind: string
+  name: string
+  relation: string
+  via: string | null
+}
+
+export interface CoverageGraph {
+  workloadUid: string
+  neighbors: CoverageGraphNeighbor[]
 }

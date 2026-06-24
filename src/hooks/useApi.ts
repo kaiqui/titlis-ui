@@ -208,6 +208,24 @@ export function useServiceMap() {
   })
 }
 
+export function useCoverageDetail(uid: string) {
+  return useQuery({
+    queryKey: ['coverage', 'detail', uid],
+    queryFn: () => api.coverage.detail(uid),
+    enabled: !!uid,
+    staleTime: 30_000,
+  })
+}
+
+export function useCoverageGraph(uid: string) {
+  return useQuery({
+    queryKey: ['coverage', 'graph', uid],
+    queryFn: () => api.coverage.graph(uid),
+    enabled: !!uid,
+    staleTime: 30_000,
+  })
+}
+
 export function useCoverageTopRisks(limit = 10) {
   return useQuery({
     queryKey: ['coverage', 'top-risks', limit],

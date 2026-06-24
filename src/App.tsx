@@ -5,11 +5,8 @@ import { ThemeProvider } from '@/contexts/ThemeContext'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { AuthGate } from '@/components/auth/AuthGate'
 import { Layout } from '@/components/layout/Layout'
-import { Dashboard } from '@/pages/Dashboard'
 import { ServiceHub } from '@/pages/ServiceHub'
-import { Incidents } from '@/pages/Incidents'
 import { ApplicationDetail } from '@/pages/ApplicationDetail'
-import { Scorecards } from '@/pages/Scorecards'
 import { ScorecardDetail } from '@/pages/ScorecardDetail'
 import { SLOs } from '@/pages/SLOs'
 import { Recommendations } from '@/pages/Recommendations'
@@ -28,6 +25,7 @@ import { SettingsIntegrations } from '@/pages/SettingsIntegrations'
 import { SettingsLabels } from '@/pages/SettingsLabels'
 import { Queues } from '@/pages/Queues'
 import { Coverage } from '@/pages/Coverage'
+import { CoverageDetail } from '@/pages/CoverageDetail'
 import { Reliability } from '@/pages/Reliability'
 import { Governance } from '@/pages/Governance'
 import { Docs } from '@/pages/Docs'
@@ -90,14 +88,19 @@ export default function App() {
                 )}
               >
                 <Route path="/" element={<ServiceHub />} />
-                <Route path="/overview" element={<Dashboard />} />
+                {/* Páginas Visão Geral (/overview) e Degradações (/incidents) removidas da UI —
+                    Hub, Cobertura e Confiabilidade as complementam. Redirect p/ não quebrar bookmarks. */}
+                <Route path="/overview" element={<Navigate to="/" replace />} />
                 <Route path="/getting-started" element={<GettingStarted />} />
-                <Route path="/incidents" element={<Incidents />} />
-                <Route path="/scorecards" element={<Scorecards />} />
+                <Route path="/incidents" element={<Navigate to="/" replace />} />
+                {/* U7 (repoint 3/3): a lista legada de scorecards foi deprecada — Cobertura é o
+                    Service Scorecard canônico. Sub-rotas (:id, :id/remediate) seguem p/ a remediação. */}
+                <Route path="/scorecards" element={<Navigate to="/coverage" replace />} />
                 <Route path="/scorecards/:id" element={<ApplicationDetail backPath="/scorecards" backLabel="Voltar para scorecards" showScorecardButton={false} />} />
                 <Route path="/scorecards/:id/scorecard" element={<ScorecardDetail />} />
                 <Route path="/slos" element={<SLOs />} />
                 <Route path="/coverage" element={<Coverage />} />
+                <Route path="/coverage/:uid" element={<CoverageDetail />} />
                 <Route
                   path="/recommendations"
                   element={(

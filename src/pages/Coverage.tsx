@@ -1,9 +1,10 @@
 import { useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { ShieldCheck, AlertTriangle, Gauge } from 'lucide-react'
 import { Card } from '@/components/jeitto/Card'
 import { EmptyState } from '@/components/jeitto/EmptyState'
 import { PageError, PageLoading } from '@/components/jeitto/PageState'
-import { PageHero } from '@/components/jeitto/PageHero'
+import { Header } from '@/components/layout/Header'
 import { ScoreRing } from '@/components/jeitto/ScoreRing'
 import { useCoverage, useCoverageTopRisks } from '@/hooks/useApi'
 import { formatNumber } from '@/lib/utils'
@@ -42,12 +43,12 @@ export function Coverage() {
   const risks = topRisks.data ?? []
 
   return (
-    <div className="space-y-6">
-      <PageHero
-        eyebrow="Observabilidade"
+    <div className="flex min-h-screen flex-col">
+      <Header
         title="Cobertura & Confiança"
-        description="Scorecards de cobertura gerados por natureza de serviço — sinais não mensuráveis aparecem como N/A, nunca como falha."
+        subtitle="Scorecards de cobertura gerados por natureza de serviço — sinais não mensuráveis aparecem como N/A, nunca como falha."
       />
+      <div className="flex-1 space-y-6 px-4 py-6 lg:px-8">
 
       {services.length === 0 ? (
         <EmptyState
@@ -91,7 +92,12 @@ export function Coverage() {
                   <li key={s.workloadUid} className="flex items-center gap-4 py-3">
                     <ScoreRing score={s.trustScore} size={48} strokeWidth={5} />
                     <div className="min-w-0 flex-1">
-                      <div className="truncate font-medium">{s.serviceName || s.workloadUid}</div>
+                      <Link
+                        to={`/coverage/${encodeURIComponent(s.workloadUid)}`}
+                        className="block truncate font-medium hover:underline"
+                      >
+                        {s.serviceName || s.workloadUid}
+                      </Link>
                       <div className="text-xs text-[var(--color-muted-foreground)]">
                         {s.cluster || '—'} · <Gauge className="inline h-3 w-3" /> {maturityLabel(s.maturity)}
                       </div>
@@ -128,7 +134,14 @@ export function Coverage() {
                 <tbody>
                   {services.map((s) => (
                     <tr key={s.workloadUid} className="border-t border-[var(--color-border)]">
-                      <td className="py-2 pr-4 font-medium">{s.serviceName || s.workloadUid}</td>
+                      <td className="py-2 pr-4 font-medium">
+                        <Link
+                          to={`/coverage/${encodeURIComponent(s.workloadUid)}`}
+                          className="hover:underline"
+                        >
+                          {s.serviceName || s.workloadUid}
+                        </Link>
+                      </td>
                       <td className="py-2 pr-4 text-[var(--color-muted-foreground)]">{s.cluster || '—'}</td>
                       <td className="py-2 pr-4">{formatNumber(s.trustScore)}</td>
                       <td className="py-2 pr-4">{maturityLabel(s.maturity)}</td>
@@ -141,6 +154,7 @@ export function Coverage() {
           </Card>
         </>
       )}
+      </div>
     </div>
   )
 }

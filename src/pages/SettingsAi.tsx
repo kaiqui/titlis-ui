@@ -69,7 +69,7 @@ export function SettingsAi() {
 
       <div className="flex-1 space-y-5 px-4 py-6 lg:px-8">
 
-        {config && (
+        {config?.isActive && (
           <Card>
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-2xl" style={{ backgroundColor: 'rgba(16,185,129,0.1)' }}>

@@ -5,7 +5,7 @@ import { Boxes, FileWarning, GitBranch, Inbox, ShieldCheck, Target, Users } from
 import { Card } from '@/components/jeitto/Card'
 import { EmptyState } from '@/components/jeitto/EmptyState'
 import { PageError, PageLoading } from '@/components/jeitto/PageState'
-import { PageHero } from '@/components/jeitto/PageHero'
+import { Header } from '@/components/layout/Header'
 import { ScoreRing } from '@/components/jeitto/ScoreRing'
 import { useServiceMap } from '@/hooks/useApi'
 import type { ServiceMapProduct, ServiceMapService, ServiceMapWorkload } from '@/types'
@@ -16,7 +16,10 @@ function maturityLabel(level: number): string {
 
 function WorkloadRow({ wl }: { wl: ServiceMapWorkload }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-[var(--color-border)] px-3 py-2">
+    <Link
+      to={`/coverage/${encodeURIComponent(wl.workloadUid)}`}
+      className="flex items-center justify-between gap-3 rounded-lg border border-[var(--color-border)] px-3 py-2 hover:opacity-80"
+    >
       <div className="min-w-0">
         <p className="truncate text-sm font-medium">{wl.name}</p>
         <p className="text-xs text-[var(--color-muted-foreground)]">
@@ -24,7 +27,7 @@ function WorkloadRow({ wl }: { wl: ServiceMapWorkload }) {
         </p>
       </div>
       <ScoreRing score={wl.score} size={40} />
-    </div>
+    </Link>
   )
 }
 
@@ -132,12 +135,12 @@ export function ServiceHub() {
   const data = map.data ?? { products: [], orphans: [] }
 
   return (
-    <div className="space-y-6">
-      <PageHero
-        eyebrow="Confiabilidade"
+    <div className="flex min-h-screen flex-col">
+      <Header
         title="Hub de serviços"
-        description="Produto → squad → serviço → score. A estrutura vem do .titlis/service.yaml + discovery; o score vem do Coverage."
+        subtitle="Produto → squad → serviço → score. A estrutura vem do .titlis/service.yaml + discovery; o score vem do Coverage."
       />
+      <div className="flex-1 space-y-6 px-4 py-6 lg:px-8">
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard icon={Boxes} label="Produtos" value={stats.products} />
@@ -187,6 +190,7 @@ export function ServiceHub() {
           </div>
         </Card>
       )}
+      </div>
     </div>
   )
 }

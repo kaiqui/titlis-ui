@@ -11,13 +11,13 @@ import { cn } from '@/lib/utils'
 const modules = [
   { slug: 'visao-geral',         title: 'Visão Geral',                       file: () => import('../docs/00-visao-geral.md?raw') },
   { slug: 'primeiros-passos',    title: 'Primeiros Passos',                   file: () => import('../docs/01-primeiros-passos.md?raw') },
-  { slug: 'scorecards',          title: 'Scorecards',                         file: () => import('../docs/02-scorecards.md?raw') },
+  { slug: 'service-yaml',        title: '.titlis/service.yaml',               file: () => import('../docs/11-service-yaml.md?raw') },
+  { slug: 'hub',                 title: 'Hub de serviços',                    file: () => import('../docs/12-hub.md?raw') },
+  { slug: 'cobertura',           title: 'Cobertura & Confiança',              file: () => import('../docs/13-cobertura.md?raw') },
+  { slug: 'confiabilidade',      title: 'Confiabilidade',                     file: () => import('../docs/14-confiabilidade.md?raw') },
+  { slug: 'scorecards',          title: 'Scorecards (legado)',                file: () => import('../docs/02-scorecards.md?raw') },
   { slug: 'slos',                title: 'SLOs',                               file: () => import('../docs/03-slos.md?raw') },
-  { slug: 'recomendacoes-hpa',   title: 'Recomendações de HPA',               file: () => import('../docs/04-recomendacoes-hpa.md?raw') },
   { slug: 'assistente-ia',       title: 'ARIA — Assistente de IA',            file: () => import('../docs/05-assistente-ia.md?raw') },
-  { slug: 'campanhas',           title: 'Campanhas',                          file: () => import('../docs/06-campanhas.md?raw') },
-  { slug: 'incidentes',          title: 'Degradações',                        file: () => import('../docs/07-incidentes.md?raw') },
-  { slug: 'topologia',           title: 'Topologia',                          file: () => import('../docs/08-topologia.md?raw') },
   { slug: 'configuracoes',       title: 'Configurações',                      file: () => import('../docs/09-configuracoes.md?raw') },
   { slug: 'integracoes',         title: 'Integrações',                        file: () => import('../docs/10-integracoes.md?raw') },
 ]
@@ -465,10 +465,6 @@ const docsStyles = `
     min-width: 0;
     display: flex;
     flex-direction: column;
-    @media (min-width: 1024px) { margin-left: 0; }
-  }
-  @media (min-width: 1024px) {
-    .docs-main { margin-left: 17rem; }
   }
 
   /* ── Topbar ── */
