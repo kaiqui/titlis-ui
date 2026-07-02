@@ -208,9 +208,24 @@ export function Reliability() {
       <div className="flex-1 space-y-5 px-4 py-6 lg:px-8">
         <SummaryStrip
           items={[
-            { label: 'RI atual', value: current.ri != null ? formatNumber(current.ri) : 'N/D', helper: KIND_LABEL[current.kind] ?? current.kind },
-            { label: 'Débito', value: formatNumber(current.debt), helper: 'pts a recuperar' },
-            { label: 'Cobertura', value: `${Math.round(current.coverage * 100)}%`, helper: `${current.scoredLeaves}/${current.totalLeaves} folhas` },
+            {
+              label: 'RI atual',
+              value: current.ri != null ? formatNumber(current.ri) : 'N/D',
+              helper: KIND_LABEL[current.kind] ?? current.kind,
+              info: 'Índice de Confiabilidade (0–100). RI = 100 − débito ÷ soma dos pesos da subárvore. É comparável entre níveis (produto, time, serviço ou workload): 100 = sem débito; quanto menor, mais débito acumulado abaixo.',
+            },
+            {
+              label: 'Débito',
+              value: formatNumber(current.debt),
+              helper: 'pts a recuperar',
+              info: 'Pontos de confiabilidade a recuperar. Em cada folha é peso × (100 − score); nos níveis acima é a soma dos filhos (aditivo, não média). Maior débito = maior ganho de RI ao corrigir — por isso a lista é ordenada por débito.',
+            },
+            {
+              label: 'Cobertura',
+              value: `${Math.round(current.coverage * 100)}%`,
+              helper: `${current.scoredLeaves}/${current.totalLeaves} folhas`,
+              info: 'Fração das folhas (workloads/filas) deste nó que já têm scorecard avaliado. Folhas sem avaliação não entram no débito — baixa cobertura significa que o RI pode estar otimista.',
+            },
             { label: 'Filhos', value: current.children.length, helper: isService ? 'folhas neste serviço' : 'nós abaixo' },
           ]}
         />

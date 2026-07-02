@@ -20,13 +20,19 @@ import type { WorkloadSummary } from '@/types'
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const PILLAR_LABELS: Record<string, string> = {
-  resilience:  'Resiliência',
-  security:    'Segurança',
-  performance: 'Desempenho',
-  operational: 'Operacional',
+  resilience:    'Resiliência',
+  security:      'Segurança',
+  performance:   'Desempenho',
+  operational:   'Operacional',
+  observability: 'Observabilidade',
 }
 
+// Pesos editáveis: os 4 pilares clássicos (a soma é validada contra 100% no editor de pesos).
 const PILLAR_ORDER = ['resilience', 'security', 'performance', 'operational']
+
+// Ordenação da LISTA de regras — inclui observabilidade (OBS-*, COV-* de cobertura) para que essas
+// regras ganhem aba e label próprios, não só o bucket "Todos".
+const RULE_PILLAR_ORDER = [...PILLAR_ORDER, 'observability']
 
 const SEVERITY_STYLES: Record<string, { label: string; color: string; bg: string }> = {
   error:    { label: 'Erro',    color: '#dc2626', bg: 'rgba(220,38,38,0.1)'  },
@@ -443,7 +449,7 @@ function RulesTab() {
 
   const pillarTabs = [
     { id: 'all', label: 'Todos', count: rules.length },
-    ...PILLAR_ORDER
+    ...RULE_PILLAR_ORDER
       .filter(p => rules.some(r => r.pillar === p))
       .map(p => ({ id: p, label: PILLAR_LABELS[p], count: rules.filter(r => r.pillar === p).length })),
   ]

@@ -25,6 +25,10 @@ function maturityLabel(level: number): string {
   return level > 0 ? `Maturidade ${level}/5` : 'maturidade n/d'
 }
 
+function isPendingCoverage(trustScore: number | null, dimensionCount: number, findingCount: number): boolean {
+  return trustScore === null && dimensionCount === 0 && findingCount === 0
+}
+
 // U4 — só YAML-remediáveis (como hoje): infra K8s. Observabilidade (monitor/tracing/SLO/logs) não é PR de YAML.
 const YAML_REMEDIABLE_COV = new Set(['COV-RESOURCES', 'COV-PROBES', 'COV-HPA', 'COV-PDB', 'COV-NETWORKPOLICY'])
 
@@ -107,6 +111,8 @@ export function CoverageDetail() {
     )
   }
 
+  const pending = isPendingCoverage(sc.trustScore, sc.dimensions.length, sc.findings.length)
+
   return (
     <div className="space-y-6">
       <Link
@@ -122,12 +128,21 @@ export function CoverageDetail() {
             <p className="text-xs uppercase tracking-wide text-[var(--color-muted-foreground)]">Service Scorecard</p>
             <h1 className="truncate text-2xl font-semibold">{sc.serviceName ?? sc.workloadUid}</h1>
             <p className="text-sm text-[var(--color-muted-foreground)]">
-              {sc.cluster ?? '—'} · {maturityLabel(sc.maturity)}
+              {sc.cluster ?? '—'} · {pending ? 'avaliacao pendente' : maturityLabel(sc.maturity)}
             </p>
           </div>
           <ScoreRing score={sc.trustScore} size={96} />
         </div>
       </Card>
+
+      {pending && (
+        <Card className="p-5">
+          <p className="text-sm text-[var(--color-muted-foreground)]">
+            Este workload ja foi descoberto, mas a avaliacao de cobertura ainda nao retornou score.
+            Quando o sweep concluir, esta pagina passa a exibir maturidade, pilares e findings automaticamente.
+          </p>
+        </Card>
+      )}
 
       {sc.dimensions.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

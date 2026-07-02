@@ -466,7 +466,7 @@ export function Dashboard() {
                   <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Conformes</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{selectedCoverage.compliantCount}</p></Card>
                   <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Não conformes</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{selectedCoverage.nonCompliantCount}</p></Card>
                 </div>
-                <ButtonDefault label="Abrir topologia" icon={ArrowRight} onClick={() => navigate('/topology')} />
+                <ButtonDefault label="Abrir cobertura" icon={ArrowRight} onClick={() => navigate('/coverage')} />
               </DetailPanel>
             ) : (
               <Card><EmptyState icon={Target} title="Sem cobertura disponível" /></Card>

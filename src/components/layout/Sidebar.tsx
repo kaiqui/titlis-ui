@@ -8,7 +8,6 @@ import {
   Inbox,
   Key,
   LayoutDashboard,
-  Network,
   Plug2,
   ShieldCheck,
   SlidersHorizontal,
@@ -34,7 +33,6 @@ const primaryNavItems = [
 const secondaryNavItems = [
   { to: '/coverage', icon: ShieldCheck, label: 'Cobertura', featureId: 'nav_coverage' },
   { to: '/slos', icon: Target, label: 'SLOs', featureId: 'nav_slos' },
-  { to: '/topology', icon: Network, label: 'Topologia', featureId: 'nav_topology' },
 ]
 
 const ariaNavItem = { to: '/aria', icon: Sparkles, label: 'ARIA', featureId: 'nav_aria' }

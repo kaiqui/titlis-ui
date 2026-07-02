@@ -773,6 +773,16 @@ body {
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
+@keyframes infotip-in {
+  from { opacity: 0; transform: scale(0.96) translateY(2px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.infotip-content {
+  animation: infotip-in 0.14s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: var(--radix-tooltip-content-transform-origin);
+}
+
 .button-invoice {
   border-radius: 999px;
   border: 1.5px solid var(--color-primary);

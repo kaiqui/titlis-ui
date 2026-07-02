@@ -14,8 +14,18 @@ function maturityLabel(level: number): string {
   return level > 0 ? `Nível ${level}/5` : 'n/d'
 }
 
+function isPendingCoverage(sc: CoverageScorecard): boolean {
+  return sc.trustScore === null && sc.dimensions.length === 0 && sc.findings.length === 0
+}
+
 function gapsOf(sc: CoverageScorecard): string[] {
   return sc.findings.filter((f) => f.outcome === 'fail').map((f) => f.code)
+}
+
+function gapCountOf(sc: CoverageScorecard): number {
+  const findingGaps = gapsOf(sc)
+  if (findingGaps.length > 0) return findingGaps.length
+  return sc.dimensions.reduce((sum, d) => sum + Math.max(0, d.evaluable - d.passed), 0)
 }
 
 export function Coverage() {
@@ -79,6 +89,15 @@ export function Coverage() {
             </Card>
           </div>
 
+          {services.some(isPendingCoverage) && (
+            <Card className="p-4">
+              <p className="text-sm text-[var(--color-muted-foreground)]">
+                Alguns workloads ja foram descobertos, mas o scorecard de cobertura ainda nao foi materializado.
+                Nesses casos a tela mostra o workload primeiro e preenche maturidade e findings assim que a avaliacao concluir.
+              </p>
+            </Card>
+          )}
+
           <Card className="p-5">
             <div className="mb-4 flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-red-500" />
@@ -99,7 +118,8 @@ export function Coverage() {
                         {s.serviceName || s.workloadUid}
                       </Link>
                       <div className="text-xs text-[var(--color-muted-foreground)]">
-                        {s.cluster || '—'} · <Gauge className="inline h-3 w-3" /> {maturityLabel(s.maturity)}
+                        {s.cluster || '—'} · <Gauge className="inline h-3 w-3" />{' '}
+                        {isPendingCoverage(s) ? 'avaliacao pendente' : maturityLabel(s.maturity)}
                       </div>
                     </div>
                     <div className="hidden max-w-[50%] flex-wrap justify-end gap-1 sm:flex">
@@ -144,8 +164,8 @@ export function Coverage() {
                       </td>
                       <td className="py-2 pr-4 text-[var(--color-muted-foreground)]">{s.cluster || '—'}</td>
                       <td className="py-2 pr-4">{formatNumber(s.trustScore)}</td>
-                      <td className="py-2 pr-4">{maturityLabel(s.maturity)}</td>
-                      <td className="py-2">{gapsOf(s).length}</td>
+                      <td className="py-2 pr-4">{isPendingCoverage(s) ? 'pendente' : maturityLabel(s.maturity)}</td>
+                      <td className="py-2">{isPendingCoverage(s) ? 'pendente' : (gapCountOf(s) || 'n/d')}</td>
                     </tr>
                   ))}
                 </tbody>

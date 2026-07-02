@@ -14,7 +14,7 @@ import { FocusTabs } from '@/components/sre/FocusTabs'
 import { InlineAccordion } from '@/components/sre/InlineAccordion'
 import { SelectionList } from '@/components/sre/SelectionList'
 import { SummaryStrip } from '@/components/sre/SummaryStrip'
-import { useDashboardWorkloads } from '@/hooks/useApi'
+import { useDashboardWorkloads, useWorkloadScorecard } from '@/hooks/useApi'
 import { buildRemediationQueue } from '@/lib/insights'
 import { formatDate, formatEnum, formatEnvironment, formatNumber, statusTone } from '@/lib/utils'
 
@@ -62,6 +62,19 @@ export function Recommendations() {
 
   const pagination = usePagination(filtered, 25)
   const selected = filtered.find(item => item.id === selectedId) ?? null
+  const selectedScorecard = useWorkloadScorecard(selected?.id ?? '')
+  const remediationItems = useMemo(() => {
+    const detail = selectedScorecard.data
+    if (!detail) return []
+
+    return detail.validationResults
+      .filter(finding => !finding.passed && finding.remediable)
+      .sort((left, right) => {
+        const severityWeight = { critical: 4, error: 3, warning: 2, info: 1 }
+        return (severityWeight[right.severity] ?? 0) - (severityWeight[left.severity] ?? 0)
+      })
+  }, [selectedScorecard.data])
+
   const summary = useMemo(() => {
     const scored = queue.filter(item => item.overallScore !== null)
     return {
@@ -269,6 +282,60 @@ export function Recommendations() {
 
                 {focus === 'signals' && (
                   <DetailPanel title="Sinais do item" subtitle="Contexto técnico mínimo para orientar a correção.">
+                    <InlineAccordion
+                      title={`Itens de remediação${remediationItems.length > 0 ? ` (${remediationItems.length})` : ''}`}
+                      defaultOpen
+                    >
+                      {selectedScorecard.isLoading ? (
+                        <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
+                          Carregando findings do workload...
+                        </p>
+                      ) : selectedScorecard.isError ? (
+                        <p className="text-sm" style={{ color: '#dc2626' }}>
+                          Não foi possível carregar os itens de remediação deste workload.
+                        </p>
+                      ) : remediationItems.length === 0 ? (
+                        <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
+                          Este workload não possui findings remediáveis abertos no scorecard atual.
+                        </p>
+                      ) : (
+                        <div className="space-y-2">
+                          {remediationItems.map(item => (
+                            <div
+                              key={item.ruleId}
+                              className="rounded-2xl px-3 py-3"
+                              style={{ backgroundColor: 'var(--color-muted)' }}
+                            >
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="text-sm font-semibold" style={{ color: 'var(--color-foreground)' }}>
+                                  {item.ruleId}
+                                </p>
+                                <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${statusTone(item.severity)}`}>
+                                  {formatEnum(item.severity)}
+                                </span>
+                                {item.remediationPending && (
+                                  <span
+                                    className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                                    style={{ backgroundColor: 'rgba(59,130,246,0.08)', color: '#2563eb' }}
+                                  >
+                                    Em remediação
+                                  </span>
+                                )}
+                              </div>
+                              <p className="mt-1 text-sm" style={{ color: 'var(--color-foreground)' }}>
+                                {item.ruleName}
+                              </p>
+                              {item.message && (
+                                <p className="mt-1 text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
+                                  {item.message}
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </InlineAccordion>
+
                     <InlineAccordion title="Sinais" defaultOpen>
                       <div className="space-y-2">
                         {[

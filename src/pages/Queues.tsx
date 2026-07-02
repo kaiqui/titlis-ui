@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Inbox, Layers3, Radar, ShieldAlert, ShieldCheck } from 'lucide-react'
 import { Card } from '@/components/jeitto/Card'
 import { EmptyState } from '@/components/jeitto/EmptyState'
@@ -261,6 +262,8 @@ function ThresholdsPanel({ queueId, observationCount }: { queueId: string; obser
 }
 
 export function Queues() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const serviceFilter = searchParams.get('service')
   const [complianceFilter, setComplianceFilter] = useState<ComplianceFilter>('all')
   const [lifecycleFilter, setLifecycleFilter] = useState<LifecycleFilter>('all')
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
@@ -275,6 +278,7 @@ export function Queues() {
   const queues = allQueues ?? []
 
   const filtered = queues.filter(q => {
+    const matchesService = !serviceFilter || q.serviceName === serviceFilter
     const matchesCompliance = complianceFilter === 'all'
       || (complianceFilter === 'compliant' && q.complianceStatus === 'COMPLIANT')
       || (complianceFilter === 'non_compliant' && q.complianceStatus === 'NON_COMPLIANT')
@@ -285,7 +289,7 @@ export function Queues() {
     const matchesSearch = search.length === 0
       || q.displayName.toLowerCase().includes(search.toLowerCase())
       || q.externalId.toLowerCase().includes(search.toLowerCase())
-    return matchesCompliance && matchesLifecycle && matchesType && matchesSearch
+    return matchesService && matchesCompliance && matchesLifecycle && matchesType && matchesSearch
   })
 
   const monitoringQueues = queues.filter(q => q.lifecycleState === 'MONITORING')
@@ -325,6 +329,26 @@ export function Queues() {
       />
 
       <div className="flex-1 space-y-5 px-4 py-6 lg:px-8">
+        {serviceFilter && (
+          <Card>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm" style={{ color: 'var(--color-foreground)' }}>
+                Mostrando apenas filas do serviço{' '}
+                <span className="font-semibold">{serviceFilter}</span>
+                <span style={{ color: 'var(--color-muted-foreground)' }}> · {filtered.length} de {queues.length}</span>
+              </p>
+              <button
+                type="button"
+                onClick={() => setSearchParams(prev => { prev.delete('service'); return prev })}
+                className="rounded-xl border px-3 py-1.5 text-sm font-semibold"
+                style={{ borderColor: 'var(--color-border)', color: 'var(--color-foreground)' }}
+              >
+                Limpar filtro
+              </button>
+            </div>
+          </Card>
+        )}
+
         <SummaryStrip
           items={[
             { label: 'Total descobertas', value: queues.length, helper: 'filas monitoradas' },
@@ -401,7 +425,7 @@ export function Queues() {
                   items={filtered.map(q => ({
                     id: q.id,
                     title: q.displayName || q.externalId.split('/').pop() || q.externalId,
-                    subtitle: [q.isDlq && 'DLQ', q.serviceName ? `→ ${q.serviceName}` : 'sem dono'].filter(Boolean).join(' · '),
+                    subtitle: q.isDlq ? 'DLQ' : undefined,
                     badges: (
                       <>
                         {q.isDlq && (
@@ -409,9 +433,16 @@ export function Queues() {
                             DLQ
                           </span>
                         )}
-                        {!q.serviceName && q.suggestionCount > 0 && (
+                        {q.serviceName ? (
+                          <span
+                            className="rounded-full px-2.5 py-1 text-[11px] font-semibold"
+                            style={{ backgroundColor: 'var(--color-primary-soft)', color: 'var(--color-primary)' }}
+                          >
+                            → {q.serviceName}
+                          </span>
+                        ) : (
                           <span className="rounded-full px-2.5 py-1 text-[11px] font-semibold bg-amber-900/30 text-amber-400">
-                            {q.suggestionCount} sugestão{q.suggestionCount > 1 ? 'ões' : ''}
+                            sem dono{q.suggestionCount > 0 ? ` · ${q.suggestionCount} sugestão${q.suggestionCount > 1 ? 'ões' : ''}` : ''}
                           </span>
                         )}
                         <LifecycleLabel queue={q} />

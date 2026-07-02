@@ -10,7 +10,6 @@ import { ApplicationDetail } from '@/pages/ApplicationDetail'
 import { ScorecardDetail } from '@/pages/ScorecardDetail'
 import { SLOs } from '@/pages/SLOs'
 import { Recommendations } from '@/pages/Recommendations'
-import { Squads } from '@/pages/Squads'
 import { Login } from '@/pages/Login'
 import { LoginCallback } from '@/pages/LoginCallback'
 import { Onboarding } from '@/pages/Onboarding'
@@ -138,8 +137,8 @@ export default function App() {
                 />
                 <Route path="/queues" element={<Queues />} />
                 <Route path="/reliability" element={<Reliability />} />
-                <Route path="/topology" element={<Squads />} />
-                <Route path="/squads" element={<Navigate to="/topology" replace />} />
+                <Route path="/topology" element={<Navigate to="/coverage" replace />} />
+                <Route path="/squads" element={<Navigate to="/coverage" replace />} />
                 <Route
                   path="/settings/api-keys"
                   element={(

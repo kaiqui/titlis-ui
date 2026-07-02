@@ -1084,13 +1084,21 @@ interface ApiCoverageScorecard {
   evaluatedAt?: string
 }
 
+function deriveCoverageMaturity(item: ApiCoverageScorecard): number {
+  if ((item.maturity ?? 0) > 0) return item.maturity ?? 0
+  const levels = (item.dimensions ?? [])
+    .map((d) => d.maturity_level ?? 0)
+    .filter((level) => level > 0)
+  return levels.length ? Math.min(...levels) : 0
+}
+
 function mapCoverageScorecard(item: ApiCoverageScorecard): CoverageScorecard {
   return {
     workloadUid: item.workloadUid,
     serviceName: item.serviceName ?? null,
     cluster: item.cluster ?? null,
     trustScore: item.trustScore ?? null,
-    maturity: item.maturity ?? 0,
+    maturity: deriveCoverageMaturity(item),
     dimensions: (item.dimensions ?? []).map((d) => ({
       pillar: d.pillar,
       evaluable: d.evaluable ?? 0,
@@ -1103,7 +1111,7 @@ function mapCoverageScorecard(item: ApiCoverageScorecard): CoverageScorecard {
       code: f.code,
       pillar: f.pillar ?? '',
       severity: f.severity ?? '',
-      outcome: f.outcome ?? '',
+      outcome: (f.outcome ?? '').toLowerCase(),
       message: f.message ?? '',
     })),
     evaluatedAt: item.evaluatedAt ?? '',
@@ -1384,6 +1392,13 @@ export const api = {
       })
       if (!response) throw new Error('Não foi possível salvar a configuração.')
       return mapAiConfig(response)
+    },
+    testGithub: async (): Promise<{ ok: boolean; mode: string; message: string }> => {
+      const res = await request<{ ok: boolean; mode: string; message: string }>('/settings/ai-config/github/test', {
+        method: 'POST' as const,
+        optional: true,
+      })
+      return res ?? { ok: false, mode: 'pat', message: 'Sem resposta do servidor.' }
     },
   },
   datadogConfig: {
@@ -1714,7 +1729,7 @@ export const api = {
     updateUserRole: async (userId: number, role: 'admin' | 'viewer'): Promise<void> => {
       await request(`/admin/users/${userId}/role`, {
         method: 'PATCH',
-        body: JSON.stringify({ role }),
+        body: { role },
       })
     },
   },

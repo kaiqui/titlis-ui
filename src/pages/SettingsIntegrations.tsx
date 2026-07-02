@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, CheckCircle, Database, Eye, EyeOff, Github, Info, XCircle } from 'lucide-react'
+import { AlertTriangle, Check, CheckCircle, Database, Eye, EyeOff, Github, Info, XCircle } from 'lucide-react'
 import { ButtonDefault } from '@/components/jeitto/ButtonDefault'
 import { Card } from '@/components/jeitto/Card'
 import { PageError, PageLoading } from '@/components/jeitto/PageState'
@@ -36,6 +36,8 @@ export function SettingsIntegrations() {
   const [githubSaving, setGithubSaving] = useState(false)
   const [githubError, setGithubError] = useState<string | null>(null)
   const [githubSaved, setGithubSaved] = useState(false)
+  const [githubTesting, setGithubTesting] = useState(false)
+  const [githubTestResult, setGithubTestResult] = useState<{ ok: boolean; message: string; mode?: string } | null>(null)
 
   // Datadog
   const [ddApiKey, setDdApiKey] = useState('')
@@ -70,11 +72,30 @@ export function SettingsIntegrations() {
   if (error) return <><Header title="Integrações" /><PageError message="Não foi possível carregar a configuração." /></>
 
   const githubConfigured = config?.hasGithubToken || config?.hasGithubApp
+  const modeLabel = (m?: string) => (m === 'github_app' ? 'GitHub App' : 'Personal Access Token')
+  // Modo realmente em uso pela remediação = o que está salvo (config). A aba selecionada só passa
+  // a valer depois de Salvar — divergência aqui é a causa do "token salvo mas never used".
+  const activeMode = config?.githubAuthMode ?? 'pat'
+  const modeDiverges = githubConfigured && githubAuthMode !== activeMode
+
+  const handleGithubTest = async () => {
+    setGithubTesting(true)
+    setGithubTestResult(null)
+    try {
+      const result = await api.aiConfig.testGithub()
+      setGithubTestResult({ ok: result.ok, message: result.message, mode: result.mode })
+    } catch {
+      setGithubTestResult({ ok: false, message: 'Erro ao testar conexão.' })
+    } finally {
+      setGithubTesting(false)
+    }
+  }
 
   const handleGithubSave = async () => {
     setGithubSaving(true)
     setGithubError(null)
     setGithubSaved(false)
+    setGithubTestResult(null)
     try {
       const payload: Parameters<typeof api.aiConfig.upsert>[0] = {
         githubBaseBranch: githubBranch.trim() || 'main',
@@ -211,6 +232,17 @@ export function SettingsIntegrations() {
             </div>
           </div>
 
+          {modeDiverges && (
+            <div className="mb-5 flex items-start gap-2 rounded-2xl px-4 py-3 text-xs" style={{ backgroundColor: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)' }}>
+              <AlertTriangle size={14} className="mt-0.5 shrink-0" style={{ color: '#d97706' }} />
+              <span style={{ color: 'var(--color-muted-foreground)' }}>
+                O modo em uso pela remediação agora é <strong>{modeLabel(activeMode)}</strong>. O que você
+                preencher na aba <strong>{modeLabel(githubAuthMode)}</strong> só passa a valer — e a credencial
+                só é usada — depois de <strong>Salvar GitHub</strong>.
+              </span>
+            </div>
+          )}
+
           {githubAuthMode === 'pat' ? (
             <div className="grid gap-4 md:grid-cols-2">
               <div className="md:col-span-2">
@@ -318,14 +350,37 @@ export function SettingsIntegrations() {
             </div>
           )}
 
+          {githubTestResult && (
+            <div className={`mt-4 flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium ${githubTestResult.ok ? 'bg-emerald-900/20 text-emerald-400' : 'bg-red-900/20 text-red-400'}`}>
+              {githubTestResult.ok ? <CheckCircle size={15} /> : <XCircle size={15} />}
+              {githubTestResult.mode && (
+                <span className="rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide" style={{ backgroundColor: 'rgba(0,0,0,0.18)' }}>
+                  {modeLabel(githubTestResult.mode)}
+                </span>
+              )}
+              {githubTestResult.message}
+            </div>
+          )}
+
           {githubError && <p className="mt-3 text-sm" style={{ color: '#dc2626' }}>{githubError}</p>}
 
-          <div className="mt-5 flex items-center gap-3">
+          <div className="mt-5 flex flex-wrap items-center gap-3">
             <ButtonDefault
               label={githubSaving ? 'Salvando...' : 'Salvar GitHub'}
               onClick={() => void handleGithubSave()}
               disabled={githubSaveDisabled}
             />
+            {githubConfigured && (
+              <button
+                type="button"
+                onClick={() => void handleGithubTest()}
+                disabled={githubTesting}
+                className="inline-flex h-10 items-center gap-2 rounded-xl border px-4 text-sm font-semibold transition-opacity disabled:opacity-50"
+                style={{ borderColor: 'var(--color-border)', color: 'var(--color-foreground)' }}
+              >
+                {githubTesting ? 'Testando…' : 'Testar Conexão'}
+              </button>
+            )}
             {githubSaved && (
               <div className="flex items-center gap-1.5 text-sm" style={{ color: '#10b981' }}>
                 <Check size={14} />
