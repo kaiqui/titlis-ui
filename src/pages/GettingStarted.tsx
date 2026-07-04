@@ -55,15 +55,22 @@ export function GettingStarted() {
       body: (
         <div className="space-y-3">
           <p className="text-sm leading-6" style={{ color: 'var(--color-muted-foreground)' }}>
-            No cluster Kubernetes de destino, configure as variáveis de ambiente abaixo e aplique o Helm chart.
+            No cluster Kubernetes de destino, crie o Secret com a chave copiada e instale o Helm chart (OCI).
           </p>
           <div className="rounded-xl border px-4 py-3 font-mono text-xs leading-6" style={{ borderColor: 'var(--color-border)', background: 'var(--app-background)', color: 'var(--color-foreground)' }}>
-            <p>TITLIS_API_ENABLED=<span style={{ color: 'var(--color-primary-strong)' }}>true</span></p>
-            <p>TITLIS_API_HOST=<span style={{ color: 'var(--color-primary-strong)' }}>titlis-api.titlis-system.svc.cluster.local</span></p>
-            <p>TITLIS_API_API_KEY=<span style={{ color: 'var(--color-primary-strong)' }}>&lt;chave copiada na etapa anterior&gt;</span></p>
+            <p>kubectl create namespace tear-system</p>
+            <p>kubectl -n tear-system create secret generic tear-api-keys \</p>
+            <p>&nbsp;&nbsp;--from-literal=TEAR_API_KEY=<span style={{ color: 'var(--color-primary-strong)' }}>&lt;chave copiada&gt;</span></p>
+            <p className="mt-2">helm install tear-operator oci://registry-1.docker.io/kailima/tear-operator \</p>
+            <p>&nbsp;&nbsp;--version 0.2.0 --namespace tear-system \</p>
+            <p>&nbsp;&nbsp;--set tearApi.enabled=<span style={{ color: 'var(--color-primary-strong)' }}>true</span> \</p>
+            <p>&nbsp;&nbsp;--set tearApi.host=<span style={{ color: 'var(--color-primary-strong)' }}>&lt;endpoint-da-plataforma&gt;</span> \</p>
+            <p>&nbsp;&nbsp;--set tearApi.secretName=tear-api-keys \</p>
+            <p>&nbsp;&nbsp;--set kubernetes.clusterName=<span style={{ color: 'var(--color-primary-strong)' }}>&lt;nome-do-cluster&gt;</span></p>
           </div>
           <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
-            Consulte as instruções completas em <code>titlis-operator/charts/titlis-operator/README.md</code>.
+            Consulte as instruções completas em <code>Primeiros Passos</code>. As credenciais de Datadog são
+            configuradas em Configurações → Integrações, não no operator.
           </p>
         </div>
       ),
