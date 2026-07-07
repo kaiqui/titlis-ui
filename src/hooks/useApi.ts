@@ -305,6 +305,14 @@ export function useReliabilityTrend(root: string) {
   })
 }
 
+export function useReliabilityEvolution(root: string, days: number) {
+  return useQuery({
+    queryKey: ['reliability', 'evolution', root, days],
+    queryFn: () => api.reliability.evolution(root, days),
+    staleTime: 60_000,
+  })
+}
+
 export function useDatadogQueueSettings() {
   return useQuery({
     queryKey: ['datadog-queue-settings'],

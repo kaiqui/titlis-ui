@@ -74,6 +74,42 @@ export interface ReliabilityTrendPoint {
   ri: number
 }
 
+export interface ReliabilityOpportunity {
+  ruleId: string
+  pillar: string | null
+  severity: string | null
+  occurrences: number
+  debt: number
+  riGain: number
+  remediable: boolean
+  message: string | null
+}
+
+export interface ReliabilityProjection {
+  potentialRi: number | null
+  remediableDebt: number
+  totalDebt: number
+  opportunities: ReliabilityOpportunity[]
+}
+
+export interface ReliabilityMover {
+  path: string
+  kind: string // product | team | service | workload
+  name: string
+  riStart: number | null
+  riEnd: number | null
+  delta: number | null
+}
+
+export interface ReliabilityEvolution {
+  root: string
+  days: number
+  current: ReliabilityNode
+  trend: ReliabilityTrendPoint[]
+  projection: ReliabilityProjection
+  movers: ReliabilityMover[]
+}
+
 export interface QueueThresholds {
   backlogWarning: number
   backlogCritical: number

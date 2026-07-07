@@ -1,18 +1,20 @@
 import { useState } from 'react'
 import { Header } from '@/components/layout/Header'
 import { AdminOverview } from './AdminOverview'
+import { EvolutionHistory } from './EvolutionHistory'
 import { RemediationHistory } from './RemediationHistory'
 import { useAuth } from '@/contexts/useAuth'
 
-type GovernanceTab = 'history' | 'overview'
+type GovernanceTab = 'evolution' | 'history' | 'overview'
 
 export function Governance() {
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
 
-  const [activeTab, setActiveTab] = useState<GovernanceTab>('history')
+  const [activeTab, setActiveTab] = useState<GovernanceTab>('evolution')
 
   const tabs: { id: GovernanceTab; label: string }[] = [
+    { id: 'evolution', label: 'Evolução' },
     { id: 'history', label: 'Histórico de Remediações' },
     ...(isAdmin ? [{ id: 'overview' as GovernanceTab, label: 'Visão Executiva' }] : []),
   ]
@@ -20,8 +22,8 @@ export function Governance() {
   return (
     <div className="flex min-h-screen flex-col">
       <Header
-        title="Governança"
-        subtitle="Histórico de remediações e panorama executivo da plataforma."
+        title="Histórico & Governança"
+        subtitle="Evolução da confiabilidade, histórico de remediações e panorama executivo — do hub ao serviço."
       />
 
       <div className="px-4 pt-2 pb-0 lg:px-8">
@@ -44,6 +46,7 @@ export function Governance() {
         </div>
       </div>
 
+      {activeTab === 'evolution' && <EvolutionHistory standalone={false} />}
       {activeTab === 'history' && <RemediationHistory standalone={false} />}
       {activeTab === 'overview' && isAdmin && <AdminOverview standalone={false} />}
     </div>

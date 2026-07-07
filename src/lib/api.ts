@@ -13,8 +13,12 @@ import type {
   QueueScorecard,
   QueueSummary,
   QueueThresholds,
+  ReliabilityEvolution,
   ReliabilityFinding,
+  ReliabilityMover,
   ReliabilityNode,
+  ReliabilityOpportunity,
+  ReliabilityProjection,
   ReliabilityTrendPoint,
   ServiceOption,
   RemediationDetail,
@@ -835,6 +839,42 @@ interface ApiReliabilityTrendPoint {
   ri: number | null
 }
 
+interface ApiReliabilityOpportunity {
+  ruleId: string
+  pillar?: string | null
+  severity?: string | null
+  occurrences?: number | null
+  debt?: number | null
+  riGain?: number | null
+  remediable?: boolean
+  message?: string | null
+}
+
+interface ApiReliabilityProjection {
+  potentialRi?: number | null
+  remediableDebt?: number | null
+  totalDebt?: number | null
+  opportunities?: ApiReliabilityOpportunity[]
+}
+
+interface ApiReliabilityMover {
+  path: string
+  kind: string
+  name: string
+  riStart?: number | null
+  riEnd?: number | null
+  delta?: number | null
+}
+
+interface ApiReliabilityEvolution {
+  root?: string | null
+  days?: number | null
+  current: ApiReliabilityNode
+  trend?: ApiReliabilityTrendPoint[]
+  projection?: ApiReliabilityProjection
+  movers?: ApiReliabilityMover[]
+}
+
 interface ApiQueuePillarScoreItem {
   pillar: string
   pillarScore: number | string | null
@@ -973,6 +1013,50 @@ function mapReliabilityFinding(item: ApiReliabilityFinding): ReliabilityFinding 
     riGainService: item.riGainService ?? 0,
     remediable: item.remediable ?? false,
     outcome: item.outcome ?? 'fail',
+  }
+}
+
+function mapReliabilityOpportunity(item: ApiReliabilityOpportunity): ReliabilityOpportunity {
+  return {
+    ruleId: item.ruleId,
+    pillar: item.pillar ?? null,
+    severity: item.severity ?? null,
+    occurrences: item.occurrences ?? 0,
+    debt: item.debt ?? 0,
+    riGain: item.riGain ?? 0,
+    remediable: item.remediable ?? false,
+    message: item.message ?? null,
+  }
+}
+
+function mapReliabilityProjection(item?: ApiReliabilityProjection): ReliabilityProjection {
+  return {
+    potentialRi: item?.potentialRi ?? null,
+    remediableDebt: item?.remediableDebt ?? 0,
+    totalDebt: item?.totalDebt ?? 0,
+    opportunities: (item?.opportunities ?? []).map(mapReliabilityOpportunity),
+  }
+}
+
+function mapReliabilityMover(item: ApiReliabilityMover): ReliabilityMover {
+  return {
+    path: item.path,
+    kind: item.kind,
+    name: item.name,
+    riStart: item.riStart ?? null,
+    riEnd: item.riEnd ?? null,
+    delta: item.delta ?? null,
+  }
+}
+
+function mapReliabilityEvolution(item: ApiReliabilityEvolution): ReliabilityEvolution {
+  return {
+    root: item.root ?? '',
+    days: item.days ?? 30,
+    current: mapReliabilityNode(item.current),
+    trend: (item.trend ?? []).map((p) => ({ date: p.date, ri: p.ri ?? 0 })),
+    projection: mapReliabilityProjection(item.projection),
+    movers: (item.movers ?? []).map(mapReliabilityMover),
   }
 }
 
@@ -1641,6 +1725,13 @@ export const api = {
         optional: true,
       })
       return (res ?? []).map((p) => ({ date: p.date, ri: p.ri ?? 0 }))
+    },
+    evolution: async (root?: string, days = 30): Promise<ReliabilityEvolution | null> => {
+      const res = await request<ApiReliabilityEvolution>('/reliability/evolution', {
+        params: { root: root || undefined, days: String(days) },
+        optional: true,
+      })
+      return res ? mapReliabilityEvolution(res) : null
     },
   },
 
