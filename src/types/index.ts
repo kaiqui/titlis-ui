@@ -467,6 +467,8 @@ export interface ServiceMapWorkload {
   cluster: string | null
   score: number | null
   maturity: number
+  tags: string[]
+  environment: string | null
 }
 
 export interface ServiceMapService {
