@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
+import { motion } from 'framer-motion'
 import {
   Bar,
   BarChart,
@@ -8,7 +9,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { CheckCircle2, Clock, GitMerge, GitPullRequest, RotateCcw, Sparkles } from 'lucide-react'
+import { BarChart3, CheckCircle2, Clock, GitMerge, GitPullRequest, Layers, PieChart, RotateCcw, Sparkles } from 'lucide-react'
 import { ButtonDefault } from '@/components/jeitto/ButtonDefault'
 import { Card } from '@/components/jeitto/Card'
 import { EmptyState } from '@/components/jeitto/EmptyState'
@@ -24,21 +25,8 @@ const PERIOD_OPTIONS = [
   { id: 90,  label: '90 dias' },
 ]
 
-const ENV_COLORS: Record<string, string> = {
-  prd:         'rgba(239,68,68,0.15)',
-  prod:        'rgba(239,68,68,0.15)',
-  production:  'rgba(239,68,68,0.15)',
-  hml:         'rgba(245,158,11,0.15)',
-  homolog:     'rgba(245,158,11,0.15)',
-  staging:     'rgba(245,158,11,0.15)',
-  stg:         'rgba(245,158,11,0.15)',
-  dev:         'rgba(99,102,241,0.15)',
-  development: 'rgba(99,102,241,0.15)',
-  tst:         'rgba(16,185,129,0.15)',
-  test:        'rgba(16,185,129,0.15)',
-  qa:          'rgba(16,185,129,0.15)',
-  uat:         'rgba(168,85,247,0.15)',
-}
+// Paleta categórica validada (CVD-safe) para status/ambiente — ver skill dataviz.
+// prod=vermelho · staging=âmbar · dev=azul · test/qa=verde · uat=roxo
 
 const ENV_TEXT: Record<string, string> = {
   prd:         '#ef4444',
@@ -48,13 +36,15 @@ const ENV_TEXT: Record<string, string> = {
   homolog:     '#d97706',
   staging:     '#d97706',
   stg:         '#d97706',
-  dev:         'var(--color-primary)',
-  development: 'var(--color-primary)',
-  tst:         '#10b981',
-  test:        '#10b981',
-  qa:          '#10b981',
+  dev:         '#3b82f6',
+  development: '#3b82f6',
+  tst:         '#059669',
+  test:        '#059669',
+  qa:          '#059669',
   uat:         '#a855f7',
 }
+
+const STATUS_COLORS = { merged: '#059669', inProgress: 'var(--color-primary)', failed: '#ef4444' }
 
 function getMondayKey(dateStr: string): string {
   const d = new Date(dateStr)
@@ -83,6 +73,137 @@ function formatDuration(hours: number | null): string {
   if (hours === null) return '—'
   if (hours < 24) return `${Math.round(hours)}h`
   return `${Math.round(hours / 24)}d`
+}
+
+interface ChartEmptyOverlayProps {
+  icon: typeof BarChart3
+  title: string
+  description: string
+  skeleton: ReactNode
+}
+
+function ChartEmptyOverlay({ icon: Icon, title, description, skeleton }: ChartEmptyOverlayProps) {
+  return (
+    <div className="relative overflow-hidden rounded-2xl" style={{ minHeight: 176 }}>
+      <div className="pointer-events-none select-none opacity-[0.35] blur-[1.5px]" aria-hidden="true">
+        {skeleton}
+      </div>
+      <div
+        className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-2xl px-6 text-center"
+        style={{ background: 'linear-gradient(180deg, transparent 0%, var(--color-card) 55%)' }}
+      >
+        <div
+          className="flex h-9 w-9 items-center justify-center rounded-full"
+          style={{ backgroundColor: 'var(--color-muted)' }}
+        >
+          <Icon size={16} style={{ color: 'var(--color-muted-foreground)' }} />
+        </div>
+        <p className="text-sm font-black" style={{ color: 'var(--color-foreground)' }}>
+          {title}
+        </p>
+        <p className="max-w-[26rem] text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
+          {description}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+const FAKE_BAR_ROW_STYLE = { backgroundColor: 'var(--color-muted)' } as const
+const FAKE_FILL_STYLE = { backgroundColor: 'var(--color-border)' } as const
+
+function RingSkeleton({ count }: { count: number }) {
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      {Array.from({ length: count }).map((_, idx) => (
+        <div key={idx} className="flex flex-col items-center gap-2 rounded-2xl px-3 py-4" style={FAKE_BAR_ROW_STYLE}>
+          <div className="h-16 w-16 rounded-full" style={{ border: '6px solid var(--color-border)' }} />
+          <span className="h-2.5 w-14 rounded-full" style={FAKE_FILL_STYLE} />
+          <span className="h-2 w-8 rounded-full" style={FAKE_FILL_STYLE} />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+const StatusSkeleton = () => <RingSkeleton count={3} />
+const EnvSkeleton = () => <RingSkeleton count={3} />
+const NamespaceSkeleton = () => <RingSkeleton count={4} />
+
+/** Anel de progresso SVG animado — usado em todo card de métrica desta página. */
+function ProgressRing({ pct, color, size = 64, strokeWidth = 6, children }: { pct: number; color: string; size?: number; strokeWidth?: number; children: ReactNode }) {
+  const radius = (size - strokeWidth) / 2
+  const circumference = 2 * Math.PI * radius
+  const clamped = Math.max(0, Math.min(100, pct))
+  const offset = circumference - (clamped / 100) * circumference
+
+  return (
+    <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--color-border)" strokeWidth={strokeWidth} />
+        <motion.circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke={color}
+          strokeWidth={strokeWidth}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          initial={{ strokeDashoffset: circumference }}
+          animate={{ strokeDashoffset: offset }}
+          transition={{ duration: 0.8, ease: 'easeOut' }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center">{children}</div>
+    </div>
+  )
+}
+
+/** Card de métrica com anel de progresso — usado por status, ambiente e namespace. */
+interface RingMetric {
+  key: string
+  label: ReactNode
+  value: number
+  pct: number
+  color: string
+  icon?: typeof CheckCircle2
+  rank?: number
+}
+
+function MetricRingGrid({ metrics, columnsClassName = 'grid-cols-2 sm:grid-cols-3' }: { metrics: RingMetric[]; columnsClassName?: string }) {
+  return (
+    <div className={`grid gap-3 ${columnsClassName}`}>
+      {metrics.map(metric => (
+        <div
+          key={metric.key}
+          className="relative flex flex-col items-center gap-2 rounded-2xl px-3 py-4 text-center"
+          style={{ backgroundColor: 'var(--color-muted)' }}
+        >
+          {metric.rank !== undefined && (
+            <span
+              className="absolute left-2.5 top-2.5 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-black tabular-nums"
+              style={{ backgroundColor: 'var(--color-card)', color: 'var(--color-muted-foreground)' }}
+            >
+              {metric.rank}
+            </span>
+          )}
+          <ProgressRing pct={metric.pct} color={metric.color} size={64}>
+            <span className="text-sm font-black tabular-nums" style={{ color: metric.color }}>
+              {metric.value}
+            </span>
+          </ProgressRing>
+          <div className="flex items-center gap-1 text-xs font-semibold" style={{ color: 'var(--color-foreground)' }}>
+            {metric.icon && <metric.icon size={12} style={{ color: metric.color }} />}
+            <span className="max-w-[6.5rem] truncate">{metric.label}</span>
+          </div>
+          <span className="text-[11px]" style={{ color: 'var(--color-muted-foreground)' }}>
+            {formatNumber(metric.pct)}%
+          </span>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 interface CustomTooltipProps {
@@ -143,8 +264,6 @@ export function RemediationHistory({ standalone = true }: { standalone?: boolean
     })
     return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 8)
   }, [items])
-
-  const maxNs = byNamespace[0]?.[1] ?? 1
 
   if (isLoading) return standalone ? <><Header title="Impacto de Remediação" /><PageLoading /></> : <PageLoading />
   if (error || !data) {
@@ -294,33 +413,26 @@ export function RemediationHistory({ standalone = true }: { standalone?: boolean
                 <p className="mb-4 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>
                   Distribuição por status
                 </p>
-                <div className="space-y-3">
-                  {[
-                    { label: 'Merged', count: summary.merged, color: '#10b981', icon: CheckCircle2 },
-                    { label: 'Em andamento', count: inProgress, color: 'var(--color-primary)', icon: Clock },
-                    { label: 'Falhou / Fechado', count: summary.failed, color: '#ef4444', icon: GitPullRequest },
-                  ]
-                    .filter(r => r.count > 0)
-                    .map(row => (
-                      <div key={row.label}>
-                        <div className="mb-1 flex items-center justify-between text-xs">
-                          <span className="flex items-center gap-1.5 font-semibold" style={{ color: 'var(--color-foreground)' }}>
-                            <row.icon size={12} style={{ color: row.color }} />
-                            {row.label}
-                          </span>
-                          <span style={{ color: 'var(--color-muted-foreground)' }}>
-                            {row.count} · {formatNumber((row.count / summary.total_prs) * 100)}%
-                          </span>
-                        </div>
-                        <div className="h-2 w-full overflow-hidden rounded-full" style={{ backgroundColor: 'var(--color-muted)' }}>
-                          <div
-                            className="h-full rounded-full transition-all duration-700"
-                            style={{ width: `${(row.count / summary.total_prs) * 100}%`, backgroundColor: row.color }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                </div>
+                {(() => {
+                  const statusRows: RingMetric[] = [
+                    { key: 'merged', label: 'Merged', value: summary.merged, pct: summary.total_prs > 0 ? (summary.merged / summary.total_prs) * 100 : 0, color: STATUS_COLORS.merged, icon: CheckCircle2 },
+                    { key: 'in_progress', label: 'Em andamento', value: inProgress, pct: summary.total_prs > 0 ? (inProgress / summary.total_prs) * 100 : 0, color: STATUS_COLORS.inProgress, icon: Clock },
+                    { key: 'failed', label: 'Falhou / Fechado', value: summary.failed, pct: summary.total_prs > 0 ? (summary.failed / summary.total_prs) * 100 : 0, color: STATUS_COLORS.failed, icon: GitPullRequest },
+                  ].filter(r => r.value > 0)
+
+                  if (statusRows.length === 0) {
+                    return (
+                      <ChartEmptyOverlay
+                        icon={PieChart}
+                        title="Nenhum status para exibir"
+                        description="Assim que a ARIA abrir remediações neste período, a distribuição por status aparece aqui."
+                        skeleton={<StatusSkeleton />}
+                      />
+                    )
+                  }
+
+                  return <MetricRingGrid metrics={statusRows} />
+                })()}
               </Card>
 
               {/* ambiente breakdown */}
@@ -329,72 +441,55 @@ export function RemediationHistory({ standalone = true }: { standalone?: boolean
                   Distribuição por ambiente
                 </p>
                 {byEnv.length === 0 ? (
-                  <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>Sem dados de ambiente.</p>
+                  <ChartEmptyOverlay
+                    icon={BarChart3}
+                    title="Nenhum dado de ambiente"
+                    description="Os workloads remediados ainda não têm ambiente identificado neste período."
+                    skeleton={<EnvSkeleton />}
+                  />
                 ) : (
-                  <div className="space-y-3">
-                    {byEnv.map(([env, count]) => (
-                      <div key={env}>
-                        <div className="mb-1 flex items-center justify-between text-xs">
-                          <span
-                            className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-                            style={{ backgroundColor: ENV_COLORS[env] ?? 'var(--color-muted)', color: ENV_TEXT[env] ?? 'var(--color-muted-foreground)' }}
-                          >
-                            {formatEnvironment(env)}
-                          </span>
-                          <span style={{ color: 'var(--color-muted-foreground)' }}>
-                            {count} PR{count !== 1 ? 's' : ''} · {formatNumber((count / summary.total_prs) * 100)}%
-                          </span>
-                        </div>
-                        <div className="h-2 w-full overflow-hidden rounded-full" style={{ backgroundColor: 'var(--color-muted)' }}>
-                          <div
-                            className="h-full rounded-full transition-all duration-700"
-                            style={{ width: `${(count / summary.total_prs) * 100}%`, backgroundColor: ENV_TEXT[env] ?? 'var(--color-primary)' }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <MetricRingGrid
+                    metrics={byEnv.map(([env, count]) => ({
+                      key: env,
+                      value: count,
+                      pct: summary.total_prs > 0 ? (count / summary.total_prs) * 100 : 0,
+                      color: ENV_TEXT[env] ?? 'var(--color-primary)',
+                      label: formatEnvironment(env),
+                    }))}
+                  />
                 )}
               </Card>
             </div>
 
             {/* ── cobertura por namespace ── */}
-            {byNamespace.length > 0 && (
-              <Card>
-                <p className="mb-5 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>
-                  Cobertura por namespace
-                  <span className="ml-2 text-xs font-normal" style={{ color: 'var(--color-muted-foreground)' }}>
-                    namespaces atendidos pela ARIA
-                  </span>
-                </p>
-                <div className="space-y-3">
-                  {byNamespace.map(([ns, count], idx) => (
-                    <div key={ns} className="flex items-center gap-3">
-                      <span
-                        className="w-5 shrink-0 text-center text-[11px] font-black tabular-nums"
-                        style={{ color: 'var(--color-muted-foreground)' }}
-                      >
-                        {idx + 1}
-                      </span>
-                      <span className="w-36 shrink-0 truncate font-mono text-xs font-semibold" style={{ color: 'var(--color-foreground)' }}>
-                        {ns}
-                      </span>
-                      <div className="flex-1">
-                        <div className="h-2 w-full overflow-hidden rounded-full" style={{ backgroundColor: 'var(--color-muted)' }}>
-                          <div
-                            className="h-full rounded-full transition-all duration-700"
-                            style={{ width: `${(count / maxNs) * 100}%`, background: 'linear-gradient(90deg, var(--color-primary) 0%, rgba(99,102,241,0.5) 100%)' }}
-                          />
-                        </div>
-                      </div>
-                      <span className="w-14 text-right text-xs font-semibold tabular-nums" style={{ color: 'var(--color-muted-foreground)' }}>
-                        {count} PR{count !== 1 ? 's' : ''}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            )}
+            <Card>
+              <p className="mb-5 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>
+                Cobertura por namespace
+                <span className="ml-2 text-xs font-normal" style={{ color: 'var(--color-muted-foreground)' }}>
+                  namespaces atendidos pela ARIA
+                </span>
+              </p>
+              {byNamespace.length === 0 ? (
+                <ChartEmptyOverlay
+                  icon={Layers}
+                  title="Nenhum namespace coberto ainda"
+                  description="Quando a ARIA remediar workloads neste período, o ranking de namespaces atendidos aparece aqui."
+                  skeleton={<NamespaceSkeleton />}
+                />
+              ) : (
+                <MetricRingGrid
+                  columnsClassName="grid-cols-2 sm:grid-cols-4"
+                  metrics={byNamespace.map(([ns, count], idx) => ({
+                    key: ns,
+                    value: count,
+                    pct: summary.total_prs > 0 ? (count / summary.total_prs) * 100 : 0,
+                    color: 'var(--color-primary)',
+                    rank: idx + 1,
+                    label: <span className="font-mono">{ns}</span>,
+                  }))}
+                />
+              )}
+            </Card>
 
           </>
         )}

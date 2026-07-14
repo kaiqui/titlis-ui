@@ -24,6 +24,7 @@ import type {
   RemediationDetail,
   Severity,
   SloListItem,
+  DiscoveredSlo,
   CoverageGraph,
   CoverageScorecard,
   ServiceMap,
@@ -160,6 +161,18 @@ interface ApiWorkloadSLOCoverage {
   datadog_slo_state: string | null
   last_sync_at: string | null
   dd_git_repository_url: string | null
+}
+
+interface ApiDiscoveredSlo {
+  datadog_slo_id: string
+  name: string
+  type: string | null
+  tags: Record<string, string | null>
+  workload_uid: string | null
+  workload_name: string | null
+  namespace: string | null
+  cluster: string | null
+  last_seen_at: string
 }
 
 interface ApiTenantAuthIntegration {
@@ -474,6 +487,20 @@ function mapWorkloadSLOCoverage(item: ApiWorkloadSLOCoverage): WorkloadSLOCovera
     datadogSloState: item.datadog_slo_state,
     lastSyncAt: item.last_sync_at,
     ddGitRepositoryUrl: item.dd_git_repository_url,
+  }
+}
+
+function mapDiscoveredSlo(item: ApiDiscoveredSlo): DiscoveredSlo {
+  return {
+    datadogSloId: item.datadog_slo_id,
+    name: item.name,
+    type: item.type,
+    tags: item.tags ?? {},
+    workloadUid: item.workload_uid,
+    workloadName: item.workload_name,
+    namespace: item.namespace,
+    cluster: item.cluster,
+    lastSeenAt: item.last_seen_at,
   }
 }
 
@@ -1462,6 +1489,16 @@ export const api = {
     coverage: async (): Promise<WorkloadSLOCoverage[]> => {
       const res = await request<ApiWorkloadSLOCoverage[]>('/slos/coverage', { optional: true })
       return (res ?? []).map(mapWorkloadSLOCoverage)
+    },
+    discovered: async (): Promise<DiscoveredSlo[]> => {
+      const res = await request<ApiDiscoveredSlo[]>('/slos/discovered', { optional: true })
+      return (res ?? []).map(mapDiscoveredSlo)
+    },
+    adopt: async (payload: { datadogSloId: string; workloadId?: number; namespace?: string }): Promise<void> => {
+      await request('/slos/adopt', {
+        method: 'POST' as const,
+        body: payload,
+      })
     },
   },
   aiConfig: {

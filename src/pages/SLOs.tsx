@@ -20,6 +20,10 @@ import {
   Zap,
   BarChart2,
   CircleDashed,
+  Radar,
+  PlusCircle,
+  Link2,
+  Link2Off,
 } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { ButtonDefault } from '@/components/jeitto/ButtonDefault'
@@ -27,7 +31,7 @@ import { Card } from '@/components/jeitto/Card'
 import { EmptyState } from '@/components/jeitto/EmptyState'
 import { PageError, PageLoading } from '@/components/jeitto/PageState'
 import { api } from '@/lib/api'
-import type { SloListItem, WorkloadSLOCoverage, SloStatus } from '@/types'
+import type { SloListItem, WorkloadSLOCoverage, SloStatus, DiscoveredSlo } from '@/types'
 import { formatDate } from '@/lib/utils'
 import { useAuth } from '@/contexts/useAuth'
 
@@ -584,13 +588,174 @@ function CoverageView({ onRefresh }: { onRefresh: () => void }) {
   )
 }
 
+// ── Discovered SLOs (adoção) ────────────────────────────────────────────────────
+
+function DiscoveredSloCard({ slo, canAdmin }: { slo: DiscoveredSlo; canAdmin: boolean }) {
+  const queryClient = useQueryClient()
+  const hasWorkload = !!slo.workloadUid
+  const [adopted, setAdopted] = useState(false)
+
+  const mutation = useMutation({
+    mutationFn: () => api.slos.adopt({ datadogSloId: slo.datadogSloId }),
+    onSuccess: () => {
+      setAdopted(true)
+      void queryClient.invalidateQueries({ queryKey: ['slos-discovered'] })
+    },
+  })
+
+  return (
+    <div
+      className="rounded-2xl border px-4 py-3 flex items-start justify-between gap-4"
+      style={{ borderColor: 'var(--color-border)', background: 'var(--color-card)' }}
+    >
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          {hasWorkload
+            ? <Link2 size={13} style={{ color: '#16a34a', flexShrink: 0 }} />
+            : <Link2Off size={13} style={{ color: '#9ca3af', flexShrink: 0 }} />}
+          <span className="font-semibold text-sm truncate" style={{ color: 'var(--color-foreground)' }}>
+            {slo.name}
+          </span>
+          {slo.type && (
+            <span
+              className="inline-flex items-center rounded-full px-2 py-0.5 text-xs"
+              style={{ color: 'var(--color-muted-foreground)', background: 'rgba(0,0,0,0.04)' }}
+            >
+              {sloTypeLabel(slo.type.toUpperCase())}
+            </span>
+          )}
+          <span
+            className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium"
+            style={{ color: '#7c3aed', background: 'rgba(245,243,255,0.8)', border: '1px solid rgba(124,58,237,0.2)' }}
+          >
+            não gerenciado
+          </span>
+        </div>
+        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
+          <span className="font-mono">{slo.datadogSloId}</span>
+          {slo.tags.service && <span>serviço: {slo.tags.service}</span>}
+          {hasWorkload ? (
+            <span>{slo.workloadName} · {slo.namespace} · {slo.cluster}</span>
+          ) : (
+            <span style={{ color: '#d97706' }}>sem workload correlacionado</span>
+          )}
+        </div>
+      </div>
+
+      {canAdmin && (
+        <div className="shrink-0">
+          {adopted ? (
+            <span className="flex items-center gap-1 text-xs font-semibold" style={{ color: '#16a34a' }}>
+              <CheckCircle2 size={13} /> adoção enfileirada
+            </span>
+          ) : (
+            <button
+              type="button"
+              className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition-opacity hover:opacity-80 disabled:opacity-60"
+              style={{ background: 'var(--color-primary)', color: '#fff' }}
+              disabled={mutation.isPending}
+              onClick={() => mutation.mutate()}
+            >
+              {mutation.isPending
+                ? <Loader2 size={12} className="animate-spin" />
+                : <PlusCircle size={12} />}
+              Adotar
+            </button>
+          )}
+          {mutation.error && (
+            <p className="mt-1 text-[10px]" style={{ color: '#dc2626' }}>
+              {mutation.error instanceof Error ? mutation.error.message : 'Erro ao adotar.'}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function DiscoveredView({ canAdmin, onRefresh }: { canAdmin: boolean; onRefresh: () => void }) {
+  const [search, setSearch] = useState('')
+
+  const { data: discovered, isLoading, error } = useQuery({
+    queryKey: ['slos-discovered'],
+    queryFn: () => api.slos.discovered(),
+    refetchInterval: 60_000,
+  })
+
+  const items = discovered ?? []
+
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase()
+    if (!term) return items
+    return items.filter(item =>
+      item.name.toLowerCase().includes(term)
+      || (item.workloadName ?? '').toLowerCase().includes(term)
+      || (item.namespace ?? '').toLowerCase().includes(term),
+    )
+  }, [items, search])
+
+  if (isLoading) return <PageLoading />
+  if (error) return <PageError message={error instanceof Error ? error.message : undefined} onRetry={onRefresh} />
+
+  return (
+    <div className="mx-auto max-w-4xl space-y-4">
+      {/* Banner explicativo */}
+      <div className="rounded-2xl border px-4 py-3 flex items-start gap-3"
+        style={{ borderColor: 'rgba(124,58,237,0.2)', background: 'rgba(245,243,255,0.6)' }}>
+        <Radar size={15} className="mt-0.5 shrink-0" style={{ color: '#7c3aed' }} />
+        <p className="text-xs leading-5" style={{ color: '#5b21b6' }}>
+          <strong>SLOs descobertos</strong> — SLOs que já existem no Datadog (criados manualmente,
+          por Terraform ou por outro time), encontrados pelo Discovery Engine do operator e
+          correlacionados automaticamente ao workload correspondente. <strong>Adotar</strong> passa
+          o SLO para gestão completa pelo Titlis (metas, propostas de alteração via IA) sem criar
+          nem alterar nada no Datadog — o operator só passa a acompanhar o SLO já existente.
+        </p>
+      </div>
+
+      <div className="flex items-center justify-between gap-2">
+        <div className="relative">
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2"
+            style={{ color: 'var(--color-muted-foreground)' }} />
+          <input
+            className="input-field pl-8 py-2 text-sm w-64"
+            placeholder="Buscar SLO ou workload..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+        <ButtonDefault visual="ghost" label="Atualizar" icon={RefreshCw} onClick={onRefresh} />
+      </div>
+
+      {items.length === 0 ? (
+        <Card>
+          <EmptyState
+            icon={Radar}
+            title="Nenhum SLO pendente de adoção"
+            description="Todos os SLOs descobertos no Datadog já foram adotados, ou o Discovery Engine ainda não encontrou nenhum SLO fora da gestão do Titlis."
+          />
+        </Card>
+      ) : filtered.length === 0 ? (
+        <Card>
+          <EmptyState icon={Search} title="Nenhum resultado" description="Ajuste a busca." />
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map(slo => (
+            <DiscoveredSloCard key={slo.datadogSloId} slo={slo} canAdmin={canAdmin} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Main SLOs page ─────────────────────────────────────────────────────────────
 
 export function SLOs() {
   const { user } = useAuth()
   const canAdmin = user?.role === 'admin'
   const queryClient = useQueryClient()
-  const [view, setView] = useState<'slos' | 'coverage'>('slos')
+  const [view, setView] = useState<'slos' | 'coverage' | 'discovered'>('slos')
   const [filter, setFilter] = useState<SloFilter>('todos')
   const [search, setSearch] = useState('')
 
@@ -656,8 +821,9 @@ export function SLOs() {
         <div className="inline-flex gap-1 rounded-2xl p-1"
           style={{ background: 'rgba(0,0,0,0.05)', border: '1px solid var(--color-border)' }}>
           {[
-            { id: 'slos' as const,     label: 'SLOs',      icon: Target },
-            { id: 'coverage' as const, label: 'Cobertura', icon: BarChart2 },
+            { id: 'slos' as const,       label: 'SLOs',       icon: Target },
+            { id: 'coverage' as const,   label: 'Cobertura',  icon: BarChart2 },
+            { id: 'discovered' as const, label: 'Descobertos', icon: Radar },
           ].map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -681,6 +847,12 @@ export function SLOs() {
         {view === 'coverage' && (
           <CoverageView
             onRefresh={() => void queryClient.invalidateQueries({ queryKey: ['slos-coverage'] })}
+          />
+        )}
+        {view === 'discovered' && (
+          <DiscoveredView
+            canAdmin={canAdmin}
+            onRefresh={() => void queryClient.invalidateQueries({ queryKey: ['slos-discovered'] })}
           />
         )}
         {view === 'slos' && (

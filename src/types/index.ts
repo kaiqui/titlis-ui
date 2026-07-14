@@ -307,6 +307,20 @@ export interface WorkloadSLOCoverage {
   ddGitRepositoryUrl: string | null
 }
 
+// SLO pré-existente no Datadog (Discovery Engine do operator-go), ainda não adotado para
+// gestão completa pelo Titlis — ver GET /slos/discovered e POST /slos/adopt.
+export interface DiscoveredSlo {
+  datadogSloId: string
+  name: string
+  type: string | null
+  tags: Record<string, string | null>
+  workloadUid: string | null
+  workloadName: string | null
+  namespace: string | null
+  cluster: string | null
+  lastSeenAt: string
+}
+
 export interface PlatformSummary {
   totalWorkloads: number
   averageScore: number
