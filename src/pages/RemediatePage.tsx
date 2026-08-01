@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
+import { AnimatePresence, motion } from 'motion/react'
 import {
   AlertTriangle,
   ArrowLeft,
@@ -25,6 +26,7 @@ import { Header } from '@/components/layout/Header'
 import { CodeDiffView } from '@/components/ai/CodeDiffView'
 import { useWorkloadGithubLink, useWorkloadScorecard } from '@/hooks/useApi'
 import { api } from '@/lib/api'
+import { fadeInUp } from '@/lib/motion/tokens'
 import { formatEnum, formatEnvironment, severityColor } from '@/lib/utils'
 import type { Finding, RemediationDiffFile, ServiceYamlPrefill } from '@/types'
 
@@ -465,6 +467,8 @@ export function RemediatePage() {
           </div>
         </Card>
 
+        <AnimatePresence mode="wait">
+        <motion.div key={step} {...fadeInUp}>
         {/* ══ STEP: linking ══════════════════════════════════════════════════ */}
         {step === 'linking' && (
           <Card>
@@ -1037,6 +1041,8 @@ export function RemediatePage() {
             </div>
           </Card>
         )}
+        </motion.div>
+        </AnimatePresence>
 
       </div>
     </div>

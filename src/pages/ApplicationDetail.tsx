@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import { AlertTriangle, ArrowLeft, ArrowRight, Bot, CheckCircle2, ExternalLink, GitPullRequest, Layers3, ShieldAlert, ShieldCheck, Sparkles, XCircle } from 'lucide-react'
+import { AnimatePresence, motion } from 'motion/react'
 import { ButtonDefault } from '@/components/jeitto/ButtonDefault'
 import { FeatureGuard } from '@/components/atoms/FeatureGuard'
 import { Card } from '@/components/jeitto/Card'
@@ -17,6 +18,7 @@ import { SummaryStrip } from '@/components/sre/SummaryStrip'
 import { AiExplainDrawer } from '@/components/ai/AiExplainDrawer'
 import { useScoreConfigOverrides, useWorkloadRemediation, useWorkloadScorecard } from '@/hooks/useApi'
 import { useAuth } from '@/contexts/useAuth'
+import { fadeInUp } from '@/lib/motion/tokens'
 import { formatDate, formatEnum, formatEnvironment, severityColor, statusTone } from '@/lib/utils'
 import type { ScoreConfigOverride } from '@/lib/api'
 import type { Finding } from '@/types'
@@ -169,6 +171,8 @@ export function ApplicationDetail({
           </div>
         </Card>
 
+        <AnimatePresence mode="wait">
+        <motion.div key={focus} {...fadeInUp}>
         {focus === 'overview' && (
           <DetailPanel
             title="Resumo do workload"
@@ -354,6 +358,8 @@ export function ApplicationDetail({
             )}
           </DetailPanel>
         )}
+        </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   )

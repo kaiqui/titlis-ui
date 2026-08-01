@@ -9,6 +9,7 @@ import { ServiceHub } from '@/pages/ServiceHub'
 import { ApplicationDetail } from '@/pages/ApplicationDetail'
 import { ScorecardDetail } from '@/pages/ScorecardDetail'
 import { SLOs } from '@/pages/SLOs'
+import { Costs } from '@/pages/Costs'
 import { Recommendations } from '@/pages/Recommendations'
 import { Login } from '@/pages/Login'
 import { LoginCallback } from '@/pages/LoginCallback'
@@ -21,7 +22,6 @@ import { GettingStarted } from '@/pages/GettingStarted'
 import { RemediatePage } from '@/pages/RemediatePage'
 import { AriaPage } from '@/pages/AriaPage'
 import { SettingsIntegrations } from '@/pages/SettingsIntegrations'
-import { SettingsLabels } from '@/pages/SettingsLabels'
 import { Queues } from '@/pages/Queues'
 import { Coverage } from '@/pages/Coverage'
 import { CoverageDetail } from '@/pages/CoverageDetail'
@@ -98,6 +98,7 @@ export default function App() {
                 <Route path="/scorecards/:id" element={<ApplicationDetail backPath="/scorecards" backLabel="Voltar para scorecards" showScorecardButton={false} />} />
                 <Route path="/scorecards/:id/scorecard" element={<ScorecardDetail />} />
                 <Route path="/slos" element={<SLOs />} />
+                <Route path="/costs" element={<Costs />} />
                 <Route path="/coverage" element={<Coverage />} />
                 <Route path="/coverage/:uid" element={<CoverageDetail />} />
                 <Route
@@ -135,6 +136,10 @@ export default function App() {
                     </AuthGate>
                   )}
                 />
+                <Route
+                  path="/settings/gcp-billing"
+                  element={<Navigate to="/settings/integrations" replace />}
+                />
                 <Route path="/queues" element={<Queues />} />
                 <Route path="/reliability" element={<Reliability />} />
                 <Route path="/topology" element={<Navigate to="/coverage" replace />} />
@@ -166,14 +171,6 @@ export default function App() {
                 <Route
                   path="/settings/datadog"
                   element={<Navigate to="/settings/integrations" replace />}
-                />
-                <Route
-                  path="/settings/labels"
-                  element={(
-                    <AuthGate requireAdmin>
-                      <SettingsLabels />
-                    </AuthGate>
-                  )}
                 />
                 <Route
                   path="/settings/tags"

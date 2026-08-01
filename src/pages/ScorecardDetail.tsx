@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import { Activity, ArrowLeft, ArrowRight, CheckCircle2, Layers3, Target, XCircle } from 'lucide-react'
+import { AnimatePresence, motion } from 'motion/react'
+import { animate } from 'animejs'
 import { ButtonDefault } from '@/components/jeitto/ButtonDefault'
 import { Card } from '@/components/jeitto/Card'
 import { EmptyState } from '@/components/jeitto/EmptyState'
@@ -14,10 +16,34 @@ import { FocusTabs } from '@/components/sre/FocusTabs'
 import { InlineAccordion } from '@/components/sre/InlineAccordion'
 import { SummaryStrip } from '@/components/sre/SummaryStrip'
 import { useWorkloadScorecard } from '@/hooks/useApi'
+import { fadeInUp } from '@/lib/motion/tokens'
 import { formatDate, formatEnum, formatEnvironment, statusTone } from '@/lib/utils'
 
 type ScorecardFocus = 'overview' | 'pillars' | 'executive'
 type OverviewMetric = { label: string; value: string | number; icon: LucideIcon }
+
+function AdherenceValue({ adherence }: { adherence: number }) {
+  const ref = useRef<HTMLSpanElement>(null)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const from = { value: 0 }
+    const animation = animate(from, {
+      value: adherence,
+      duration: 600,
+      easing: 'easeOutQuad',
+      onUpdate: () => {
+        el.textContent = `${Math.round(from.value)}%`
+      },
+    })
+    return () => {
+      animation.pause()
+    }
+  }, [adherence])
+
+  return <span ref={ref}>0%</span>
+}
 
 export function ScorecardDetail() {
   const { id = '' } = useParams()
@@ -108,6 +134,8 @@ export function ScorecardDetail() {
           </div>
         </Card>
 
+        <AnimatePresence mode="wait">
+        <motion.div key={focus} {...fadeInUp}>
         {focus === 'overview' && (
           <DetailPanel title="Resumo do scorecard" subtitle="Contexto e leitura rápida da última avaliação.">
             <div className="grid gap-3 md:grid-cols-4">
@@ -165,9 +193,19 @@ export function ScorecardDetail() {
         {focus === 'executive' && (
           <DetailPanel title="Leitura executiva" subtitle="Resumo curto para decisão rápida.">
             <div className="grid gap-3 md:grid-cols-4">
+              <Card>
+                <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Score geral</p>
+                <p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>
+                  {workload.overallScore === null ? 'N/D' : workload.overallScore.toFixed(1)}
+                </p>
+              </Card>
+              <Card>
+                <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Aderência</p>
+                <p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>
+                  <AdherenceValue adherence={adherence} />
+                </p>
+              </Card>
               {[
-                ['Score geral', workload.overallScore === null ? 'N/D' : workload.overallScore.toFixed(1)],
-                ['Aderência', `${adherence}%`],
                 ['Falhas críticas', String(workload.criticalFailures)],
                 ['Itens detalhados', String(workload.validationResults.length)],
               ].map(([label, value]) => (
@@ -196,6 +234,8 @@ export function ScorecardDetail() {
             </InlineAccordion>
           </DetailPanel>
         )}
+        </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   )

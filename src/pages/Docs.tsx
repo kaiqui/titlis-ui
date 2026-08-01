@@ -3,7 +3,9 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { BookOpen, ChevronLeft, ChevronRight, ExternalLink, Menu, Search, X } from 'lucide-react'
+import { AnimatePresence, motion } from 'motion/react'
 import { cn } from '@/lib/utils'
+import { fadeInUp } from '@/lib/motion/tokens'
 
 // --------------------------------------------------------------------------
 // Manifesto de módulos
@@ -170,7 +172,14 @@ function DocsSidebar({
                 currentSlug === mod.slug && 'docs-sidebar-item-active',
               )}
             >
-              {mod.title}
+              {currentSlug === mod.slug && (
+                <motion.span
+                  layoutId="docs-sidebar-active"
+                  className="docs-sidebar-item-active-bg"
+                  transition={{ type: 'spring', stiffness: 500, damping: 40 }}
+                />
+              )}
+              <span style={{ position: 'relative' }}>{mod.title}</span>
             </Link>
           ))}
         </nav>
@@ -299,10 +308,12 @@ export function Docs() {
             )}
 
             {!loading && content && (
-              <>
-                <DocMarkdown content={content} />
-                <ModuleNav current={moduleIndex} />
-              </>
+              <AnimatePresence mode="wait">
+                <motion.div key={effectiveSlug} {...fadeInUp}>
+                  <DocMarkdown content={content} />
+                  <ModuleNav current={moduleIndex} />
+                </motion.div>
+              </AnimatePresence>
             )}
 
             {!loading && !content && (
@@ -421,6 +432,7 @@ const docsStyles = `
   }
   .docs-sidebar-item {
     display: block;
+    position: relative;
     padding: 0.55rem 0.75rem;
     border-radius: 0.75rem;
     font-size: 0.88rem;
@@ -435,13 +447,18 @@ const docsStyles = `
     color: var(--color-foreground);
   }
   .docs-sidebar-item-active {
-    background: var(--color-primary-soft);
     color: var(--color-primary-strong);
     font-weight: 700;
   }
   .docs-sidebar-item-active:hover {
-    background: var(--color-primary-soft);
     color: var(--color-primary-strong);
+  }
+  .docs-sidebar-item-active-bg {
+    position: absolute;
+    inset: 0;
+    border-radius: 0.75rem;
+    background: var(--color-primary-soft);
+    z-index: 0;
   }
 
   .docs-sidebar-footer {

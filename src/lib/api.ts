@@ -5,7 +5,6 @@ import type {
   AiConfig,
   DatadogQueueSettings,
   Finding,
-  LabelRegistryEntry,
   LifecycleState,
   PillarScore,
   QueueFinding,
@@ -959,11 +958,59 @@ interface ApiDatadogQueueSettings {
   queueCounts: { discovering: number; learning: number; monitoring: number }
 }
 
-interface ApiLabelRegistryEntry {
-  labelRegistryId: number
-  labelKey: string
-  labelValue: string
-  isActive: boolean
+export interface DailyCostPoint {
+  date: string
+  totalCost: number
+}
+
+export interface CostSummary {
+  days: number
+  currency: string
+  totalCost: number
+  previousTotalCost: number
+  variationPct: number | null
+  dailyCosts: DailyCostPoint[]
+  configured: boolean
+  lastCollectionAt: string | null
+}
+
+export interface TeamCost {
+  team: string
+  totalCost: number
+  sharePct: number
+  workloadCount: number
+  dailyCosts: DailyCostPoint[]
+}
+
+export interface TeamCostsResponse {
+  days: number
+  currency: string
+  totalCost: number
+  teams: TeamCost[]
+}
+
+export interface WorkloadCost {
+  workloadId: number
+  workloadName: string
+  namespace: string
+  clusterName: string
+  team: string | null
+  totalCost: number
+  avgDailyCost: number
+  daysWithData: number
+}
+
+export interface WorkloadCostsResponse {
+  days: number
+  currency: string
+  totalCost: number
+  workloads: WorkloadCost[]
+}
+
+export interface CostSettingsStatus {
+  enabled: boolean
+  enabledAt: string | null
+  enabledByEmail: string | null
 }
 
 function mapQueueSummary(item: ApiQueueSummaryItem): QueueSummary {
@@ -1154,16 +1201,6 @@ function mapDatadogSettings(item: ApiDatadogQueueSettings): DatadogQueueSettings
     activeMonitorCount: 0,
     queuesByState: item.queueCounts ?? { discovering: 0, learning: 0, monitoring: 0 },
     probeStatus: item.hasApiKey ? 'ok' : 'not_configured',
-  }
-}
-
-function mapLabelRegistryEntry(item: ApiLabelRegistryEntry): LabelRegistryEntry {
-  return {
-    id: item.labelRegistryId,
-    labelKey: item.labelKey,
-    labelValue: item.labelValue,
-    isActive: item.isActive,
-    createdAt: '',
   }
 }
 
@@ -1796,21 +1833,47 @@ export const api = {
     },
   },
 
-  labelRegistry: {
-    list: async (): Promise<LabelRegistryEntry[]> => {
-      const res = await request<ApiLabelRegistryEntry[]>('/settings/labels', { optional: true })
-      return (res ?? []).map(mapLabelRegistryEntry)
-    },
-    add: async (labelKey: string, labelValue: string): Promise<LabelRegistryEntry> => {
-      const res = await request<ApiLabelRegistryEntry>('/settings/labels', {
-        method: 'POST' as const,
-        body: { label_key: labelKey, label_value: labelValue },
+  costs: {
+    summary: async (days = 30): Promise<CostSummary> => {
+      const res = await request<CostSummary>('/costs/summary', {
+        params: { days: String(days) },
+        optional: true,
       })
-      if (!res) throw new Error('Não foi possível adicionar o valor.')
-      return mapLabelRegistryEntry(res)
+      return res ?? {
+        days, currency: 'USD', totalCost: 0, previousTotalCost: 0, variationPct: null,
+        dailyCosts: [], configured: false, lastCollectionAt: null,
+      }
     },
-    remove: async (id: number): Promise<void> => {
-      await request(`/settings/labels/${id}`, { method: 'DELETE' as const })
+    teams: async (days = 30): Promise<TeamCostsResponse> => {
+      const res = await request<TeamCostsResponse>('/costs/teams', {
+        params: { days: String(days) },
+        optional: true,
+      })
+      return res ?? { days, currency: 'USD', totalCost: 0, teams: [] }
+    },
+    workloads: async (days = 30, team?: string, namespace?: string): Promise<WorkloadCostsResponse> => {
+      const res = await request<WorkloadCostsResponse>('/costs/workloads', {
+        params: { days: String(days), team, namespace },
+        optional: true,
+      })
+      return res ?? { days, currency: 'USD', totalCost: 0, workloads: [] }
+    },
+  },
+
+  costSettings: {
+    // Opt-in explícito (admin) — a estimativa de custo nunca liga sozinha, pode gerar cobrança
+    // adicional na fatura Titlis.
+    get: async (): Promise<CostSettingsStatus> => {
+      const res = await request<CostSettingsStatus>('/settings/cost', { optional: true })
+      return res ?? { enabled: false, enabledAt: null, enabledByEmail: null }
+    },
+    enable: async (): Promise<CostSettingsStatus> => {
+      const res = await request<CostSettingsStatus>('/settings/cost/enable', { method: 'POST' as const })
+      return res ?? { enabled: false, enabledAt: null, enabledByEmail: null }
+    },
+    disable: async (): Promise<CostSettingsStatus> => {
+      const res = await request<CostSettingsStatus>('/settings/cost/disable', { method: 'POST' as const })
+      return res ?? { enabled: false, enabledAt: null, enabledByEmail: null }
     },
   },
 

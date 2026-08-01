@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Plus, Tag, X } from 'lucide-react'
+import { AnimatePresence, motion } from 'motion/react'
 import { Card } from '@/components/jeitto/Card'
 import { PageError, PageLoading } from '@/components/jeitto/PageState'
 import { Header } from '@/components/layout/Header'
 import { useClusters, useNamespaces, useResourceTags, useWorkloadItems } from '@/hooks/useApi'
 import { api } from '@/lib/api'
+import { fadeInUp } from '@/lib/motion/tokens'
 import type { ClusterItem, NamespaceItem, WorkloadItem } from '@/lib/api'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -167,22 +169,29 @@ function ResourceRow({
                 Sem tags
               </span>
             )}
+            <AnimatePresence>
             {tags.map(tag => (
-              <TagChip
-                key={tag}
-                tag={tag}
-                onRemove={() => removeTag(tag)}
-                removing={removingTag === tag}
-              />
+              <motion.div key={tag} {...fadeInUp} layout>
+                <TagChip
+                  tag={tag}
+                  onRemove={() => removeTag(tag)}
+                  removing={removingTag === tag}
+                />
+              </motion.div>
             ))}
+            </AnimatePresence>
           </div>
+          <AnimatePresence>
           {showForm && (
-            <AddTagForm
-              resourceType={resourceType}
-              resourceId={resourceId}
-              onDone={() => setShowForm(false)}
-            />
+            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
+              <AddTagForm
+                resourceType={resourceType}
+                resourceId={resourceId}
+                onDone={() => setShowForm(false)}
+              />
+            </motion.div>
           )}
+          </AnimatePresence>
         </div>
         {!showForm && (
           <button

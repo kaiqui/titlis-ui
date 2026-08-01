@@ -3,6 +3,7 @@ import { Pagination } from '@/components/jeitto/Pagination'
 import { usePagination } from '@/hooks/usePagination'
 import { ArrowRight, ExternalLink, GitPullRequest, RefreshCw, Search, Sparkles, Wrench } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { AnimatePresence, motion } from 'motion/react'
 import { Header } from '@/components/layout/Header'
 import { ButtonDefault } from '@/components/jeitto/ButtonDefault'
 import { Card } from '@/components/jeitto/Card'
@@ -16,6 +17,7 @@ import { SelectionList } from '@/components/sre/SelectionList'
 import { SummaryStrip } from '@/components/sre/SummaryStrip'
 import { useDashboardWorkloads, useWorkloadScorecard } from '@/hooks/useApi'
 import { buildRemediationQueue } from '@/lib/insights'
+import { fadeInUp } from '@/lib/motion/tokens'
 import { formatDate, formatEnum, formatEnvironment, formatNumber, statusTone } from '@/lib/utils'
 
 type RemediationFilter = 'active' | 'with_pr' | 'without_pr' | 'all'
@@ -232,6 +234,8 @@ export function Recommendations() {
                   </div>
                 </Card>
 
+                <AnimatePresence mode="wait">
+                <motion.div key={focus} {...fadeInUp}>
                 {focus === 'overview' && (
                   <DetailPanel
                     title="Resumo do item"
@@ -393,6 +397,8 @@ export function Recommendations() {
                     </div>
                   </DetailPanel>
                 )}
+                </motion.div>
+                </AnimatePresence>
               </div>
             )}
           </section>

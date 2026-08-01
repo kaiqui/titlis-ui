@@ -1,5 +1,5 @@
 import { Moon, Sun } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'motion/react'
 import { useTheme } from '@/contexts/useTheme'
 import { useAuth } from '@/contexts/useAuth'
 import { Subtitle } from '@/components/jeitto/Typography'
@@ -70,7 +70,18 @@ export function Header({ title, subtitle }: HeaderProps) {
             }}
             type="button"
           >
-            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.span
+                key={theme}
+                initial={{ opacity: 0, rotate: -90, scale: 0.6 }}
+                animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                exit={{ opacity: 0, rotate: 90, scale: 0.6 }}
+                transition={{ duration: 0.2 }}
+                className="inline-flex"
+              >
+                {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+              </motion.span>
+            </AnimatePresence>
             <span>{theme === 'dark' ? 'Claro' : 'Escuro'}</span>
           </motion.button>
         </div>

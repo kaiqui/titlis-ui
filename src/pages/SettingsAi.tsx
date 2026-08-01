@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { ArrowRight, Bot, Check, Eye, EyeOff } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { AnimatePresence, motion } from 'motion/react'
 import { ButtonDefault } from '@/components/jeitto/ButtonDefault'
 import { Card } from '@/components/jeitto/Card'
 import { PageError, PageLoading } from '@/components/jeitto/PageState'
 import { Header } from '@/components/layout/Header'
 import { useAiConfig } from '@/hooks/useApi'
 import { api } from '@/lib/api'
+import { fadeInUp } from '@/lib/motion/tokens'
 
 const PROVIDERS = ['openai', 'anthropic', 'gemini', 'mistral', 'cohere', 'azure', 'ollama']
 
@@ -168,12 +170,14 @@ export function SettingsAi() {
               onClick={() => void handleSave()}
               disabled={!isValid || saving}
             />
+            <AnimatePresence>
             {saved && (
-              <div className="flex items-center gap-1.5 text-sm" style={{ color: '#10b981' }}>
+              <motion.div {...fadeInUp} className="flex items-center gap-1.5 text-sm" style={{ color: '#10b981' }}>
                 <Check size={14} />
                 Salvo com sucesso
-              </div>
+              </motion.div>
             )}
+            </AnimatePresence>
           </div>
         </Card>
 

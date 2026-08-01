@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowRight, Bot, CheckCircle2, GitPullRequest, Sparkles } from 'lucide-react'
+import { AnimatePresence, motion } from 'motion/react'
 import { ButtonDefault } from '@/components/jeitto/ButtonDefault'
 import { Card } from '@/components/jeitto/Card'
 import { EmptyState } from '@/components/jeitto/EmptyState'
@@ -8,6 +9,7 @@ import { PageError, PageLoading } from '@/components/jeitto/PageState'
 import { ScoreBadge } from '@/components/jeitto/ScoreBadge'
 import { Header } from '@/components/layout/Header'
 import { useDashboardWorkloads } from '@/hooks/useApi'
+import { fadeInUp } from '@/lib/motion/tokens'
 import { formatEnum, formatEnvironment, statusTone } from '@/lib/utils'
 
 export function AriaPage() {
@@ -86,9 +88,12 @@ export function AriaPage() {
           />
         ) : (
           <div className="space-y-2">
+            <AnimatePresence initial={false}>
             {filtered.map(w => (
-              <div
+              <motion.div
                 key={w.id}
+                layout
+                {...fadeInUp}
                 className="flex flex-wrap items-center gap-4 rounded-3xl border px-5 py-4 transition-colors"
                 style={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)' }}
               >
@@ -121,8 +126,9 @@ export function AriaPage() {
                     onClick={() => navigate(`/scorecards/${w.id}/remediate`)}
                   />
                 </div>
-              </div>
+              </motion.div>
             ))}
+            </AnimatePresence>
           </div>
         )}
 

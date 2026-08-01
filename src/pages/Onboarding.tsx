@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Navigate, Link, useNavigate } from 'react-router-dom'
+import { motion } from 'motion/react'
 import {
   Bot,
   Building2,
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/contexts/useAuth'
 import { api } from '@/lib/api'
+import { fadeInUp } from '@/lib/motion/tokens'
 
 // ── Step indicators ────────────────────────────────────────────────────────────
 
@@ -33,8 +35,11 @@ function StepDots({ current }: { current: number }) {
         const active = current === step.id
         return (
           <div key={step.id} className="flex items-center gap-2">
-            <div
-              className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all"
+            <motion.div
+              layout
+              className="flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold"
+              animate={{ scale: active ? 1.12 : 1 }}
+              transition={{ duration: 0.2 }}
               style={{
                 background: done
                   ? 'var(--color-primary)'
@@ -50,10 +55,10 @@ function StepDots({ current }: { current: number }) {
               }}
             >
               {done ? <Check size={13} /> : step.id}
-            </div>
+            </motion.div>
             {idx < STEPS.length - 1 && (
               <div
-                className="h-0.5 w-6 rounded-full"
+                className="h-0.5 w-6 rounded-full transition-colors duration-300"
                 style={{ background: done ? 'var(--color-primary)' : 'var(--color-border)' }}
               />
             )}
@@ -70,9 +75,13 @@ function WizardCard({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen items-center justify-center px-6 py-10" style={{ background: 'var(--app-background)' }}>
       <div className="w-full max-w-lg">
-        <div className="rounded-[2.4rem] border p-8" style={{ borderColor: 'var(--color-border)', background: 'var(--color-card)' }}>
+        <motion.div
+          className="rounded-[2.4rem] border p-8"
+          style={{ borderColor: 'var(--color-border)', background: 'var(--color-card)' }}
+          {...fadeInUp}
+        >
           {children}
-        </div>
+        </motion.div>
       </div>
     </div>
   )

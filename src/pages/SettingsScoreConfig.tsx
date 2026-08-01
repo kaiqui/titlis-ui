@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Check, ChevronRight, Search, Trash2 } from 'lucide-react'
+import { AnimatePresence, motion } from 'motion/react'
 import { ButtonDefault } from '@/components/jeitto/ButtonDefault'
 import { Card } from '@/components/jeitto/Card'
 import { PageError, PageLoading } from '@/components/jeitto/PageState'
@@ -15,6 +16,7 @@ import {
 } from '@/hooks/useApi'
 import { api } from '@/lib/api'
 import type { ScoreConfigOverride, ScoreConfigRule } from '@/lib/api'
+import { fadeInUp } from '@/lib/motion/tokens'
 import type { WorkloadSummary } from '@/types'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -706,12 +708,14 @@ function WeightsTab() {
             onClick={() => void handleSave()}
             disabled={!!validationError || saving}
           />
+          <AnimatePresence>
           {saved && (
-            <div className="flex items-center gap-1.5 text-sm" style={{ color: '#10b981' }}>
+            <motion.div {...fadeInUp} className="flex items-center gap-1.5 text-sm" style={{ color: '#10b981' }}>
               <Check size={14} />
               Salvo com sucesso
-            </div>
+            </motion.div>
           )}
+          </AnimatePresence>
         </div>
       </Card>
 

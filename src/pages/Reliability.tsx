@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AlertTriangle, Bot, Boxes, CheckCircle2, ChevronRight, Inbox, Layers3, MinusCircle, ShieldAlert, UserX, Wrench } from 'lucide-react'
+import { motion } from 'motion/react'
 import { Card } from '@/components/jeitto/Card'
 import { EmptyState } from '@/components/jeitto/EmptyState'
 import { PageError, PageLoading } from '@/components/jeitto/PageState'
@@ -68,13 +69,25 @@ const KIND_LABEL: Record<string, string> = {
   workload: 'Workload', queue: 'Fila',
 }
 
+const listVariants = { animate: { transition: { staggerChildren: 0.05 } } }
+const itemVariants = { initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0, transition: { duration: 0.25 } } }
+
+function NodeList({ children }: { children: React.ReactNode }) {
+  return (
+    <motion.div className="space-y-2" variants={listVariants} initial="initial" animate="animate">
+      {children}
+    </motion.div>
+  )
+}
+
 function NodeRow({ node, parentWeight, onOpen }: { node: ReliabilityNode; parentWeight: number; onOpen: (path: string) => void }) {
   const deltaRi = parentWeight > 0 ? node.debt / parentWeight : 0
   const drillable = node.hasChildren || node.kind === 'service'
   const KindIcon = node.kind === 'queue' ? Inbox : node.kind === 'workload' ? Boxes : node.kind === 'service' ? Layers3 : null
   const orphan = node.name === '(sem dono)' || node.name === '(sem produto)'
   return (
-    <button
+    <motion.button
+      variants={itemVariants}
       type="button"
       onClick={() => drillable && onOpen(node.path)}
       data-testid="reliability-node-row"
@@ -106,7 +119,7 @@ function NodeRow({ node, parentWeight, onOpen }: { node: ReliabilityNode; parent
         </p>
       </div>
       {drillable && <ChevronRight size={18} style={{ color: 'var(--color-muted-foreground)' }} />}
-    </button>
+    </motion.button>
   )
 }
 
@@ -265,20 +278,20 @@ export function Reliability() {
           <>
             {leafApps.length > 0 && (
               <DetailPanel title={`Aplicações (${leafApps.length})`} subtitle="Workloads avaliados neste serviço.">
-                <div className="space-y-2">
+                <NodeList>
                   {leafApps.map((child) => (
                     <NodeRow key={child.path} node={child} parentWeight={current.weight} onOpen={setPath} />
                   ))}
-                </div>
+                </NodeList>
               </DetailPanel>
             )}
             {leafQueues.length > 0 && (
               <DetailPanel title={`Filas (${leafQueues.length})`} subtitle="Filas descobertas (ex.: Datadog) atribuídas a este serviço.">
-                <div className="space-y-2">
+                <NodeList>
                   {leafQueues.map((child) => (
                     <NodeRow key={child.path} node={child} parentWeight={current.weight} onOpen={setPath} />
                   ))}
-                </div>
+                </NodeList>
               </DetailPanel>
             )}
             {serviceId && (
@@ -294,11 +307,11 @@ export function Reliability() {
           <Card><EmptyState icon={Layers3} title="Sem nós abaixo" description="Este nó ainda não tem filhos avaliados." /></Card>
         ) : (
           <DetailPanel title="Maiores contribuintes de débito" subtitle="Ordenado por débito — comece pelo topo para o maior ganho de confiabilidade.">
-            <div className="space-y-2">
+            <NodeList>
               {children.map((child) => (
                 <NodeRow key={child.path} node={child} parentWeight={current.weight} onOpen={setPath} />
               ))}
-            </div>
+            </NodeList>
           </DetailPanel>
         )}
       </div>

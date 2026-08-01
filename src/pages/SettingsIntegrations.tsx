@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, Check, CheckCircle, Database, Eye, EyeOff, Github, Info, XCircle } from 'lucide-react'
+import { AlertTriangle, Check, CheckCircle, Cloud, Database, Eye, EyeOff, Github, Info, XCircle } from 'lucide-react'
 import { ButtonDefault } from '@/components/jeitto/ButtonDefault'
 import { Card } from '@/components/jeitto/Card'
 import { PageError, PageLoading } from '@/components/jeitto/PageState'
@@ -18,6 +18,32 @@ export function SettingsIntegrations() {
     queryFn: api.datadogSettings.get,
     staleTime: 30_000,
   })
+  const { data: costSettings } = useQuery({
+    queryKey: ['cost-settings'],
+    queryFn: api.costSettings.get,
+    staleTime: 30_000,
+  })
+  const [costToggling, setCostToggling] = useState(false)
+  const [costError, setCostError] = useState<string | null>(null)
+
+  async function handleToggleCost() {
+    setCostError(null)
+    const enabling = !costSettings?.enabled
+    if (enabling && !window.confirm(
+      'Ativar a estimativa de custo pode gerar cobrança adicional na sua fatura Titlis, dependendo do seu plano. Deseja continuar?',
+    )) {
+      return
+    }
+    setCostToggling(true)
+    try {
+      await (enabling ? api.costSettings.enable() : api.costSettings.disable())
+      await queryClient.invalidateQueries({ queryKey: ['cost-settings'] })
+    } catch (cause) {
+      setCostError(cause instanceof Error ? cause.message : 'Não foi possível alterar a configuração.')
+    } finally {
+      setCostToggling(false)
+    }
+  }
 
   // GitHub — modo de auth
   const [githubAuthMode, setGithubAuthMode] = useState<GithubAuthMode>('pat')
@@ -583,6 +609,39 @@ export function SettingsIntegrations() {
               </div>
             )}
           </div>
+        </Card>
+
+        {/* Estimativa de custo — opt-in explícito: quando ativo, estima via preço público de
+            cloud × uso de CPU/mem já observado pelo operator (estilo CastAI, sem billing
+            export). Hoje só clusters GCP são precificados (detecção por Node.Spec.ProviderID);
+            AWS/Azure ficam de fora do total até termos tabela de preço pra eles. Nunca liga
+            sozinho: pode gerar cobrança adicional na fatura Titlis. */}
+        <Card>
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl" style={{ backgroundColor: 'var(--color-primary-soft)' }}>
+              <Cloud size={15} style={{ color: 'var(--color-primary)' }} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-black" style={{ color: 'var(--color-foreground)' }}>Estimativa de Custo</p>
+              <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
+                {costSettings?.enabled
+                  ? `Estimado via preço público × uso observado${costSettings.enabledByEmail ? ` — ativado por ${costSettings.enabledByEmail}` : ''}. Hoje cobre clusters GCP; AWS e Azure em breve.`
+                  : 'Estima custo por workload via preço público × uso observado (hoje cobre clusters GCP; AWS e Azure em breve) — pode gerar cobrança adicional na sua fatura Titlis.'}
+              </p>
+            </div>
+            {costSettings?.enabled && (
+              <span className="rounded-full px-2.5 py-1 text-xs font-semibold" style={{ backgroundColor: 'rgba(16,185,129,0.1)', color: '#10b981' }}>
+                Ativo
+              </span>
+            )}
+            <ButtonDefault
+              label={costToggling ? 'Aguarde...' : costSettings?.enabled ? 'Desativar' : 'Ativar'}
+              visual={costSettings?.enabled ? 'secondary' : 'primary'}
+              onClick={() => void handleToggleCost()}
+              disabled={costToggling}
+            />
+          </div>
+          {costError && <p className="mt-3 text-sm" style={{ color: '#dc2626' }}>{costError}</p>}
         </Card>
 
       </div>

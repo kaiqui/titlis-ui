@@ -1,12 +1,42 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Bot, ChevronDown, ChevronRight, ChevronUp, Clock, Loader2, Send, ShieldOff, Sparkles } from 'lucide-react'
+import { Bot, ChevronDown, ChevronRight, ChevronUp, Clock, Send, ShieldOff, Sparkles } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { AnimatePresence, motion } from 'motion/react'
+import { animate, stagger } from 'animejs'
 import { Header } from '@/components/layout/Header'
 import { type Decision, ToolProposalCard, type ToolProposal } from '@/components/ai/ToolProposalCard'
 import { api } from '@/lib/api'
+import { fadeInUp } from '@/lib/motion/tokens'
 import { cn } from '@/lib/utils'
+
+function TypingIndicator() {
+  const dotsRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!dotsRef.current) return
+    const animation = animate(dotsRef.current.children, {
+      translateY: [0, -6, 0],
+      opacity: [0.4, 1, 0.4],
+      delay: stagger(120),
+      duration: 600,
+      loop: true,
+      easing: 'easeInOutSine',
+    })
+    return () => {
+      animation.pause()
+    }
+  }, [])
+
+  return (
+    <div ref={dotsRef} className="flex items-center gap-1">
+      {[0, 1, 2].map(dot => (
+        <span key={dot} className="h-1.5 w-1.5 rounded-full" style={{ background: 'var(--color-primary)' }} />
+      ))}
+    </div>
+  )
+}
 
 type MessageRole = 'user' | 'assistant' | 'proposals' | 'tool_results' | 'scope_rejected' | 'error'
 
@@ -355,8 +385,13 @@ export function AssistantPage() {
               </div>
             )}
 
+            <AnimatePresence initial={false}>
             {messages.map(msg => (
-              <div key={msg.id} className={cn('flex', msg.role === 'user' ? 'justify-end' : 'justify-start')}>
+              <motion.div
+                key={msg.id}
+                {...fadeInUp}
+                className={cn('flex', msg.role === 'user' ? 'justify-end' : 'justify-start')}
+              >
                 {msg.role === 'user' && (
                   <div className="max-w-[75%] rounded-3xl rounded-br-lg px-5 py-3 text-sm" style={{ backgroundColor: 'var(--color-primary)', color: '#fff' }}>
                     {msg.content}
@@ -473,8 +508,9 @@ export function AssistantPage() {
                     ))}
                   </div>
                 )}
-              </div>
+              </motion.div>
             ))}
+            </AnimatePresence>
 
             {loading && (() => {
               const lastMsg = messages[messages.length - 1]
@@ -482,9 +518,7 @@ export function AssistantPage() {
               return (
                 <div className="flex justify-start">
                   <div className="flex items-center gap-2 rounded-3xl rounded-bl-lg px-5 py-3" style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}>
-                    {isThinking
-                      ? <Sparkles size={14} className="animate-pulse" style={{ color: 'var(--color-primary)' }} />
-                      : <Loader2 size={14} className="animate-spin" style={{ color: 'var(--color-primary)' }} />}
+                    <TypingIndicator />
                     <span className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
                       {isThinking ? 'Analisando...' : 'Pensando...'}
                     </span>

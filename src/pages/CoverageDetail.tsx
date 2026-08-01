@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, CheckCircle2, FileQuestion, MinusCircle, Network, Sparkles, Wrench, XCircle } from 'lucide-react'
+import { motion } from 'motion/react'
 import { Card } from '@/components/jeitto/Card'
+import { fadeInUp } from '@/lib/motion/tokens'
 import { EmptyState } from '@/components/jeitto/EmptyState'
 import { PageError, PageLoading } from '@/components/jeitto/PageState'
 import { ScoreRing } from '@/components/jeitto/ScoreRing'
@@ -30,12 +32,11 @@ function isPendingCoverage(trustScore: number | null, dimensionCount: number, fi
 }
 
 // U4 — só YAML-remediáveis (como hoje): infra K8s. Observabilidade (monitor/tracing/SLO/logs) não é PR de YAML.
-const YAML_REMEDIABLE_COV = new Set(['COV-RESOURCES', 'COV-PROBES', 'COV-HPA', 'COV-PDB', 'COV-NETWORKPOLICY'])
-
+// Coverage não é um pilar próprio — todo finding usa o prefixo do pilar real (RES/SEC/PERF/OPS),
+// então o mesmo regex cobre regras legadas e regras do coverage engine sem lista especial.
 function isRemediable(f: CoverageFinding): boolean {
   if (f.outcome !== 'fail') return false
-  if (YAML_REMEDIABLE_COV.has(f.code)) return true
-  return /^(RES|SEC|PERF|OPS)-/.test(f.code) // regras legadas portadas (U1) são YAML-remediáveis
+  return /^(RES|SEC|PERF|OPS)-/.test(f.code)
 }
 
 const KIND_LABELS: Record<string, string> = {
@@ -146,16 +147,18 @@ export function CoverageDetail() {
 
       {sc.dimensions.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {sc.dimensions.map((d) => (
-            <Card key={d.pillar} className="p-5">
-              <div className="flex items-center justify-between">
-                <p className="font-semibold">{pillarLabel(d.pillar)}</p>
-                <span className="text-sm text-[var(--color-muted-foreground)]">{Math.round(d.pct)}%</span>
-              </div>
-              <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">
-                {d.passed}/{d.evaluable} OK · {d.na} N/A · {maturityLabel(d.maturityLevel)}
-              </p>
-            </Card>
+          {sc.dimensions.map((d, index) => (
+            <motion.div key={d.pillar} {...fadeInUp} transition={{ ...fadeInUp.transition, delay: index * 0.04 }}>
+              <Card className="p-5">
+                <div className="flex items-center justify-between">
+                  <p className="font-semibold">{pillarLabel(d.pillar)}</p>
+                  <span className="text-sm text-[var(--color-muted-foreground)]">{Math.round(d.pct)}%</span>
+                </div>
+                <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">
+                  {d.passed}/{d.evaluable} OK · {d.na} N/A · {maturityLabel(d.maturityLevel)}
+                </p>
+              </Card>
+            </motion.div>
           ))}
         </div>
       )}
@@ -169,7 +172,7 @@ export function CoverageDetail() {
                 <p className="py-2 text-sm text-[var(--color-muted-foreground)]">Sem itens neste pilar.</p>
               )}
               {findings.map((f) => (
-                <div key={f.code} className="flex items-start justify-between gap-4 py-3">
+                <motion.div key={f.code} {...fadeInUp} className="flex items-start justify-between gap-4 py-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{f.code}</span>
@@ -201,7 +204,7 @@ export function CoverageDetail() {
                       </button>
                     )}
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           </Card>

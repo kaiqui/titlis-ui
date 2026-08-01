@@ -1,19 +1,38 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CheckCircle2, Circle, Loader2, Server, ShieldCheck, Zap } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
+import { AnimatePresence, motion } from 'motion/react'
+import gsap from 'gsap'
 import { api } from '@/lib/api'
+import { usePrefersReducedMotion } from '@/lib/motion/useReducedMotion'
 
 const DISMISSED_KEY = 'titlis.onboarding.dismissed'
 
 export function GettingStarted() {
   const navigate = useNavigate()
+  const listRef = useRef<HTMLOListElement>(null)
+  const reducedMotion = usePrefersReducedMotion()
 
   useEffect(() => {
     if (localStorage.getItem(DISMISSED_KEY)) {
       navigate('/', { replace: true })
     }
   }, [navigate])
+
+  useEffect(() => {
+    if (reducedMotion || !listRef.current) return
+    const items = listRef.current.querySelectorAll('li')
+    const timeline = gsap.timeline()
+    timeline.fromTo(
+      items,
+      { opacity: 0, y: 20 },
+      { opacity: 1, y: 0, duration: 0.45, stagger: 0.12, ease: 'power2.out' },
+    )
+    return () => {
+      timeline.kill()
+    }
+  }, [reducedMotion])
 
   const { data: connectionStatus } = useQuery({
     queryKey: ['getting-started-connection'],
@@ -101,24 +120,40 @@ export function GettingStarted() {
         Siga as etapas abaixo para conectar o operator ao painel. Você pode navegar pelo produto normalmente enquanto isso.
       </p>
 
-      <ol className="mt-10 space-y-4">
+      <ol ref={listRef} className="mt-10 space-y-4">
         {steps.map((step, index) => {
           const Icon = step.icon
           return (
             <li
               key={step.title}
-              className="flex gap-4 rounded-[1.6rem] border p-5"
+              className="flex gap-4 rounded-[1.6rem] border p-5 transition-colors duration-300"
               style={{
                 borderColor: step.done ? 'var(--color-primary-soft)' : 'var(--color-border)',
                 background: 'var(--color-card)',
               }}
             >
               <div className="flex flex-col items-center gap-2 pt-0.5">
-                {step.done ? (
-                  <CheckCircle2 size={22} style={{ color: 'var(--color-primary-strong)' }} />
-                ) : (
-                  <Circle size={22} style={{ color: 'var(--color-muted-foreground)', opacity: 0.4 }} />
-                )}
+                <AnimatePresence mode="wait" initial={false}>
+                  {step.done ? (
+                    <motion.div
+                      key="done"
+                      initial={{ scale: 0.5, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ duration: 0.25 }}
+                    >
+                      <CheckCircle2 size={22} style={{ color: 'var(--color-primary-strong)' }} />
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="pending"
+                      initial={{ scale: 0.5, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ duration: 0.25 }}
+                    >
+                      <Circle size={22} style={{ color: 'var(--color-muted-foreground)', opacity: 0.4 }} />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
                 {index < steps.length - 1 && (
                   <div className="w-px flex-1" style={{ background: 'var(--color-border)', minHeight: '1.5rem' }} />
                 )}

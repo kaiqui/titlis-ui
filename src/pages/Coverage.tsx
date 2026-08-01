@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { ShieldCheck, AlertTriangle, Gauge } from 'lucide-react'
+import { motion } from 'motion/react'
 import { Card } from '@/components/jeitto/Card'
 import { EmptyState } from '@/components/jeitto/EmptyState'
 import { PageError, PageLoading } from '@/components/jeitto/PageState'
@@ -8,6 +9,7 @@ import { Header } from '@/components/layout/Header'
 import { ScoreRing } from '@/components/jeitto/ScoreRing'
 import { useCoverage, useCoverageTopRisks } from '@/hooks/useApi'
 import { formatNumber } from '@/lib/utils'
+import { fadeInUp } from '@/lib/motion/tokens'
 import type { CoverageScorecard } from '@/types'
 
 function maturityLabel(level: number): string {
@@ -69,24 +71,19 @@ export function Coverage() {
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Card className="p-5">
-              <div className="text-sm text-[var(--color-muted-foreground)]">Serviços avaliados</div>
-              <div className="mt-1 text-3xl font-semibold">{stats.total}</div>
-            </Card>
-            <Card className="p-5">
-              <div className="text-sm text-[var(--color-muted-foreground)]">Trust Score médio</div>
-              <div className="mt-1 text-3xl font-semibold">{formatNumber(stats.avgTrust)}</div>
-            </Card>
-            <Card className="p-5">
-              <div className="text-sm text-[var(--color-muted-foreground)]">Pior Trust Score</div>
-              <div className="mt-1 text-3xl font-semibold text-red-500">{formatNumber(stats.worstTrust)}</div>
-            </Card>
-            <Card className="p-5">
-              <div className="text-sm text-[var(--color-muted-foreground)]">Maturidade média</div>
-              <div className="mt-1 text-3xl font-semibold">
-                {stats.avgMaturity !== null ? `${formatNumber(stats.avgMaturity)}/5` : 'n/d'}
-              </div>
-            </Card>
+            {[
+              { label: 'Serviços avaliados', value: stats.total, className: '' },
+              { label: 'Trust Score médio', value: formatNumber(stats.avgTrust), className: '' },
+              { label: 'Pior Trust Score', value: formatNumber(stats.worstTrust), className: 'text-red-500' },
+              { label: 'Maturidade média', value: stats.avgMaturity !== null ? `${formatNumber(stats.avgMaturity)}/5` : 'n/d', className: '' },
+            ].map((item, index) => (
+              <motion.div key={item.label} {...fadeInUp} transition={{ ...fadeInUp.transition, delay: index * 0.05 }}>
+                <Card className="p-5">
+                  <div className="text-sm text-[var(--color-muted-foreground)]">{item.label}</div>
+                  <div className={`mt-1 text-3xl font-semibold ${item.className}`}>{item.value}</div>
+                </Card>
+              </motion.div>
+            ))}
           </div>
 
           {services.some(isPendingCoverage) && (

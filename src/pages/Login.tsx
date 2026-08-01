@@ -1,7 +1,11 @@
 import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { KeyRound, Shield } from 'lucide-react'
+import { motion } from 'motion/react'
 import { useAuth } from '@/contexts/useAuth'
+import { MotionGate } from '@/components/motion/MotionGate'
+import { NetworkMeshScene } from '@/components/three/Scene'
+import { fadeInUp } from '@/lib/motion/tokens'
 
 export function Login() {
   const navigate = useNavigate()
@@ -58,32 +62,46 @@ export function Login() {
   return (
     <div className="flex min-h-screen items-center justify-center px-6 py-10" style={{ background: 'var(--app-background)' }}>
       <div className="grid w-full max-w-5xl gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-        <section className="rounded-[2.4rem] border p-8 lg:p-10" style={{ borderColor: 'var(--color-border)', background: 'var(--hero-background)' }}>
-          <div className="flex h-14 w-14 items-center justify-center rounded-[1.5rem]" style={{ background: 'var(--color-primary-soft)', color: 'var(--color-primary-strong)' }}>
-            <Shield size={26} />
+        <motion.section
+          className="relative overflow-hidden rounded-[2.4rem] border p-8 lg:p-10"
+          style={{ borderColor: 'var(--color-border)', background: 'var(--hero-background)' }}
+          {...fadeInUp}
+        >
+          <MotionGate>
+            <NetworkMeshScene className="pointer-events-none absolute inset-0 opacity-40" />
+          </MotionGate>
+          <div className="relative">
+            <div className="flex h-14 w-14 items-center justify-center rounded-[1.5rem]" style={{ background: 'var(--color-primary-soft)', color: 'var(--color-primary-strong)' }}>
+              <Shield size={26} />
+            </div>
+            <p className="mt-6 text-sm font-extrabold uppercase tracking-[0.18em]" style={{ color: 'var(--color-primary-strong)' }}>
+              Acesso {import.meta.env.VITE_APP_NAME ?? 'Titlis'}
+            </p>
+            <h1 className="family-neighbor mt-3 text-3xl font-black tracking-tight lg:text-4xl" style={{ color: 'var(--color-foreground)' }}>
+              Entre com sua conta da plataforma.
+            </h1>
+            <p className="mt-4 max-w-xl text-sm leading-6" style={{ color: 'var(--color-muted-foreground)' }}>
+              O login normal abre a plataforma e deixa a configuração de SSO corporativo para depois, dentro do produto.
+            </p>
+            {authMode === 'mock' && (
+              <div className="jc-dev-banner mt-6 rounded-[1.8rem] border p-4 text-sm">
+                O frontend esta em modo de desenvolvimento. A sessao sera criada automaticamente usando o bypass local.
+              </div>
+            )}
+            {hasOktaConfig && (
+              <div className="mt-6 rounded-[1.8rem] border p-4 text-sm" style={{ borderColor: 'var(--color-border)', background: 'var(--color-card)', color: 'var(--color-muted-foreground)' }}>
+                O login federado com Okta já está habilitado no frontend. Use a conta local só para bootstrap, suporte e acesso de emergência.
+              </div>
+            )}
           </div>
-          <p className="mt-6 text-sm font-extrabold uppercase tracking-[0.18em]" style={{ color: 'var(--color-primary-strong)' }}>
-            Acesso {import.meta.env.VITE_APP_NAME ?? 'Titlis'}
-          </p>
-          <h1 className="family-neighbor mt-3 text-3xl font-black tracking-tight lg:text-4xl" style={{ color: 'var(--color-foreground)' }}>
-            Entre com sua conta da plataforma.
-          </h1>
-          <p className="mt-4 max-w-xl text-sm leading-6" style={{ color: 'var(--color-muted-foreground)' }}>
-            O login normal abre a plataforma e deixa a configuração de SSO corporativo para depois, dentro do produto.
-          </p>
-          {authMode === 'mock' && (
-            <div className="jc-dev-banner mt-6 rounded-[1.8rem] border p-4 text-sm">
-              O frontend esta em modo de desenvolvimento. A sessao sera criada automaticamente usando o bypass local.
-            </div>
-          )}
-          {hasOktaConfig && (
-            <div className="mt-6 rounded-[1.8rem] border p-4 text-sm" style={{ borderColor: 'var(--color-border)', background: 'var(--color-card)', color: 'var(--color-muted-foreground)' }}>
-              O login federado com Okta já está habilitado no frontend. Use a conta local só para bootstrap, suporte e acesso de emergência.
-            </div>
-          )}
-        </section>
+        </motion.section>
 
-        <section className="rounded-[2.4rem] border p-8" style={{ borderColor: 'var(--color-border)', background: 'var(--color-card)' }}>
+        <motion.section
+          className="rounded-[2.4rem] border p-8"
+          style={{ borderColor: 'var(--color-border)', background: 'var(--color-card)' }}
+          {...fadeInUp}
+          transition={{ ...fadeInUp.transition, delay: 0.1 }}
+        >
           {hasOktaConfig && (
             <div className="mb-5 space-y-3 rounded-[1.8rem] border p-4" style={{ borderColor: 'var(--color-border)', background: 'var(--hero-background)' }}>
               <p className="text-xs font-extrabold uppercase tracking-[0.18em]" style={{ color: 'var(--color-primary-strong)' }}>
@@ -132,7 +150,7 @@ export function Login() {
           <p className="mt-5 text-center text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
             Ainda não tem conta? <Link to="/signup" className="font-semibold" style={{ color: 'var(--color-primary-strong)' }}>Criar conta</Link>
           </p>
-        </section>
+        </motion.section>
       </div>
     </div>
   )

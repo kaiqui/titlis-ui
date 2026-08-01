@@ -338,34 +338,6 @@ export function useTestDatadogConnection() {
   })
 }
 
-export function useLabelRegistry() {
-  return useQuery({
-    queryKey: ['label-registry'],
-    queryFn: () => api.labelRegistry.list(),
-    staleTime: 30_000,
-  })
-}
-
-export function useAddLabelValue() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: ({ labelKey, labelValue }: { labelKey: string; labelValue: string }) =>
-      api.labelRegistry.add(labelKey, labelValue),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['label-registry'] })
-    },
-  })
-}
-
-export function useRemoveLabelValue() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (id: number) => api.labelRegistry.remove(id),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['label-registry'] })
-    },
-  })
-}
 
 export function useUpdateUserRole() {
   const queryClient = useQueryClient()

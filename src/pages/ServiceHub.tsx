@@ -1,8 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import { Boxes, ChevronDown, FileWarning, GitBranch, Inbox, Search, ShieldCheck, Target, Users } from 'lucide-react'
+import { motion } from 'motion/react'
+import { animate } from 'animejs'
 import { Card } from '@/components/jeitto/Card'
+import { fadeInUp } from '@/lib/motion/tokens'
 import { EmptyState } from '@/components/jeitto/EmptyState'
 import { PageError, PageLoading } from '@/components/jeitto/PageState'
 import { Header } from '@/components/layout/Header'
@@ -406,14 +409,37 @@ function ContextSection({ section, defaultOpen }: { section: ContextSectionData;
   )
 }
 
-function StatCard({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: number }) {
+function StatCard({ icon: Icon, label, value, index = 0 }: { icon: LucideIcon; label: string; value: number; index?: number }) {
+  const valueRef = useRef<HTMLParagraphElement>(null)
+  const displayed = useRef(0)
+
+  useEffect(() => {
+    const el = valueRef.current
+    if (!el) return
+    const from = { count: displayed.current }
+    const animation = animate(from, {
+      count: value,
+      duration: 500,
+      easing: 'easeOutQuad',
+      onUpdate: () => {
+        el.textContent = String(Math.round(from.count))
+      },
+    })
+    displayed.current = value
+    return () => {
+      animation.pause()
+    }
+  }, [value])
+
   return (
-    <Card className="p-5">
-      <div className="flex items-center gap-2 text-sm text-[var(--color-muted-foreground)]">
-        <Icon className="h-4 w-4" /> {label}
-      </div>
-      <p className="mt-1 text-3xl font-semibold">{value}</p>
-    </Card>
+    <motion.div {...fadeInUp} transition={{ ...fadeInUp.transition, delay: index * 0.05 }}>
+      <Card className="p-5">
+        <div className="flex items-center gap-2 text-sm text-[var(--color-muted-foreground)]">
+          <Icon className="h-4 w-4" /> {label}
+        </div>
+        <p ref={valueRef} className="mt-1 text-3xl font-semibold">0</p>
+      </Card>
+    </motion.div>
   )
 }
 
@@ -460,11 +486,11 @@ export function ServiceHub() {
       )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <StatCard icon={Boxes} label="Workloads" value={stats.workloads} />
-        <StatCard icon={Boxes} label="Produtos" value={stats.products} />
-        <StatCard icon={Users} label="Squads" value={stats.squads} />
-        <StatCard icon={ShieldCheck} label="Serviços" value={stats.services} />
-        <StatCard icon={FileWarning} label="Órfãos" value={stats.orphans} />
+        <StatCard icon={Boxes} label="Workloads" value={stats.workloads} index={0} />
+        <StatCard icon={Boxes} label="Produtos" value={stats.products} index={1} />
+        <StatCard icon={Users} label="Squads" value={stats.squads} index={2} />
+        <StatCard icon={ShieldCheck} label="Serviços" value={stats.services} index={3} />
+        <StatCard icon={FileWarning} label="Órfãos" value={stats.orphans} index={4} />
       </div>
 
       {searchResults ? (

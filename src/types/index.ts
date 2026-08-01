@@ -150,14 +150,6 @@ export interface QueueScorecard {
   findings: QueueFinding[]
 }
 
-export interface LabelRegistryEntry {
-  id: number
-  labelKey: string
-  labelValue: string
-  isActive: boolean
-  createdAt: string
-}
-
 export interface DatadogQueueSettings {
   configured: boolean
   hasAppKey: boolean

@@ -2,6 +2,8 @@ import { useState, useMemo } from 'react'
 import { Pagination } from '@/components/jeitto/Pagination'
 import { usePagination } from '@/hooks/usePagination'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { AnimatePresence, motion } from 'motion/react'
+import { fadeInUp } from '@/lib/motion/tokens'
 import {
   Activity,
   AlertCircle,
@@ -305,11 +307,17 @@ function SloCard({ slo, canAdmin }: { slo: SloListItem; canAdmin: boolean }) {
       </button>
 
       {/* Expanded detail */}
+      <AnimatePresence initial={false}>
       {expanded && (
-        <div
-          className="border-t px-4 py-4 space-y-4"
+        <motion.div
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: 'auto', opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="overflow-hidden border-t"
           style={{ borderColor: 'var(--color-border)', background: 'var(--app-background)' }}
         >
+        <div className="px-4 py-4 space-y-4">
           {/* Metadata grid */}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {[
@@ -365,7 +373,9 @@ function SloCard({ slo, canAdmin }: { slo: SloListItem; canAdmin: boolean }) {
             )
           )}
         </div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
   )
 }
@@ -844,6 +854,8 @@ export function SLOs() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-6">
+        <AnimatePresence mode="wait">
+        <motion.div key={view} {...fadeInUp}>
         {view === 'coverage' && (
           <CoverageView
             onRefresh={() => void queryClient.invalidateQueries({ queryKey: ['slos-coverage'] })}
@@ -973,6 +985,8 @@ export function SLOs() {
           )}
         </div>
         )}
+        </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   )

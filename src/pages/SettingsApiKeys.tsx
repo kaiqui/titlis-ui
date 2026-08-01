@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check, Copy, KeyRound, Plus, Trash2 } from 'lucide-react'
+import { AnimatePresence, motion } from 'motion/react'
 import { Header } from '@/components/layout/Header'
 import { ButtonDefault } from '@/components/jeitto/ButtonDefault'
 import { FeatureGuard } from '@/components/atoms/FeatureGuard'
@@ -8,6 +9,7 @@ import { Card, CardHeader, CardTitle } from '@/components/jeitto/Card'
 import { PageError, PageLoading } from '@/components/jeitto/PageState'
 import { api } from '@/lib/api'
 import type { ApiKeyCreateResponse } from '@/lib/auth'
+import { fadeInUp } from '@/lib/motion/tokens'
 import { formatDate } from '@/lib/utils'
 
 export function SettingsApiKeys() {
@@ -55,8 +57,10 @@ export function SettingsApiKeys() {
       <div className="flex-1 overflow-y-auto px-6 py-6">
         <div className="mx-auto max-w-3xl space-y-6">
 
+          <AnimatePresence>
           {feedback && (
-            <div
+            <motion.div
+              {...fadeInUp}
               className="rounded-2xl border px-4 py-3 text-sm"
               style={{
                 borderColor: feedback.tone === 'success' ? 'rgba(34,197,94,0.22)' : 'rgba(239,68,68,0.22)',
@@ -65,11 +69,13 @@ export function SettingsApiKeys() {
               }}
             >
               {feedback.message}
-            </div>
+            </motion.div>
           )}
+          </AnimatePresence>
 
+          <AnimatePresence>
           {newKey && (
-            <div className="rounded-[1.6rem] border p-5" style={{ borderColor: 'rgba(34,197,94,0.25)', background: 'rgba(240,253,244,0.6)' }}>
+            <motion.div {...fadeInUp} className="rounded-[1.6rem] border p-5" style={{ borderColor: 'rgba(34,197,94,0.25)', background: 'rgba(240,253,244,0.6)' }}>
               <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: '#16a34a' }}>
                 <Check size={16} />
                 Chave criada. Guarde agora — ela não será exibida novamente.
@@ -100,8 +106,9 @@ export function SettingsApiKeys() {
               >
                 Fechar
               </button>
-            </div>
+            </motion.div>
           )}
+          </AnimatePresence>
 
           <Card>
             <CardHeader>

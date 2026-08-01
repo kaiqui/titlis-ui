@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Inbox, Layers3, Radar, ShieldAlert, ShieldCheck } from 'lucide-react'
+import { AnimatePresence, motion } from 'motion/react'
 import { Card } from '@/components/jeitto/Card'
+import { fadeInUp } from '@/lib/motion/tokens'
 import { EmptyState } from '@/components/jeitto/EmptyState'
 import { PageError, PageLoading } from '@/components/jeitto/PageState'
 import { ScoreRing } from '@/components/jeitto/ScoreRing'
@@ -542,7 +544,8 @@ export function Queues() {
                     </p>
                   </Card>
                 ) : (
-                  <>
+                  <AnimatePresence mode="wait">
+                    <motion.div key={focus} {...fadeInUp}>
                     {focus === 'overview' && (
                       <DetailPanel title="Resumo" subtitle="Visão geral do scorecard desta fila.">
                         {!detail ? (
@@ -659,7 +662,8 @@ export function Queues() {
                         <ThresholdsPanel queueId={selectedQueue.id} observationCount={selectedQueue.observationCount} />
                       </DetailPanel>
                     )}
-                  </>
+                    </motion.div>
+                  </AnimatePresence>
                 )}
               </div>
             )}

@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import { AnimatePresence, motion } from 'motion/react'
 import { Header } from '@/components/layout/Header'
 import { AdminOverview } from './AdminOverview'
 import { EvolutionHistory } from './EvolutionHistory'
 import { RemediationHistory } from './RemediationHistory'
 import { useAuth } from '@/contexts/useAuth'
+import { fadeInUp } from '@/lib/motion/tokens'
 
 type GovernanceTab = 'evolution' | 'history' | 'overview'
 
@@ -46,9 +48,13 @@ export function Governance() {
         </div>
       </div>
 
-      {activeTab === 'evolution' && <EvolutionHistory standalone={false} />}
-      {activeTab === 'history' && <RemediationHistory standalone={false} />}
-      {activeTab === 'overview' && isAdmin && <AdminOverview standalone={false} />}
+      <AnimatePresence mode="wait">
+        <motion.div key={activeTab} {...fadeInUp}>
+          {activeTab === 'evolution' && <EvolutionHistory standalone={false} />}
+          {activeTab === 'history' && <RemediationHistory standalone={false} />}
+          {activeTab === 'overview' && isAdmin && <AdminOverview standalone={false} />}
+        </motion.div>
+      </AnimatePresence>
     </div>
   )
 }

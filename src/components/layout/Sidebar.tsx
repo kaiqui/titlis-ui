@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom'
+import { motion } from 'motion/react'
 import {
   Bot,
   ChevronLeft,
@@ -15,6 +16,7 @@ import {
   Tag,
   Target,
   TrendingUp,
+  Wallet,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/useAuth'
@@ -33,6 +35,7 @@ const primaryNavItems = [
 const secondaryNavItems = [
   { to: '/coverage', icon: ShieldCheck, label: 'Cobertura', featureId: 'nav_coverage' },
   { to: '/slos', icon: Target, label: 'SLOs', featureId: 'nav_slos' },
+  { to: '/costs', icon: Wallet, label: 'Custos', featureId: 'nav_costs' },
 ]
 
 const ariaNavItem = { to: '/aria', icon: Sparkles, label: 'ARIA', featureId: 'nav_aria' }
@@ -51,7 +54,6 @@ const settingsNavItems = {
     { to: '/settings/ai', icon: Bot, label: 'Configurar ARIA', featureId: 'nav_settings_ai' },
     { to: '/settings/score-config', icon: SlidersHorizontal, label: 'Score & Regras', featureId: 'nav_settings_score_config' },
     { to: '/settings/integrations', icon: Plug2, label: 'Integrações', featureId: 'nav_settings_integrations' },
-    { to: '/settings/labels', icon: Tag, label: 'Labels', featureId: 'nav_settings_labels' },
     { to: '/settings/tags', icon: Tag, label: 'Tags', featureId: 'nav_settings_tags' },
   ],
 }
@@ -71,22 +73,28 @@ function NavItems({
         to={to}
         end={exact}
         className={({ isActive }) => cn(
-          'family-neighbor group flex items-center gap-3 rounded-[22px] font-extrabold transition-all duration-200',
-          mobile ? 'flex-1 justify-center px-3 py-3 text-[11px]' : collapsed ? 'justify-center px-3 py-3 text-sm' : 'px-4 py-3 text-sm',
-          isActive
-            ? 'shadow-sm'
-            : '',
+          'group flex items-center gap-3 rounded-xl text-sm font-medium transition-colors duration-150',
+          mobile ? 'flex-1 justify-center px-3 py-3 text-[11px]' : collapsed ? 'justify-center px-3 py-2.5' : 'px-3 py-2.5',
+          !isActive && 'hover:bg-white/[0.06]',
         )}
         style={({ isActive }) => ({
-          backgroundColor: isActive ? 'var(--color-card)' : 'transparent',
-          color: isActive ? 'var(--color-primary-strong)' : 'rgba(255,255,255,0.84)',
+          position: 'relative',
+          color: isActive ? '#fff' : 'rgba(255,255,255,0.62)',
         })}
         title={collapsed && !mobile ? label : undefined}
       >
         {({ isActive }) => (
           <>
-            <Icon size={mobile ? 16 : 18} className={isActive ? '' : 'opacity-90'} />
-            {!mobile && !collapsed && <span className="font-medium">{label}</span>}
+            {isActive && (
+              <motion.span
+                layoutId={mobile ? 'sidebar-nav-active-mobile' : 'sidebar-nav-active'}
+                className="absolute inset-0 rounded-xl"
+                style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}
+                transition={{ type: 'spring', stiffness: 500, damping: 40 }}
+              />
+            )}
+            <Icon size={mobile ? 16 : 17} className="relative shrink-0" strokeWidth={isActive ? 2.25 : 1.75} />
+            {!mobile && !collapsed && <span className="relative truncate">{label}</span>}
           </>
         )}
       </NavLink>
@@ -98,7 +106,6 @@ function NavSection({
   title,
   items,
   collapsed,
-  emphasized = false,
 }: {
   title: string
   items: typeof primaryNavItems
@@ -108,20 +115,11 @@ function NavSection({
   if (!items.length) return null
 
   return (
-    <section
-      className={cn(
-        'rounded-[1.6rem] border transition-colors',
-        collapsed ? 'p-2' : 'p-3',
-        emphasized ? 'bg-white/[0.05]' : 'bg-white/[0.03]',
-      )}
-      style={{ borderColor: emphasized ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.1)' }}
-    >
+    <section>
       {!collapsed && (
-        <div className="mb-2 px-2">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/48">{title}</p>
-        </div>
+        <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/35">{title}</p>
       )}
-      <div className="space-y-2">
+      <div className="space-y-0.5">
         <NavItems items={items} collapsed={collapsed} />
       </div>
     </section>
@@ -155,38 +153,30 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           background: 'var(--sidebar-background)',
         }}
       >
-        <div className="jeitto-shell-panel jeitto-grid-lines absolute inset-0 rounded-[2rem]" />
-        <div className={`${collapsed ? 'px-3' : 'px-5'} relative z-[1] pb-4 pt-5`}>
-          <div className={`flex items-center ${collapsed ? 'justify-center' : 'gap-3'}`}>
-            <div className="flex h-12 w-12 items-center justify-center rounded-[1.4rem] border shadow-sm" style={{ borderColor: 'rgba(255,255,255,0.14)', backgroundColor: 'rgba(255,255,255,0.08)' }}>
-              <img src={appLogoUrl} alt="" className="h-7 w-7 object-contain" />
-            </div>
-            {!collapsed && (
-              <div className="min-w-0 flex-1">
-                <p className="family-neighbor text-sm font-black leading-[1.05] tracking-[0.08em] text-white sm:text-[15px]">
-                  {displayAppName}
-                </p>
-              </div>
-            )}
+        <div className="absolute inset-0 rounded-[2rem]" style={{ backgroundColor: 'var(--sidebar-background)' }} />
+        <div className={`${collapsed ? 'px-3' : 'px-4'} relative z-[1] flex items-center gap-3 border-b py-4`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}>
+            <img src={appLogoUrl} alt="" className="h-5 w-5 object-contain" />
           </div>
-
-          <div className={`mt-5 flex ${collapsed ? 'justify-center' : 'justify-end'} gap-2`}>
-            <button
-              onClick={onToggle}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border text-white/80 transition-colors hover:text-white"
-              style={{ borderColor: 'rgba(255,255,255,0.12)', backgroundColor: 'rgba(255,255,255,0.06)' }}
-              type="button"
-              title={collapsed ? 'Expandir menu' : 'Recolher menu'}
-            >
-              {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-            </button>
-          </div>
+          {!collapsed && (
+            <p className="min-w-0 flex-1 truncate text-[13px] font-semibold tracking-[0.02em] text-white/92">
+              {displayAppName}
+            </p>
+          )}
+          <button
+            onClick={onToggle}
+            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white/50 transition-colors hover:bg-white/[0.08] hover:text-white/90"
+            type="button"
+            title={collapsed ? 'Expandir menu' : 'Recolher menu'}
+          >
+            {collapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
+          </button>
         </div>
 
-        <div className="relative z-[1] flex-1 overflow-y-auto pb-4">
-          <nav className={`space-y-3 ${collapsed ? 'px-3' : 'px-4'}`}>
+        <div className="relative z-[1] flex-1 overflow-y-auto py-4">
+          <nav className={`space-y-5 ${collapsed ? 'px-2' : 'px-3'}`}>
             <NavSection title="Produto" items={navItems} collapsed={collapsed} />
-            <NavSection title="Configuração" items={configurationItems} collapsed={collapsed} emphasized />
+            <NavSection title="Configuração" items={configurationItems} collapsed={collapsed} />
           </nav>
         </div>
 
