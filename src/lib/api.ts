@@ -1603,6 +1603,13 @@ export const api = {
       if (!res) throw new Error('Não foi possível salvar os pesos.')
       return res
     },
+    syncCatalog: async (): Promise<{ synced: number }> => {
+      const res = await request<{ synced: number }>('/settings/score-config/sync-catalog', {
+        method: 'POST' as const,
+      })
+      if (!res) throw new Error('Não foi possível sincronizar o catálogo.')
+      return res
+    },
   },
   clusters: {
     list: async (): Promise<ClusterItem[]> => {

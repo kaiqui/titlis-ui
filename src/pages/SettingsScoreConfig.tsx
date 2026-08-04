@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { Check, ChevronRight, Search, Trash2 } from 'lucide-react'
+import { Check, ChevronRight, RefreshCw, Search, Trash2 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { ButtonDefault } from '@/components/jeitto/ButtonDefault'
 import { Card } from '@/components/jeitto/Card'
@@ -416,6 +416,7 @@ function OverridePanel({ rule, overrides, workloads }: OverridePanelProps) {
 // ─── RulesTab ─────────────────────────────────────────────────────────────────
 
 function RulesTab() {
+  const queryClient = useQueryClient()
   const { data: rules = [],     isLoading: rulesLoading,    error: rulesError } = useScoreConfigRules()
   const { data: overrides = [], isLoading: overridesLoading }                   = useScoreConfigOverrides()
   const { data: workloads = [] }                                                 = useDashboardWorkloads()
@@ -423,6 +424,24 @@ function RulesTab() {
   const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null)
   const [search, setSearch]                 = useState('')
   const [pillarFilter, setPillarFilter]     = useState('all')
+  const [syncing, setSyncing]               = useState(false)
+  const [syncError, setSyncError]           = useState<string | null>(null)
+  const [syncedCount, setSyncedCount]       = useState<number | null>(null)
+
+  const handleSyncCatalog = async () => {
+    setSyncing(true)
+    setSyncError(null)
+    setSyncedCount(null)
+    try {
+      const { synced } = await api.scoreConfig.syncCatalog()
+      setSyncedCount(synced)
+      await queryClient.invalidateQueries({ queryKey: ['score-config'] })
+    } catch {
+      setSyncError('Não foi possível sincronizar o catálogo com o scoreops.')
+    } finally {
+      setSyncing(false)
+    }
+  }
 
   const overridesByRule = useMemo(() => {
     const map = new Map<string, ScoreConfigOverride[]>()
@@ -457,7 +476,26 @@ function RulesTab() {
   ]
 
   return (
-    <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+    <div className="flex flex-col gap-4">
+      {/* Sincronização do catálogo — fonte de verdade é o titlis-scoreops (config.rule_catalog_synced) */}
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {syncError && <span className="text-sm" style={{ color: '#dc2626' }}>{syncError}</span>}
+        {syncedCount !== null && !syncError && (
+          <span className="text-sm" style={{ color: '#10b981' }}>{syncedCount} regras sincronizadas</span>
+        )}
+        <button
+          type="button"
+          onClick={() => void handleSyncCatalog()}
+          disabled={syncing}
+          className="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold transition-all disabled:opacity-50"
+          style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-foreground)' }}
+        >
+          <RefreshCw size={14} className={syncing ? 'animate-spin' : undefined} />
+          {syncing ? 'Sincronizando...' : 'Sincronizar catálogo'}
+        </button>
+      </div>
+
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
       {/* Left: rule list */}
       <div className="lg:w-[40%] lg:shrink-0">
         <Card>
@@ -594,6 +632,7 @@ function RulesTab() {
             </div>
           </Card>
         )}
+      </div>
       </div>
     </div>
   )
