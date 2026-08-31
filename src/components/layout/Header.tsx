@@ -4,13 +4,16 @@ import { useTheme } from '@/contexts/useTheme'
 import { useAuth } from '@/contexts/useAuth'
 import { Subtitle } from '@/components/jeitto/Typography'
 import { ApiStatus } from './ApiStatus'
+import { TimeRangePicker } from '@/components/sre/TimeRangePicker'
 
 interface HeaderProps {
   title: string
   subtitle?: string
+  // Faixa de tempo global (formato Datadog). Omitir nas páginas puramente de estado atual.
+  timeRange?: boolean
 }
 
-export function Header({ title, subtitle }: HeaderProps) {
+export function Header({ title, subtitle, timeRange }: HeaderProps) {
   const { theme, toggleTheme } = useTheme()
   const { user, signOut } = useAuth()
 
@@ -31,6 +34,7 @@ export function Header({ title, subtitle }: HeaderProps) {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 self-start xl:self-auto">
+          {timeRange && <TimeRangePicker />}
           {user && (
             <div
               className="flex items-center gap-3 rounded-full border px-4 py-2 text-sm"

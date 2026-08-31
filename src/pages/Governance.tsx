@@ -23,7 +23,7 @@ export function Governance() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Header
+      <Header timeRange
         title="Histórico & Governança"
         subtitle="Evolução da confiabilidade, histórico de remediações e panorama executivo — do hub ao serviço."
       />

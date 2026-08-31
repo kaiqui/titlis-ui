@@ -1,81 +1,86 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ShieldCheck, AlertTriangle, Gauge } from 'lucide-react'
+import { ShieldCheck, AlertTriangle, Search } from 'lucide-react'
 import { motion } from 'motion/react'
 import { Card } from '@/components/jeitto/Card'
 import { EmptyState } from '@/components/jeitto/EmptyState'
+import { Pagination } from '@/components/jeitto/Pagination'
 import { PageError, PageLoading } from '@/components/jeitto/PageState'
 import { Header } from '@/components/layout/Header'
 import { ScoreRing } from '@/components/jeitto/ScoreRing'
 import { useCoverage, useCoverageTopRisks } from '@/hooks/useApi'
-import { formatNumber } from '@/lib/utils'
+import { usePagination } from '@/hooks/usePagination'
+import { formatNumber, scoreBgColor } from '@/lib/utils'
 import { fadeInUp } from '@/lib/motion/tokens'
+import { confidenceLabel, dimensionLabel, overallBand, postureBand, topReason, weakestDimension } from '@/lib/posture'
 import type { CoverageScorecard } from '@/types'
-
-function maturityLabel(level: number): string {
-  return level > 0 ? `Nível ${level}/5` : 'n/d'
-}
 
 function isPendingCoverage(sc: CoverageScorecard): boolean {
   return sc.trustScore === null && sc.dimensions.length === 0 && sc.findings.length === 0
 }
 
-function gapsOf(sc: CoverageScorecard): string[] {
-  return sc.findings.filter((f) => f.outcome === 'fail').map((f) => f.code)
-}
-
-function gapCountOf(sc: CoverageScorecard): number {
-  const findingGaps = gapsOf(sc)
-  if (findingGaps.length > 0) return findingGaps.length
-  return sc.dimensions.reduce((sum, d) => sum + Math.max(0, d.evaluable - d.passed), 0)
+function weakLabel(sc: CoverageScorecard): string {
+  const w = weakestDimension(sc)
+  if (!w) return 'sinal insuficiente'
+  return w.label ?? dimensionLabel(w.pillar)
 }
 
 export function Coverage() {
   const coverage = useCoverage()
   const topRisks = useCoverageTopRisks(10)
+  const [search, setSearch] = useState('')
 
   const services = useMemo(() => coverage.data ?? [], [coverage.data])
 
+  const filteredServices = useMemo(() => {
+    const term = search.trim().toLowerCase()
+    if (!term) return services
+    return services.filter((s) =>
+      (s.serviceName ?? '').toLowerCase().includes(term)
+      || s.workloadUid.toLowerCase().includes(term),
+    )
+  }, [services, search])
+
+  const servicesPagination = usePagination(filteredServices, 25)
+
   const stats = useMemo(() => {
-    const trusts = services
-      .map((s) => s.trustScore)
-      .filter((t): t is number => t !== null)
-    const maturities = services.map((s) => s.maturity).filter((m) => m > 0)
+    const trusts = services.map((s) => s.trustScore).filter((t): t is number => t !== null)
+    const withSignal = services.filter((s) => s.confidence && s.confidence !== 'insuficiente').length
     return {
       total: services.length,
       avgTrust: trusts.length ? trusts.reduce((a, b) => a + b, 0) / trusts.length : null,
       worstTrust: trusts.length ? Math.min(...trusts) : null,
-      avgMaturity: maturities.length ? maturities.reduce((a, b) => a + b, 0) / maturities.length : null,
+      signalPct: services.length ? Math.round((withSignal / services.length) * 100) : 0,
     }
   }, [services])
 
   if (coverage.isLoading) return <PageLoading />
-  if (coverage.isError) return <PageError message="Falha ao carregar a cobertura." onRetry={() => coverage.refetch()} />
+  if (coverage.isError) return <PageError message="Falha ao carregar a postura." onRetry={() => coverage.refetch()} />
 
   const risks = topRisks.data ?? []
 
   return (
     <div className="flex min-h-screen flex-col">
       <Header
-        title="Cobertura & Confiança"
-        subtitle="Scorecards de cobertura gerados por natureza de serviço — sinais não mensuráveis aparecem como N/A, nunca como falha."
+        title="Postura de confiabilidade"
+        subtitle="Postura inferida dos sinais em Datadog e GitHub — cada dimensão tem força e confiança; sinal ausente aparece como não instrumentado, nunca como falha."
       />
       <div className="flex-1 space-y-6 px-4 py-6 lg:px-8">
 
       {services.length === 0 ? (
         <EmptyState
           icon={ShieldCheck}
-          title="Nenhuma cobertura avaliada ainda"
-          description="Ligue o Discovery no operator (ENABLE_DISCOVERY) e rode a avaliação de cobertura para ver os scorecards aqui."
+          title="Nenhuma postura avaliada ainda"
+          description="Conecte Datadog e GitHub em Integrações e rode a coleta para ver a postura de confiabilidade dos serviços aqui."
         />
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              { label: 'Serviços avaliados', value: stats.total, className: '' },
-              { label: 'Trust Score médio', value: formatNumber(stats.avgTrust), className: '' },
-              { label: 'Pior Trust Score', value: formatNumber(stats.worstTrust), className: 'text-red-500' },
-              { label: 'Maturidade média', value: stats.avgMaturity !== null ? `${formatNumber(stats.avgMaturity)}/5` : 'n/d', className: '' },
+              { label: 'Serviços avaliados', value: String(stats.total), className: '' },
+              { label: 'Postura média', value: formatNumber(stats.avgTrust), className: '' },
+              { label: 'Pior postura', value: formatNumber(stats.worstTrust), className: 'text-red-500' },
+              { label: 'Confiança', value: `${stats.signalPct}%`, className: '' },
             ].map((item, index) => (
               <motion.div key={item.label} {...fadeInUp} transition={{ ...fadeInUp.transition, delay: index * 0.05 }}>
                 <Card className="p-5">
@@ -89,8 +94,8 @@ export function Coverage() {
           {services.some(isPendingCoverage) && (
             <Card className="p-4">
               <p className="text-sm text-[var(--color-muted-foreground)]">
-                Alguns workloads ja foram descobertos, mas o scorecard de cobertura ainda nao foi materializado.
-                Nesses casos a tela mostra o workload primeiro e preenche maturidade e findings assim que a avaliacao concluir.
+                Alguns serviços já foram descobertos, mas a avaliação de postura ainda não retornou.
+                A tela mostra o serviço primeiro e preenche as dimensões assim que a coleta concluir.
               </p>
             </Card>
           )}
@@ -114,20 +119,9 @@ export function Coverage() {
                       >
                         {s.serviceName || s.workloadUid}
                       </Link>
-                      <div className="text-xs text-[var(--color-muted-foreground)]">
-                        {s.cluster || '—'} · <Gauge className="inline h-3 w-3" />{' '}
-                        {isPendingCoverage(s) ? 'avaliacao pendente' : maturityLabel(s.maturity)}
+                      <div className="truncate text-xs text-[var(--color-muted-foreground)]">
+                        {isPendingCoverage(s) ? 'avaliação pendente' : topReason(s)}
                       </div>
-                    </div>
-                    <div className="hidden max-w-[50%] flex-wrap justify-end gap-1 sm:flex">
-                      {gapsOf(s).slice(0, 4).map((code) => (
-                        <span
-                          key={code}
-                          className="rounded-full bg-red-500/10 px-2 py-0.5 text-[11px] font-medium text-red-500"
-                        >
-                          {code}
-                        </span>
-                      ))}
                     </div>
                   </li>
                 ))}
@@ -136,38 +130,80 @@ export function Coverage() {
           </Card>
 
           <Card className="p-5">
-            <h2 className="mb-4 text-lg font-semibold">Todos os serviços</h2>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-[var(--color-muted-foreground)]">
-                    <th className="pb-2 font-medium">Serviço</th>
-                    <th className="pb-2 font-medium">Cluster</th>
-                    <th className="pb-2 font-medium">Trust</th>
-                    <th className="pb-2 font-medium">Maturidade</th>
-                    <th className="pb-2 font-medium">Lacunas</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {services.map((s) => (
-                    <tr key={s.workloadUid} className="border-t border-[var(--color-border)]">
-                      <td className="py-2 pr-4 font-medium">
-                        <Link
-                          to={`/coverage/${encodeURIComponent(s.workloadUid)}`}
-                          className="hover:underline"
-                        >
-                          {s.serviceName || s.workloadUid}
-                        </Link>
-                      </td>
-                      <td className="py-2 pr-4 text-[var(--color-muted-foreground)]">{s.cluster || '—'}</td>
-                      <td className="py-2 pr-4">{formatNumber(s.trustScore)}</td>
-                      <td className="py-2 pr-4">{isPendingCoverage(s) ? 'pendente' : maturityLabel(s.maturity)}</td>
-                      <td className="py-2">{isPendingCoverage(s) ? 'pendente' : (gapCountOf(s) || 'n/d')}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <h2 className="text-lg font-semibold">Todos os serviços</h2>
+              <div className="relative">
+                <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-muted-foreground)' }} />
+                <input
+                  className="input-field w-full py-2 pl-8 text-sm sm:w-64"
+                  placeholder="Buscar serviço..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
             </div>
+            {filteredServices.length === 0 ? (
+              <div className="py-8">
+                <EmptyState icon={Search} title="Nenhum resultado" description="Ajuste o termo buscado." />
+              </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-[var(--color-muted-foreground)]">
+                        <th className="pb-2 font-medium">Serviço</th>
+                        <th className="pb-2 font-medium">Postura</th>
+                        <th className="pb-2 font-medium">Confiança</th>
+                        <th className="pb-2 font-medium">Dimensão frágil</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {servicesPagination.paginatedItems.map((s) => {
+                        const band = postureBand(overallBand(s.trustScore))
+                        return (
+                          <tr key={s.workloadUid} className="border-t border-[var(--color-border)] transition-colors hover:bg-[var(--color-muted)]">
+                            <td className="py-2 pr-4 font-medium">
+                              <Link
+                                to={`/coverage/${encodeURIComponent(s.workloadUid)}`}
+                                className="hover:underline"
+                              >
+                                {s.serviceName || s.workloadUid}
+                              </Link>
+                            </td>
+                            <td className="py-2 pr-4">
+                              {isPendingCoverage(s) ? (
+                                <span className="text-[var(--color-muted-foreground)]">pendente</span>
+                              ) : (
+                                <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold ${scoreBgColor(s.trustScore)}`}>
+                                  {formatNumber(s.trustScore)} · {band.label}
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-2 pr-4 text-[var(--color-muted-foreground)]">
+                              {isPendingCoverage(s) ? '—' : (confidenceLabel(s.confidence) || '—')}
+                            </td>
+                            <td className="py-2 text-[var(--color-muted-foreground)]">
+                              {isPendingCoverage(s) ? '—' : weakLabel(s)}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <Pagination
+                  page={servicesPagination.page}
+                  pageSize={servicesPagination.pageSize}
+                  totalItems={servicesPagination.totalItems}
+                  totalPages={servicesPagination.totalPages}
+                  startIndex={servicesPagination.startIndex}
+                  endIndex={servicesPagination.endIndex}
+                  onPageChange={servicesPagination.setPage}
+                  onPageSizeChange={servicesPagination.changePageSize}
+                />
+              </>
+            )}
           </Card>
         </>
       )}

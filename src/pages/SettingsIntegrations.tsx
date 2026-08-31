@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, Check, CheckCircle, Cloud, Database, Eye, EyeOff, Github, Info, XCircle } from 'lucide-react'
+import { AlertTriangle, Check, CheckCircle, Cloud, Database, Eye, EyeOff, Github, Info, ShieldCheck, XCircle } from 'lucide-react'
 import { ButtonDefault } from '@/components/jeitto/ButtonDefault'
 import { Card } from '@/components/jeitto/Card'
 import { PageError, PageLoading } from '@/components/jeitto/PageState'
@@ -21,6 +21,11 @@ export function SettingsIntegrations() {
   const { data: costSettings } = useQuery({
     queryKey: ['cost-settings'],
     queryFn: api.costSettings.get,
+    staleTime: 30_000,
+  })
+  const { data: veracodeSettings } = useQuery({
+    queryKey: ['veracode-settings'],
+    queryFn: api.veracodeSettings.get,
     staleTime: 30_000,
   })
   const [costToggling, setCostToggling] = useState(false)
@@ -78,6 +83,14 @@ export function SettingsIntegrations() {
   const [ddSaved, setDdSaved] = useState(false)
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null)
   const [testing, setTesting] = useState(false)
+
+  // Veracode
+  const [veracodeApiId, setVeracodeApiId] = useState('')
+  const [veracodeApiKey, setVeracodeApiKey] = useState('')
+  const [showVeracodeApiKey, setShowVeracodeApiKey] = useState(false)
+  const [veracodeSaving, setVeracodeSaving] = useState(false)
+  const [veracodeError, setVeracodeError] = useState<string | null>(null)
+  const [veracodeSaved, setVeracodeSaved] = useState(false)
 
   useEffect(() => {
     if (config) {
@@ -170,6 +183,26 @@ export function SettingsIntegrations() {
     }
   }
 
+  const handleVeracodeSave = async () => {
+    setVeracodeSaving(true)
+    setVeracodeError(null)
+    setVeracodeSaved(false)
+    try {
+      await api.veracodeSettings.save({
+        ...(veracodeApiId.trim() ? { veracodeApiId: veracodeApiId.trim() } : {}),
+        ...(veracodeApiKey.trim() ? { veracodeApiKey: veracodeApiKey.trim() } : {}),
+      })
+      await queryClient.invalidateQueries({ queryKey: ['veracode-settings'] })
+      setVeracodeApiId('')
+      setVeracodeApiKey('')
+      setVeracodeSaved(true)
+    } catch (err) {
+      setVeracodeError(err instanceof Error ? err.message : 'Erro ao salvar.')
+    } finally {
+      setVeracodeSaving(false)
+    }
+  }
+
   const handleTestConnection = async () => {
     setTesting(true)
     setTestResult(null)
@@ -207,7 +240,7 @@ export function SettingsIntegrations() {
     <div className="flex min-h-screen flex-col">
       <Header
         title="Integrações"
-        subtitle="Credenciais de GitHub e Datadog usadas pelo assistente ARIA para remediações e análise de incidentes."
+        subtitle="Credenciais de GitHub, Datadog e Veracode usadas pelo assistente ARIA e pelo scoring de segurança."
       />
 
       <div className="flex-1 space-y-5 px-4 py-6 lg:px-8">
@@ -603,6 +636,83 @@ export function SettingsIntegrations() {
               </button>
             )}
             {ddSaved && (
+              <div className="flex items-center gap-1.5 text-sm" style={{ color: '#10b981' }}>
+                <Check size={14} />
+                Salvo com sucesso
+              </div>
+            )}
+          </div>
+        </Card>
+
+        {/* Veracode */}
+        <Card>
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl" style={{ backgroundColor: 'rgba(37,99,235,0.08)' }}>
+              <ShieldCheck size={15} style={{ color: '#2563eb' }} />
+            </div>
+            <div>
+              <p className="text-sm font-black" style={{ color: 'var(--color-foreground)' }}>Veracode</p>
+              <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
+                {veracodeSettings?.hasApiId && veracodeSettings?.hasApiKey ? 'Credenciais configuradas' : 'Credenciais não configuradas'}
+              </p>
+            </div>
+            {veracodeSettings?.hasApiId && veracodeSettings?.hasApiKey && (
+              <span className="ml-auto rounded-full px-2.5 py-1 text-xs font-semibold" style={{ backgroundColor: 'rgba(16,185,129,0.1)', color: '#059669' }}>
+                Ativo
+              </span>
+            )}
+          </div>
+
+          <p className="mb-5 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
+            Amplia o pilar de Segurança com achados de SAST, SCA e DAST do Veracode (regras SEC-007 a
+            SEC-010). O operator descobre suas aplicações Veracode e correlaciona com os workloads por
+            nome ou repositório — a cobertura se adapta automaticamente aos produtos que sua conta
+            Veracode tem habilitados (só SAST, só SCA, os três, etc.).
+          </p>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>
+                API ID *
+              </label>
+              <input
+                type="text"
+                value={veracodeApiId}
+                onChange={e => setVeracodeApiId(e.target.value)}
+                placeholder={veracodeSettings?.hasApiId ? '••••••••• (deixe vazio para manter)' : 'Cole seu Veracode API ID'}
+                className={inputCls}
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>
+                API Key *
+              </label>
+              <div className="relative mt-2">
+                <input
+                  type={showVeracodeApiKey ? 'text' : 'password'}
+                  value={veracodeApiKey}
+                  onChange={e => setVeracodeApiKey(e.target.value)}
+                  placeholder={veracodeSettings?.hasApiKey ? '••••••••• (deixe vazio para manter)' : 'Cole seu Veracode API Key'}
+                  className="w-full rounded-2xl px-4 py-3 pr-12 text-sm outline-none"
+                  style={inputStyle}
+                />
+                <button type="button" onClick={() => setShowVeracodeApiKey(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 opacity-60 hover:opacity-100">
+                  {showVeracodeApiKey ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {veracodeError && <p className="mt-3 text-sm" style={{ color: '#dc2626' }}>{veracodeError}</p>}
+
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <ButtonDefault
+              label={veracodeSaving ? 'Salvando...' : 'Salvar Veracode'}
+              onClick={() => void handleVeracodeSave()}
+              disabled={veracodeSaving || (!veracodeApiId.trim() && !veracodeApiKey.trim())}
+            />
+            {veracodeSaved && (
               <div className="flex items-center gap-1.5 text-sm" style={{ color: '#10b981' }}>
                 <Check size={14} />
                 Salvo com sucesso

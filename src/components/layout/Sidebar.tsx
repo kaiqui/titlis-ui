@@ -1,18 +1,15 @@
 import { NavLink } from 'react-router-dom'
-import { motion } from 'motion/react'
+import { motion, useReducedMotion } from 'motion/react'
 import {
   Bot,
   ChevronLeft,
-  ChevronRight,
   Gauge,
-  GitPullRequest,
   Inbox,
   Key,
   LayoutDashboard,
   Plug2,
   ShieldCheck,
   SlidersHorizontal,
-  Sparkles,
   Tag,
   Target,
   TrendingUp,
@@ -33,16 +30,11 @@ const primaryNavItems = [
 ]
 
 const secondaryNavItems = [
-  { to: '/coverage', icon: ShieldCheck, label: 'Cobertura', featureId: 'nav_coverage' },
+  { to: '/coverage', icon: ShieldCheck, label: 'Postura', featureId: 'nav_coverage' },
   { to: '/slos', icon: Target, label: 'SLOs', featureId: 'nav_slos' },
   { to: '/costs', icon: Wallet, label: 'Custos', featureId: 'nav_costs' },
 ]
 
-const ariaNavItem = { to: '/aria', icon: Sparkles, label: 'ARIA', featureId: 'nav_aria' }
-
-const remediationNavItems = [
-  { to: '/recommendations', icon: GitPullRequest, label: 'Fila de PRs', featureId: 'nav_recommendations' },
-]
 
 const governanceNavItem = { to: '/governance', icon: TrendingUp, label: 'Governança', featureId: 'nav_governance' }
 
@@ -67,6 +59,8 @@ function NavItems({
   mobile?: boolean
   collapsed?: boolean
 }) {
+  const reduceMotion = useReducedMotion()
+
   return items.map(({ to, icon: Icon, label, exact, featureId }) => (
     <FeatureGuard key={to} id={featureId ?? ''}>
       <NavLink
@@ -93,8 +87,16 @@ function NavItems({
                 transition={{ type: 'spring', stiffness: 500, damping: 40 }}
               />
             )}
-            <Icon size={mobile ? 16 : 17} className="relative shrink-0" strokeWidth={isActive ? 2.25 : 1.75} />
-            {!mobile && !collapsed && <span className="relative truncate">{label}</span>}
+            <motion.span
+              className="relative flex shrink-0"
+              whileHover={reduceMotion ? undefined : { scale: 1.12, rotate: [0, -8, 0] }}
+              transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+            >
+              <Icon size={mobile ? 16 : 17} strokeWidth={isActive ? 2.25 : 1.75} />
+            </motion.span>
+            {!mobile && !collapsed && (
+              <span className="relative truncate transition-transform duration-150 group-hover:translate-x-0.5">{label}</span>
+            )}
           </>
         )}
       </NavLink>
@@ -133,11 +135,10 @@ interface SidebarProps {
 
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const { user } = useAuth()
+  const reduceMotion = useReducedMotion()
   const navItems = [
     ...primaryNavItems,
     ...secondaryNavItems,
-    ariaNavItem,
-    ...remediationNavItems,
     ...(user?.role === 'admin' ? [governanceNavItem] : []),
   ]
   const configurationItems = [
@@ -155,9 +156,14 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       >
         <div className="absolute inset-0 rounded-[2rem]" style={{ backgroundColor: 'var(--sidebar-background)' }} />
         <div className={`${collapsed ? 'px-3' : 'px-4'} relative z-[1] flex items-center gap-3 border-b py-4`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}>
+          <motion.div
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+            style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}
+            whileHover={reduceMotion ? undefined : { scale: 1.06, rotate: -4 }}
+            transition={{ type: 'spring', stiffness: 350, damping: 14 }}
+          >
             <img src={appLogoUrl} alt="" className="h-5 w-5 object-contain" />
-          </div>
+          </motion.div>
           {!collapsed && (
             <p className="min-w-0 flex-1 truncate text-[13px] font-semibold tracking-[0.02em] text-white/92">
               {displayAppName}
@@ -169,7 +175,13 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             type="button"
             title={collapsed ? 'Expandir menu' : 'Recolher menu'}
           >
-            {collapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
+            <motion.span
+              className="flex"
+              animate={{ rotate: collapsed ? 180 : 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+            >
+              <ChevronLeft size={15} />
+            </motion.span>
           </button>
         </div>
 

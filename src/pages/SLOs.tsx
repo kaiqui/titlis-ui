@@ -384,7 +384,7 @@ function SloCard({ slo, canAdmin }: { slo: SloListItem; canAdmin: boolean }) {
 
 function coverageStatusLabel(status: SloStatus): string {
   if (status === 'WITH_SLO') return 'Com SLO'
-  if (status === 'CANDIDATE') return 'Candidato'
+  if (status === 'CANDIDATE') return 'Sem SLO'
   return 'Sem Datadog'
 }
 
@@ -492,7 +492,7 @@ function CoverageView({ onRefresh }: { onRefresh: () => void }) {
   const coverageFilterTabs: Array<{ id: CoverageFilter; label: string; count: number; color?: string }> = [
     { id: 'todos',      label: 'Todos',        count: summary.total },
     { id: 'WITH_SLO',   label: 'Com SLO',      count: summary.with_slo,   color: '#16a34a' },
-    { id: 'CANDIDATE',  label: 'Candidatos',   count: summary.candidate,  color: '#d97706' },
+    { id: 'CANDIDATE',  label: 'Sem SLO',       count: summary.candidate,  color: '#d97706' },
     { id: 'NO_DATADOG', label: 'Sem Datadog',  count: summary.no_datadog, color: '#6b7280' },
   ]
 
@@ -502,10 +502,10 @@ function CoverageView({ onRefresh }: { onRefresh: () => void }) {
       {/* Summary strip */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          { label: 'Total workloads', value: summary.total },
-          { label: 'Com SLO', value: summary.with_slo, color: '#16a34a' },
-          { label: 'Candidatos', value: summary.candidate, color: '#d97706' },
-          { label: 'Sem Datadog', value: summary.no_datadog, color: '#6b7280' },
+          { label: 'Serviços', value: summary.total },
+          { label: 'Sustentam Observabilidade', value: summary.with_slo, color: '#16a34a' },
+          { label: 'Sem SLO (OBS-003)', value: summary.candidate, color: '#d97706' },
+          { label: 'Sem Datadog (N/A)', value: summary.no_datadog, color: '#6b7280' },
         ].map(({ label, value, color }) => (
           <div key={label} className="rounded-2xl border px-4 py-3"
             style={{ borderColor: 'var(--color-border)', background: 'var(--color-card)' }}>
@@ -520,10 +520,10 @@ function CoverageView({ onRefresh }: { onRefresh: () => void }) {
         style={{ borderColor: 'rgba(245,158,11,0.2)', background: 'rgba(255,251,235,0.5)' }}>
         <BarChart2 size={15} className="mt-0.5 shrink-0" style={{ color: '#d97706' }} />
         <p className="text-xs leading-5" style={{ color: '#92400e' }}>
-          <strong>Cobertura de SLOs</strong> — todos os workloads ativos classificados por presença de SLO.{' '}
-          <strong>Candidatos</strong> têm Datadog configurado mas nenhum{' '}
-          <code>SLOConfig</code> CRD no cluster.{' '}
-          Workloads <strong>Sem Datadog</strong> não são penalizados no scorecard.
+          <strong>Postura de objetivos</strong> — cada SLO saudável sustenta a dimensão{' '}
+          <strong>Observabilidade</strong> do serviço dono. Serviços <strong>sem SLO</strong> geram o
+          finding <code>OBS-003</code> na postura — criar o SLO fecha a lacuna. Serviços{' '}
+          <strong>sem Datadog</strong> aparecem como N/A, nunca como reprovação.
         </p>
       </div>
 
@@ -715,10 +715,9 @@ function DiscoveredView({ canAdmin, onRefresh }: { canAdmin: boolean; onRefresh:
         <Radar size={15} className="mt-0.5 shrink-0" style={{ color: '#7c3aed' }} />
         <p className="text-xs leading-5" style={{ color: '#5b21b6' }}>
           <strong>SLOs descobertos</strong> — SLOs que já existem no Datadog (criados manualmente,
-          por Terraform ou por outro time), encontrados pelo Discovery Engine do operator e
-          correlacionados automaticamente ao workload correspondente. <strong>Adotar</strong> passa
-          o SLO para gestão completa pelo Titlis (metas, propostas de alteração via IA) sem criar
-          nem alterar nada no Datadog — o operator só passa a acompanhar o SLO já existente.
+          por Terraform ou por outro time), encontrados pela coleta e correlacionados ao serviço
+          correspondente. <strong>Adotar</strong> traz o SLO para a governança do Titlis (metas,
+          propostas de alteração via ARIA) sem criar nem alterar nada no Datadog.
         </p>
       </div>
 
@@ -741,7 +740,7 @@ function DiscoveredView({ canAdmin, onRefresh }: { canAdmin: boolean; onRefresh:
           <EmptyState
             icon={Radar}
             title="Nenhum SLO pendente de adoção"
-            description="Todos os SLOs descobertos no Datadog já foram adotados, ou o Discovery Engine ainda não encontrou nenhum SLO fora da gestão do Titlis."
+            description="Todos os SLOs descobertos no Datadog já foram adotados, ou a coleta ainda não encontrou nenhum SLO fora da governança do Titlis."
           />
         </Card>
       ) : filtered.length === 0 ? (
@@ -765,7 +764,7 @@ export function SLOs() {
   const { user } = useAuth()
   const canAdmin = user?.role === 'admin'
   const queryClient = useQueryClient()
-  const [view, setView] = useState<'slos' | 'coverage' | 'discovered'>('slos')
+  const [view, setView] = useState<'slos' | 'coverage' | 'discovered'>('discovered')
   const [filter, setFilter] = useState<SloFilter>('todos')
   const [search, setSearch] = useState('')
 
@@ -823,7 +822,7 @@ export function SLOs() {
     <div className="flex flex-1 flex-col overflow-hidden">
       <Header
         title="SLOs"
-        subtitle="SLOs declarativos sincronizados pelo operator — clique em um item para ver detalhes e propor alterações."
+        subtitle="Postura de objetivos — a base da dimensão Observabilidade. Serviço sem SLO gera o finding OBS-003; SLO estourado vira um movimento para a ARIA."
       />
 
       {/* View toggle */}
@@ -831,9 +830,9 @@ export function SLOs() {
         <div className="inline-flex gap-1 rounded-2xl p-1"
           style={{ background: 'rgba(0,0,0,0.05)', border: '1px solid var(--color-border)' }}>
           {[
-            { id: 'slos' as const,       label: 'SLOs',       icon: Target },
-            { id: 'coverage' as const,   label: 'Cobertura',  icon: BarChart2 },
-            { id: 'discovered' as const, label: 'Descobertos', icon: Radar },
+            { id: 'discovered' as const, label: 'Descobertos no Datadog', icon: Radar },
+            { id: 'coverage' as const,   label: 'Cobertura por serviço',  icon: BarChart2 },
+            { id: 'slos' as const,       label: 'Gerenciados',            icon: Target },
           ].map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -940,12 +939,11 @@ export function SLOs() {
             style={{ borderColor: 'rgba(124,58,237,0.2)', background: 'rgba(245,243,255,0.6)' }}>
             <Layers3 size={15} className="mt-0.5 shrink-0" style={{ color: '#7c3aed' }} />
             <p className="text-xs leading-5" style={{ color: '#5b21b6' }}>
-              <strong>Como funcionam os SLOs?</strong> Cada SLO é declarado como um CRD{' '}
-              <code>SLOConfig</code> no Kubernetes. O <code>titlis-operator-go</code> reconcilia
-              os CRDs automaticamente com o Datadog. Para criar um novo SLO, aplique o manifesto
-              no cluster. Para ajustar metas existentes, use o botão{' '}
-              <strong>Propor alteração</strong> abaixo — a mudança será aplicada via operator
-              no próximo ciclo.
+              <strong>Como funcionam os SLOs?</strong> A plataforma descobre os SLOs que já existem
+              no Datadog e os traz para a governança. Cada SLO saudável sustenta a dimensão{' '}
+              <strong>Observabilidade</strong> do serviço dono; um serviço crítico sem SLO gera o
+              finding <code>OBS-003</code> na postura. Para ajustar metas, use{' '}
+              <strong>Propor alteração</strong> — a proposta entra na fila para aprovação.
             </p>
           </div>
 
@@ -955,7 +953,7 @@ export function SLOs() {
               <EmptyState
                 icon={Target}
                 title="Nenhum SLO reconciliado"
-                description="Assim que o operator sincronizar SLOConfig CRDs, eles aparecem aqui automaticamente."
+                description="Assim que a coleta encontrar SLOs no Datadog, eles aparecem aqui para a governança."
               />
             </Card>
           ) : filtered.length === 0 ? (

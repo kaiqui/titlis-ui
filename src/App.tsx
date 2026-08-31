@@ -10,7 +10,6 @@ import { ApplicationDetail } from '@/pages/ApplicationDetail'
 import { ScorecardDetail } from '@/pages/ScorecardDetail'
 import { SLOs } from '@/pages/SLOs'
 import { Costs } from '@/pages/Costs'
-import { Recommendations } from '@/pages/Recommendations'
 import { Login } from '@/pages/Login'
 import { LoginCallback } from '@/pages/LoginCallback'
 import { Onboarding } from '@/pages/Onboarding'
@@ -101,14 +100,7 @@ export default function App() {
                 <Route path="/costs" element={<Costs />} />
                 <Route path="/coverage" element={<Coverage />} />
                 <Route path="/coverage/:uid" element={<CoverageDetail />} />
-                <Route
-                  path="/recommendations"
-                  element={(
-                    <AuthGate requireAdmin>
-                      <Recommendations />
-                    </AuthGate>
-                  )}
-                />
+                <Route path="/recommendations" element={<Navigate to="/aria" replace />} />
                 <Route path="/history" element={<Navigate to="/governance" replace />} />
                 <Route
                   path="/governance"

@@ -438,21 +438,45 @@ export interface IncidentItem {
   actions: string[]
 }
 
+export interface CoverageEvidence {
+  message: string
+  source: string
+  outcome: string
+}
+
 export interface CoverageDimension {
   pillar: string
+  dimension?: string
+  label?: string
+  question?: string
   evaluable: number
   passed: number
   na: number
   pct: number
+  strength?: number
+  band?: string
+  confidence?: string
   maturityLevel: number
+  evidence?: CoverageEvidence[]
+}
+
+export interface CoverageMove {
+  rank: number
+  dimension: string
+  code: string
+  description: string
+  lift: number
+  isRemediable: boolean
 }
 
 export interface CoverageFinding {
   code: string
   pillar: string
+  dimension?: string
   severity: string
   outcome: string
   message: string
+  source?: string
 }
 
 export interface CoverageScorecard {
@@ -460,9 +484,12 @@ export interface CoverageScorecard {
   serviceName: string | null
   cluster: string | null
   trustScore: number | null
+  confidence?: string | null
+  uncertainty?: number | null
   maturity: number
   dimensions: CoverageDimension[]
   findings: CoverageFinding[]
+  moves?: CoverageMove[]
   evaluatedAt: string
 }
 
@@ -503,6 +530,52 @@ export interface ServiceMap {
 }
 
 // U6 — correlação por grafo (blast radius) do serviço.
+// ─── Rollup do estate (Hub + Confiabilidade) — RPM Fase A ──────────────────
+export interface EstateDimension {
+  dimension: string
+  label: string
+  strength: number | null
+  band: string
+  fragileCount: number
+  signalCount: number
+}
+
+export interface EstateMove {
+  code: string
+  description: string
+  totalLift: number
+  serviceCount: number
+  isRemediable: boolean
+}
+
+export interface EstateNode {
+  path: string
+  kind: 'estate' | 'product' | 'squad' | 'service'
+  name: string
+  serviceCount: number
+  postureWeighted: number | null
+  postureWorst: number | null
+  confidencePct: number
+  bandMix: Record<string, number>
+  dimensions: EstateDimension[]
+  topMoves: EstateMove[]
+  ownerGap: number
+  hasChildren: boolean
+  children: EstateNode[]
+  workloadUid?: string
+  trustScore?: number | null
+  band?: string
+  confidence?: string | null
+  tier?: string | null
+  repoUrl?: string | null
+}
+
+export interface PostureTrendPoint {
+  date: string
+  trust: number | null
+  confidencePct: number
+}
+
 export interface CoverageGraphNeighbor {
   provider: string
   kind: string

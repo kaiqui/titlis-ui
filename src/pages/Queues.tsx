@@ -15,6 +15,8 @@ import { SelectionList } from '@/components/sre/SelectionList'
 import { SummaryStrip } from '@/components/sre/SummaryStrip'
 import { useQueues, useQueueScorecard, useQueueThresholds, useQueueSuggestions, useServiceOptions, useLinkQueue } from '@/hooks/useApi'
 import { formatDate, formatEnum, formatNumber, statusTone } from '@/lib/utils'
+import { postureBand } from '@/lib/posture'
+import { queueConfidence, queueDimensions, queueMoves } from '@/lib/queuePosture'
 import type { QueueSummary } from '@/types'
 
 const LINK_SOURCE_LABEL: Record<string, string> = {
@@ -159,16 +161,9 @@ function LifecycleLabel({ queue }: { queue: QueueSummary }) {
       </span>
     )
   }
-  if (queue.lifecycleState === 'LEARNING') {
-    return (
-      <span className="rounded-full px-2.5 py-1 text-[11px] font-semibold" style={{ backgroundColor: 'var(--color-primary-soft)', color: 'var(--color-primary)' }}>
-        Aprendendo
-      </span>
-    )
-  }
   return (
     <span className="rounded-full px-2.5 py-1 text-[11px] font-semibold" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
-      Descoberta
+      {queueConfidence(queue.lifecycleState, queue.observationCount) === 'baixa' ? 'confiança baixa' : 'sinal insuficiente'}
     </span>
   )
 }
@@ -327,7 +322,7 @@ export function Queues() {
     <div className="flex min-h-screen flex-col">
       <Header
         title="Filas"
-        subtitle="Scorecards de filas de mensagens com ciclo de aprendizado adaptativo."
+        subtitle="Postura de mensageria — força e confiança por dimensão. Fila sem métrica no Datadog aparece como N/A, nunca reprovada."
       />
 
       <div className="flex-1 space-y-5 px-4 py-6 lg:px-8">
@@ -353,10 +348,10 @@ export function Queues() {
 
         <SummaryStrip
           items={[
-            { label: 'Total descobertas', value: queues.length, helper: 'filas monitoradas' },
-            { label: 'Em monitoramento', value: monitoringQueues.length, helper: 'com scorecard ativo' },
-            { label: 'Score médio', value: avgScore !== null ? formatNumber(avgScore) : 'N/D', helper: 'somente filas monitoradas' },
-            { label: 'Não conformes', value: nonCompliant, helper: 'pedem atenção' },
+            { label: 'Filas descobertas', value: queues.length, helper: 'via Datadog' },
+            { label: 'Postura média', value: avgScore !== null ? formatNumber(avgScore) : 'N/D', helper: 'filas com sinal suficiente' },
+            { label: 'Com pouco sinal', value: queues.length - monitoringQueues.length, helper: 'descobrindo ou aprendendo' },
+            { label: 'Expostas', value: nonCompliant, helper: 'postura frágil ou pior' },
           ]}
         />
 
@@ -409,7 +404,7 @@ export function Queues() {
             <EmptyState
               icon={Inbox}
               title="Nenhuma fila encontrada"
-              description="Ajuste os filtros ou aguarde o operator descobrir filas via Datadog."
+              description="Ajuste os filtros ou conecte as métricas de fila no Datadog para a coleta descobrir as filas."
             />
           </Card>
         ) : (
@@ -443,7 +438,7 @@ export function Queues() {
                             → {q.serviceName}
                           </span>
                         ) : (
-                          <span className="rounded-full px-2.5 py-1 text-[11px] font-semibold bg-amber-900/30 text-amber-400">
+                          <span className="jc-badge-warning rounded-full px-2.5 py-1 text-[11px] font-semibold">
                             sem dono{q.suggestionCount > 0 ? ` · ${q.suggestionCount} sugestão${q.suggestionCount > 1 ? 'ões' : ''}` : ''}
                           </span>
                         )}
@@ -490,7 +485,7 @@ export function Queues() {
                       onChange={id => setFocus(id as QueueFocus)}
                       items={[
                         { id: 'overview', label: 'Resumo' },
-                        { id: 'pillars', label: 'Pilares', count: detail?.pillarScores.length },
+                        { id: 'pillars', label: 'Dimensões', count: detail?.pillarScores.length },
                         { id: 'findings', label: 'Findings', count: detail?.findings.filter(f => !f.passed).length },
                         { id: 'thresholds', label: 'Thresholds' },
                       ]}
@@ -586,24 +581,56 @@ export function Queues() {
                     )}
 
                     {focus === 'pillars' && (
-                      <DetailPanel title="Pilares" subtitle="Resultado por pilar de avaliação.">
+                      <DetailPanel title="Dimensões" subtitle="A postura da fila — força e confiança por dimensão. Sinal ausente é N/A, nunca reprovação.">
                         {!detail || detail.pillarScores.length === 0 ? (
-                          <EmptyState icon={Layers3} title="Sem pilares publicados" description="A API ainda não retornou o detalhamento por pilar." />
+                          <EmptyState icon={Layers3} title="Sem sinal suficiente" description="A fila ainda está acumulando observações do Datadog." />
                         ) : (
-                          <div className="space-y-3">
-                            {detail.pillarScores.map(pillar => (
-                              <InlineAccordion
-                                key={pillar.pillar}
-                                title={`${formatEnum(pillar.pillar)} · score ${pillar.score?.toFixed(1) ?? 'N/D'}`}
-                                defaultOpen={pillar.failedChecks > 0}
-                              >
-                                <div className="grid gap-3 md:grid-cols-3">
-                                  <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Aprovados</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{pillar.passedChecks}</p></Card>
-                                  <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Falhas</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{pillar.failedChecks}</p></Card>
-                                  <Card><p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Peso aplicado</p><p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{pillar.weightedScore?.toFixed(2) ?? 'N/D'}</p></Card>
-                                </div>
-                              </InlineAccordion>
-                            ))}
+                          <div className="space-y-4">
+                            {queueMoves(detail).length > 0 && (
+                              <div className="rounded-2xl border p-4" style={{ borderColor: 'var(--color-border)' }}>
+                                <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--color-muted-foreground)' }}>O que moveria a postura</p>
+                                <ul className="space-y-1.5 text-sm">
+                                  {queueMoves(detail).map((m, i) => (
+                                    <li key={m.code} className="flex items-baseline gap-2">
+                                      <span className="font-mono text-xs" style={{ color: 'var(--color-primary)' }}>{String(i + 1).padStart(2, '0')}</span>
+                                      <span className="min-w-0">{m.message}</span>
+                                      <span className="ml-auto shrink-0 rounded bg-[var(--color-muted)] px-1 py-px font-mono text-[10px]" style={{ color: 'var(--color-muted-foreground)' }}>{m.code}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            {queueDimensions(detail).map((d) => {
+                              const band = postureBand(d.band)
+                              return (
+                                <InlineAccordion
+                                  key={d.slug}
+                                  title={`${d.label} · ${d.strength === null ? 'sem sinal' : `força ${Math.round(d.strength)} · ${band.label}`}${d.fails.length ? ` · ${d.fails.length} problema${d.fails.length === 1 ? '' : 's'}` : ''}`}
+                                  defaultOpen={d.fails.length > 0}
+                                >
+                                  <p className="mb-2 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>{d.question}</p>
+                                  {d.strength !== null && (
+                                    <div className="mb-3 h-1.5 overflow-hidden rounded-full" style={{ backgroundColor: 'var(--color-border)' }}>
+                                      <div className="h-full rounded-full" style={{ width: `${Math.max(0, Math.min(100, d.strength))}%`, backgroundColor: band.color }} />
+                                    </div>
+                                  )}
+                                  {d.fails.length === 0 ? (
+                                    <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>{d.passes > 0 ? `${d.passes} checks OK` : 'sem sinal instrumentado nesta dimensão'}</p>
+                                  ) : (
+                                    <ul className="space-y-2">
+                                      {d.fails.map((f) => (
+                                        <li key={f.ruleId} className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: 'var(--color-border)' }}>
+                                          <p style={{ color: 'var(--color-foreground)' }}>{f.message || f.ruleName}</p>
+                                          <p className="mt-0.5 text-[10px]" style={{ color: 'var(--color-muted-foreground)' }}>
+                                            {f.actualValue ? `${f.actualValue} · ` : ''}<span className="font-mono">{f.ruleId}</span>
+                                          </p>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  )}
+                                </InlineAccordion>
+                              )
+                            })}
                           </div>
                         )}
                       </DetailPanel>

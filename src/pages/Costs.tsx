@@ -1,11 +1,10 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import {
   CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
 import {
-  ArrowDownRight, ArrowUpRight, Clock, Minus, PlugZap, Search, TrendingUp, Users, Wallet,
+  ArrowDownRight, ArrowUpRight, Clock, Minus, Search, TrendingUp, Users, Wallet,
 } from 'lucide-react'
 import { Card } from '@/components/jeitto/Card'
 import { EmptyState } from '@/components/jeitto/EmptyState'
@@ -13,8 +12,8 @@ import { PageError, PageLoading } from '@/components/jeitto/PageState'
 import { Header } from '@/components/layout/Header'
 import { api } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
+import { useTimeRange } from '@/hooks/useTimeRange'
 
-const PERIOD_OPTIONS = [7, 30, 90] as const
 const NO_TEAM_LABEL = '(sem time)'
 
 function formatDayLabel(isoDate: string): string {
@@ -37,7 +36,7 @@ function VariationBadge({ pct }: { pct: number | null }) {
 }
 
 export function Costs() {
-  const [days, setDays] = useState<(typeof PERIOD_OPTIONS)[number]>(30)
+  const { days } = useTimeRange()
   const [search, setSearch] = useState('')
   const [teamFilter, setTeamFilter] = useState('')
 
@@ -72,12 +71,12 @@ export function Costs() {
   }, [workloads, search, teamFilter])
 
   if (summaryQuery.isLoading || teamsQuery.isLoading || workloadsQuery.isLoading) {
-    return <><Header title="Custos" /><PageLoading /></>
+    return <><Header timeRange title="Custos" /><PageLoading /></>
   }
   if (summaryQuery.isError || teamsQuery.isError || workloadsQuery.isError || !summary || !teams || !workloads) {
     return (
       <>
-        <Header title="Custos" />
+        <Header timeRange title="Custos" />
         <PageError message="Falha ao carregar dados de custo." onRetry={() => { void summaryQuery.refetch(); void teamsQuery.refetch(); void workloadsQuery.refetch() }} />
       </>
     )
@@ -88,60 +87,26 @@ export function Costs() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Header title="Custos" subtitle="Alocação de custo de infraestrutura por workload, time e namespace." />
+      <Header timeRange title="Custos" subtitle="Estimativa multi-cloud (GCP / AWS / Azure) — preço público × uso observado no Datadog. Sem billing export, sem configuração." />
 
       <div className="flex-1 space-y-5 px-4 py-6 lg:px-8">
-        {!summary.configured && !hasData ? (
-          <Card>
-            <EmptyState
-              icon={PlugZap}
-              title="Coleta de custos não configurada"
-              description="Conecte o billing da sua cloud para começar a coletar o custo por workload."
-            />
-            <div className="flex justify-center pb-2">
-              <Link
-                to="/settings/integrations"
-                className="rounded-xl px-4 py-2 text-sm font-bold transition-opacity hover:opacity-90"
-                style={{ backgroundColor: 'var(--color-primary)', color: '#fff' }}
-              >
-                Configurar em Integrações
-              </Link>
-            </div>
-          </Card>
-        ) : !hasData ? (
+        {!hasData ? (
           <Card>
             <EmptyState
               icon={Clock}
-              title="Aguardando primeira coleta"
+              title="Estimando o custo…"
               description={
                 summary.lastCollectionAt
-                  ? `Última coleta em ${formatDate(summary.lastCollectionAt)} — os dados do billing têm latência de até 48h.`
-                  : 'A coleta roda diariamente. Os dados do billing export têm latência de até 48h.'
+                  ? `Última coleta em ${formatDate(summary.lastCollectionAt)} — a estimativa roda diariamente sobre as métricas de uso do Datadog.`
+                  : 'A estimativa roda diariamente sobre as métricas de uso (CPU/memória) que o Datadog já coleta. Conecte o Datadog em Integrações se ainda não conectou.'
               }
             />
           </Card>
         ) : (
           <>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
-                Custo alocado por workload (rateio proporcional de CPU + memória) · dados D-1 do billing export
-              </p>
-              <div className="flex items-center gap-1 rounded-xl border p-1" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-card)' }}>
-                {PERIOD_OPTIONS.map(opt => (
-                  <button
-                    key={opt}
-                    type="button"
-                    onClick={() => setDays(opt)}
-                    className="rounded-lg px-3 py-1 text-xs font-semibold transition-colors"
-                    style={days === opt
-                      ? { backgroundColor: 'var(--color-primary)', color: '#fff' }
-                      : { color: 'var(--color-muted-foreground)' }}
-                  >
-                    {opt} dias
-                  </button>
-                ))}
-              </div>
-            </div>
+            <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
+              Custo estimado por serviço — rateio de CPU + memória observados × preço público da cloud detectada
+            </p>
 
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <Card className="p-5">

@@ -29,12 +29,14 @@ const PILLAR_LABELS: Record<string, string> = {
   observability: 'Observabilidade',
 }
 
-// Pesos editáveis: os 4 pilares clássicos (a soma é validada contra 100% no editor de pesos).
-const PILLAR_ORDER = ['resilience', 'security', 'performance', 'operational']
+// Os 5 pilares reais do engine "kubernetes" no scoreops (main.go: RegisterPillar), na mesma ordem
+// em que contribuem pro score final (engine.go). A soma dos pesos é validada contra 100% no editor
+// de pesos — os 5, não só 4: excluir observability daria a falsa impressão de soma=100% enquanto o
+// scoreops aplicaria um 5º peso invisível por baixo (fallback em internal/scoring/engine.go).
+const PILLAR_ORDER = ['resilience', 'security', 'performance', 'operational', 'observability']
 
-// Ordenação da LISTA de regras — inclui observabilidade (OBS-*, COV-* de cobertura) para que essas
-// regras ganhem aba e label próprios, não só o bucket "Todos".
-const RULE_PILLAR_ORDER = [...PILLAR_ORDER, 'observability']
+// Ordenação da LISTA de regras — mesma ordem dos pilares de peso; observability já está incluído.
+const RULE_PILLAR_ORDER = PILLAR_ORDER
 
 const SEVERITY_STYLES: Record<string, { label: string; color: string; bg: string }> = {
   error:    { label: 'Erro',    color: '#dc2626', bg: 'rgba(220,38,38,0.1)'  },
@@ -43,8 +45,10 @@ const SEVERITY_STYLES: Record<string, { label: string; color: string; bg: string
   critical: { label: 'Crítico', color: '#7c3aed', bg: 'rgba(124,58,237,0.1)' },
 }
 
+// Espelha os defaults do scoreops (internal/scoring/engine.go, defaultPillarWeights) — os dois
+// lados somam 100 e precisam ficar em sincronia; mudou aqui, muda lá também.
 const DEFAULT_WEIGHTS: Record<string, number> = {
-  resilience: 40, security: 30, performance: 20, operational: 10,
+  resilience: 37, security: 28, performance: 19, operational: 9, observability: 7,
 }
 
 const MIN_WEIGHT = 5
@@ -698,7 +702,7 @@ function WeightsTab() {
           Cada pilar precisa ter entre {MIN_WEIGHT}% e {MAX_WEIGHT}%.
         </p>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {PILLAR_ORDER.map(pillar => (
             <div key={pillar}>
               <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>

@@ -17,15 +17,9 @@ import { PageError, PageLoading } from '@/components/jeitto/PageState'
 import { Header } from '@/components/layout/Header'
 import { SummaryStrip } from '@/components/sre/SummaryStrip'
 import { useReliabilityEvolution, useReliabilityTree } from '@/hooks/useApi'
+import { useTimeRange } from '@/hooks/useTimeRange'
 import { formatNumber } from '@/lib/utils'
 import type { ReliabilityMover, ReliabilityNode } from '@/types'
-
-const PERIOD_OPTIONS = [
-  { id: 7, label: '7 dias' },
-  { id: 30, label: '30 dias' },
-  { id: 90, label: '90 dias' },
-  { id: 180, label: '180 dias' },
-]
 
 const KIND_LABEL: Record<string, string> = {
   estate: 'Hub', product: 'Produto', team: 'Time', service: 'Serviço',
@@ -99,7 +93,7 @@ function EvolutionTooltip({ active, payload, label }: EvolutionTooltipProps) {
       <p className="mb-1 font-semibold">{label}</p>
       {payload.map((p) => (
         <p key={p.dataKey} style={{ color: 'var(--color-muted-foreground)' }}>
-          {p.dataKey === 'ri' ? 'RI' : 'RI projetado'}: <span className="font-black" style={{ color: 'var(--color-foreground)' }}>{formatNumber(p.value)}</span>
+          {p.dataKey === 'ri' ? 'Postura' : 'Postura projetada'}: <span className="font-black" style={{ color: 'var(--color-foreground)' }}>{formatNumber(p.value)}</span>
         </p>
       ))}
     </div>
@@ -175,7 +169,7 @@ function findByPath(node: ReliabilityNode, path: string): ReliabilityNode | null
 }
 
 export function EvolutionHistory({ standalone = true }: { standalone?: boolean }) {
-  const [days, setDays] = useState(90)
+  const { days } = useTimeRange()
   const [productPath, setProductPath] = useState('')
   const [teamPath, setTeamPath] = useState('')
   const [servicePath, setServicePath] = useState('')
@@ -265,22 +259,6 @@ export function EvolutionHistory({ standalone = true }: { standalone?: boolean }
             options={services}
             onChange={setServicePath}
           />
-          <span className="h-6 w-px" style={{ backgroundColor: 'var(--color-border)' }} />
-          {PERIOD_OPTIONS.map((opt) => (
-            <button
-              key={opt.id}
-              type="button"
-              onClick={() => setDays(opt.id)}
-              className="rounded-full px-4 py-1.5 text-sm font-semibold transition-all"
-              style={
-                days === opt.id
-                  ? { backgroundColor: 'var(--color-primary)', color: '#fff' }
-                  : { backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }
-              }
-            >
-              {opt.label}
-            </button>
-          ))}
           <ButtonDefault visual="ghost" label="Atualizar" icon={RotateCcw} onClick={() => void refetch()} />
         </div>
 
@@ -303,7 +281,7 @@ export function EvolutionHistory({ standalone = true }: { standalone?: boolean }
                 <Sparkles size={18} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
                 <p className="text-sm" style={{ color: 'var(--color-foreground)' }}>
                   Resolvendo os <span className="font-black">{remediableFindings}</span> finding{remediableFindings !== 1 ? 's' : ''} remediáve{remediableFindings !== 1 ? 'is' : 'l'} abertos,
-                  a confiabilidade de <span className="font-black">{scopeName}</span> sobe de{' '}
+                  a postura de <span className="font-black">{scopeName}</span> sobe de{' '}
                   <span className="font-black">{formatNumber(currentRi)}</span> para{' '}
                   <span className="font-black">{formatNumber(potentialRi!)}</span>{' '}
                   (<span className="font-black" style={{ color: '#10b981' }}>+{formatNumber(potentialGain)} pts</span>).
@@ -315,10 +293,10 @@ export function EvolutionHistory({ standalone = true }: { standalone?: boolean }
             <SummaryStrip
               items={[
                 {
-                  label: 'RI atual',
+                  label: 'Postura atual',
                   value: currentRi != null ? formatNumber(currentRi) : 'N/D',
                   helper: KIND_LABEL[current.kind] ?? current.kind,
-                  info: 'Índice de Confiabilidade (0–100) do escopo selecionado hoje.',
+                  info: 'Postura de confiabilidade (0–100) do escopo selecionado hoje.',
                 },
                 {
                   label: 'Variação no período',
@@ -327,18 +305,18 @@ export function EvolutionHistory({ standalone = true }: { standalone?: boolean }
                   info: 'Diferença entre o RI de hoje e o primeiro dia da série no período.',
                 },
                 {
-                  label: 'RI potencial',
+                  label: 'Postura potencial',
                   value: potentialRi != null ? formatNumber(potentialRi) : '—',
                   helper: 'se findings remediáveis forem resolvidos',
                   info: 'Projeção determinística: RI resultante se todos os findings remediáveis abertos hoje forem corrigidos. Sem IA — só as regras.',
                 },
                 {
-                  label: 'Débito remediável',
+                  label: 'Ganho remediável',
                   value: projection ? formatNumber(projection.remediableDebt) : '—',
                   helper: projection && projection.totalDebt > 0
-                    ? `${Math.round((projection.remediableDebt / projection.totalDebt) * 100)}% do débito total`
+                    ? `${Math.round((projection.remediableDebt / projection.totalDebt) * 100)}% do ganho total possível`
                     : 'pts recuperáveis',
-                  info: 'Parte do débito de confiabilidade que pode ser recuperada via remediação (ARIA ou manual).',
+                  info: 'Pontos de postura que voltam se os findings remediáveis forem resolvidos.',
                 },
                 {
                   label: 'Cobertura',
@@ -389,7 +367,7 @@ export function EvolutionHistory({ standalone = true }: { standalone?: boolean }
                     <Line
                       type="monotone"
                       dataKey="ri"
-                      name="RI"
+                      name="Postura"
                       stroke="var(--color-primary)"
                       strokeWidth={2}
                       dot={false}

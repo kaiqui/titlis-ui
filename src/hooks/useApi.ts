@@ -208,6 +208,14 @@ export function useServiceMap() {
   })
 }
 
+export function useHubRollup() {
+  return useQuery({
+    queryKey: ['hub-rollup'],
+    queryFn: () => api.hub.rollup(),
+    staleTime: 30_000,
+  })
+}
+
 export function useCoverageDetail(uid: string) {
   return useQuery({
     queryKey: ['coverage', 'detail', uid],

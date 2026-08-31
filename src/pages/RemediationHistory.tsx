@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { motion } from 'motion/react'
 import {
   Bar,
@@ -17,13 +17,9 @@ import { PageError, PageLoading } from '@/components/jeitto/PageState'
 import { Header } from '@/components/layout/Header'
 import { SummaryStrip } from '@/components/sre/SummaryStrip'
 import { useRemediationHistory } from '@/hooks/useApi'
+import { useTimeRange } from '@/hooks/useTimeRange'
 import { formatEnvironment, formatNumber } from '@/lib/utils'
 import type { RemediationTimelineItem } from '@/lib/api'
-
-const PERIOD_OPTIONS = [
-  { id: 30,  label: '30 dias' },
-  { id: 90,  label: '90 dias' },
-]
 
 // Paleta categórica validada (CVD-safe) para status/ambiente — ver skill dataviz.
 // prod=vermelho · staging=âmbar · dev=azul · test/qa=verde · uat=roxo
@@ -230,7 +226,7 @@ function ChartTooltip({ active, payload, label }: CustomTooltipProps) {
 }
 
 export function RemediationHistory({ standalone = true }: { standalone?: boolean }) {
-  const [days, setDays] = useState(90)
+  const { days } = useTimeRange()
   const { data, isLoading, error, refetch } = useRemediationHistory(days)
 
   const items: RemediationTimelineItem[] = data?.items ?? []
@@ -288,21 +284,6 @@ export function RemediationHistory({ standalone = true }: { standalone?: boolean
 
         {/* ── controles ── */}
         <div className="flex flex-wrap items-center gap-2">
-          {PERIOD_OPTIONS.map(opt => (
-            <button
-              key={opt.id}
-              type="button"
-              onClick={() => setDays(opt.id)}
-              className="rounded-full px-4 py-1.5 text-sm font-semibold transition-all"
-              style={
-                days === opt.id
-                  ? { backgroundColor: 'var(--color-primary)', color: '#fff' }
-                  : { backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }
-              }
-            >
-              {opt.label}
-            </button>
-          ))}
           <ButtonDefault visual="ghost" label="Atualizar" icon={RotateCcw} onClick={() => void refetch()} />
         </div>
 

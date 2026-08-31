@@ -27,6 +27,8 @@ import type {
   CoverageGraph,
   CoverageScorecard,
   ServiceMap,
+  EstateNode,
+  PostureTrendPoint,
   SloLookupResult,
   WorkloadDetail,
   WorkloadSLOCoverage,
@@ -288,7 +290,14 @@ async function request<T>(
 
   const text = await response.text()
   if (!text) return null as unknown as T
-  return JSON.parse(text) as T
+  try {
+    return JSON.parse(text) as T
+  } catch {
+    const snippet = text.slice(0, 200).replace(/\s+/g, ' ').trim()
+    throw new Error(
+      `Resposta não-JSON de ${options?.method ?? 'GET'} ${url.toString()} (HTTP ${response.status}, content-type "${response.headers.get('content-type') ?? 'desconhecido'}"): ${snippet}`,
+    )
+  }
 }
 
 function mapDashboardItem(item: ApiDashboardItem): WorkloadSummary {
@@ -1206,19 +1215,28 @@ function mapDatadogSettings(item: ApiDatadogQueueSettings): DatadogQueueSettings
 
 interface ApiCoverageDimension {
   pillar: string
+  dimension?: string
+  label?: string
+  question?: string
   evaluable?: number
   passed?: number
   na?: number
   pct?: number
+  strength?: number
+  band?: string
+  confidence?: string
   maturity_level?: number
+  evidence?: Array<{ message?: string; source?: string; outcome?: string }>
 }
 
 interface ApiCoverageFinding {
   code: string
   pillar?: string
+  dimension?: string
   severity?: string
   outcome?: string
   message?: string
+  source?: string
 }
 
 interface ApiCoverageScorecard {
@@ -1226,9 +1244,12 @@ interface ApiCoverageScorecard {
   serviceName?: string | null
   cluster?: string | null
   trustScore?: number | null
+  confidence?: string | null
+  uncertainty?: number | null
   maturity?: number
   dimensions?: ApiCoverageDimension[]
   findings?: ApiCoverageFinding[]
+  moves?: Array<{ rank?: number; dimension?: string; code?: string; description?: string; lift?: number; is_remediable?: boolean }>
   evaluatedAt?: string
 }
 
@@ -1246,21 +1267,44 @@ function mapCoverageScorecard(item: ApiCoverageScorecard): CoverageScorecard {
     serviceName: item.serviceName ?? null,
     cluster: item.cluster ?? null,
     trustScore: item.trustScore ?? null,
+    confidence: item.confidence ?? null,
+    uncertainty: item.uncertainty ?? null,
     maturity: deriveCoverageMaturity(item),
     dimensions: (item.dimensions ?? []).map((d) => ({
       pillar: d.pillar,
+      dimension: d.dimension ?? d.pillar,
+      label: d.label,
+      question: d.question,
       evaluable: d.evaluable ?? 0,
       passed: d.passed ?? 0,
       na: d.na ?? 0,
       pct: d.pct ?? 0,
+      strength: d.strength ?? d.pct ?? 0,
+      band: d.band,
+      confidence: d.confidence,
       maturityLevel: d.maturity_level ?? 0,
+      evidence: (d.evidence ?? []).map((e) => ({
+        message: e.message ?? '',
+        source: e.source ?? '',
+        outcome: e.outcome ?? '',
+      })),
     })),
     findings: (item.findings ?? []).map((f) => ({
       code: f.code,
       pillar: f.pillar ?? '',
+      dimension: f.dimension,
       severity: f.severity ?? '',
       outcome: (f.outcome ?? '').toLowerCase(),
       message: f.message ?? '',
+      source: f.source,
+    })),
+    moves: (item.moves ?? []).map((m) => ({
+      rank: m.rank ?? 0,
+      dimension: m.dimension ?? '',
+      code: m.code ?? '',
+      description: m.description ?? '',
+      lift: m.lift ?? 0,
+      isRemediable: m.is_remediable ?? false,
     })),
     evaluatedAt: item.evaluatedAt ?? '',
   }
@@ -1840,6 +1884,18 @@ export const api = {
     },
   },
 
+  // Veracode (SAST/SCA/DAST) — amplia o pilar de Segurança via VeracodeProvider do operator.
+  // Credenciais write-only: a resposta de GET nunca traz as chaves em claro.
+  veracodeSettings: {
+    get: async (): Promise<{ hasApiId: boolean; hasApiKey: boolean }> => {
+      const res = await request<{ hasApiId: boolean; hasApiKey: boolean }>('/settings/veracode', { optional: true })
+      return res ?? { hasApiId: false, hasApiKey: false }
+    },
+    save: async (payload: { veracodeApiId?: string; veracodeApiKey?: string }): Promise<void> => {
+      await request('/settings/veracode', { method: 'PUT' as const, body: payload })
+    },
+  },
+
   costs: {
     summary: async (days = 30): Promise<CostSummary> => {
       const res = await request<CostSummary>('/costs/summary', {
@@ -1911,6 +1967,17 @@ export const api = {
     get: async (): Promise<ServiceMap> => {
       const res = await request<ServiceMap>('/service-map', { optional: true })
       return res ?? { products: [], orphans: [] }
+    },
+  },
+
+  hub: {
+    // RPM Fase A: rollup do estate sobre a postura. titlis-ui puxa a árvore inteira (depth=all).
+    rollup: async (): Promise<EstateNode | null> => {
+      return await request<EstateNode>('/hub/rollup', { params: { depth: 'all' }, optional: true })
+    },
+    trend: async (node = '', days = 30): Promise<PostureTrendPoint[]> => {
+      const res = await request<PostureTrendPoint[]>('/hub/trend', { params: { node: node || undefined, days: String(days) }, optional: true })
+      return res ?? []
     },
   },
 
