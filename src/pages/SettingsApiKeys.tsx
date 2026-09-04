@@ -52,10 +52,20 @@ export function SettingsApiKeys() {
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      <Header title="Chaves de API" subtitle="Gerencie chaves de API para o operator e integrações." />
+      <Header title="Chaves de API" subtitle="Gerencie chaves de API para agentes de IA (ARIA, Claude e outros clientes MCP)." />
 
       <div className="flex-1 overflow-y-auto px-6 py-6">
         <div className="mx-auto max-w-3xl space-y-6">
+
+          <div
+            className="rounded-2xl border px-4 py-3 text-sm"
+            style={{ borderColor: 'var(--color-border)', background: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}
+          >
+            Essa chave é a credencial de leitura para o <strong style={{ color: 'var(--color-foreground)' }}>MCP do Titlis</strong> —
+            autentica a ARIA e agentes de IA (como o Claude) que precisam consultar hub, scorecards,
+            cobertura, SLOs, custos e afins a partir de fora. Não existe mais operator na stack RPM;
+            use <code className="rounded px-1 py-0.5 text-xs" style={{ background: 'var(--color-card)' }}>Authorization: Bearer &lt;chave&gt;</code> direto no servidor MCP.
+          </div>
 
           <AnimatePresence>
           {feedback && (
@@ -121,7 +131,7 @@ export function SettingsApiKeys() {
               <div className="flex gap-3">
                 <input
                   className="input-field flex-1"
-                  placeholder="Descrição (ex: titlis-operator-prod)"
+                  placeholder="Descrição (ex: aria-mcp, claude-agent)"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') createMutation.mutate() }}

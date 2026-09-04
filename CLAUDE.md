@@ -137,7 +137,7 @@ src/
 | `/settings/integrations` | SettingsIntegrations | sim | **sim** | GitHub token (PRs) + credenciais Datadog (análise de incidente) |
 | `/settings/score-config` | SettingsScoreConfig | sim | **sim** | Regras + overrides + pesos de scoring |
 | `/settings/tags` | SettingsTags | sim | **sim** | Tags de recursos |
-| `/settings/api-keys` | SettingsApiKeys | sim | **sim** | API keys para o operator |
+| `/settings/api-keys` | SettingsApiKeys | sim | **sim** | Chaves de API para agentes de IA (ARIA, Claude, outros clientes MCP) — não há mais operator na stack RPM |
 | `/settings/auto-remediation` | — | — | — | **Removido** → redireciona para `/settings/integrations` |
 
 **Proteção de rotas:** `<AuthGate>` em torno de todas as rotas autenticadas.
