@@ -113,15 +113,15 @@ Ao clicar em um workload, você vê:
 - Score por pilar com gráfico de breakdown
 - Lista completa de findings com severidade, descrição e sugestão de correção
 - Histórico de score ao longo do tempo
-- Botões de ação (explicar finding com ARIA, corrigir com ARIA)
+- Botões de ação (explicar finding com ConfiaAI, corrigir com ConfiaAI)
 
 ---
 
 ## Corrigir um finding
 
-### Via ARIA
-Clique em **Corrigir com IA** no finding. A ARIA propõe um patch unitário e, após sua
-confirmação, abre um PR de correção. Veja mais em [ARIA](/docs/assistente-ia).
+### Via ConfiaAI
+Clique em **Corrigir com IA** no finding. A ConfiaAI propõe um patch unitário e, após sua
+confirmação, abre um PR de correção. Veja mais em ConfiaAI.
 
 ---
 

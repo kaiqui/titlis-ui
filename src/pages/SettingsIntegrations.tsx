@@ -209,8 +209,9 @@ export function SettingsIntegrations() {
     try {
       const result = await api.datadogSettings.test()
       setTestResult(result)
-    } catch {
-      setTestResult({ ok: false, message: 'Erro ao testar conexão.' })
+      await queryClient.invalidateQueries({ queryKey: ['datadog-settings'] })
+    } catch (err) {
+      setTestResult({ ok: false, message: err instanceof Error ? err.message : 'Erro ao testar conexão.' })
     } finally {
       setTesting(false)
     }
@@ -240,7 +241,7 @@ export function SettingsIntegrations() {
     <div className="flex min-h-screen flex-col">
       <Header
         title="Integrações"
-        subtitle="Credenciais de GitHub, Datadog e Veracode usadas pelo assistente ARIA e pelo scoring de segurança."
+        subtitle="Credenciais de GitHub, Datadog e Veracode usadas pela descoberta de serviços e pelo scoring de segurança."
       />
 
       <div className="flex-1 space-y-5 px-4 py-6 lg:px-8">
@@ -260,7 +261,7 @@ export function SettingsIntegrations() {
               </p>
             </div>
             {githubConfigured && (
-              <span className="ml-auto rounded-full px-2.5 py-1 text-xs font-semibold" style={{ backgroundColor: 'rgba(16,185,129,0.1)', color: '#059669' }}>
+              <span className="ml-auto rounded-[8px] px-2.5 py-1 text-xs font-semibold" style={{ backgroundColor: 'rgba(16,185,129,0.1)', color: '#0e8a44' }}>
                 Ativo
               </span>
             )}
@@ -292,9 +293,9 @@ export function SettingsIntegrations() {
           </div>
 
           {modeDiverges && (
-            <div className="mb-5 flex items-start gap-2 rounded-2xl px-4 py-3 text-xs" style={{ backgroundColor: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.3)' }}>
-              <AlertTriangle size={14} className="mt-0.5 shrink-0" style={{ color: '#d97706' }} />
-              <span style={{ color: 'var(--color-muted-foreground)' }}>
+            <div className="jc-alert jc-alert-warning mb-5 flex items-start gap-2">
+              <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+              <span>
                 O modo em uso pela remediação agora é <strong>{modeLabel(activeMode)}</strong>. O que você
                 preencher na aba <strong>{modeLabel(githubAuthMode)}</strong> só passa a valer — e a credencial
                 só é usada — depois de <strong>Salvar GitHub</strong>.
@@ -335,8 +336,8 @@ export function SettingsIntegrations() {
                   style={inputStyle}
                 />
               </div>
-              <div className="md:col-span-2 flex items-start gap-2 rounded-2xl px-4 py-3 text-xs" style={{ backgroundColor: 'rgba(99,102,241,0.07)', color: 'var(--color-muted-foreground)' }}>
-                <Info size={13} className="mt-0.5 shrink-0" style={{ color: '#6366f1' }} />
+              <div className="jc-alert jc-alert-accent md:col-span-2 flex items-start gap-2">
+                <Info size={13} className="mt-0.5 shrink-0" />
                 <span>
                   Para acessar repositórios <strong>privados</strong>, o PAT precisa dos scopes{' '}
                   <code className="rounded px-1 py-0.5 font-mono" style={{ backgroundColor: 'rgba(0,0,0,0.08)' }}>repo</code>{' '}
@@ -364,7 +365,7 @@ export function SettingsIntegrations() {
               </div>
               <div>
                 <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>
-                  Installation ID <span style={{ color: '#6366f1', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(opcional — descoberto automaticamente)</span>
+                  Installation ID <span style={{ color: '#c42bae', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(opcional — descoberto automaticamente)</span>
                 </label>
                 <input
                   type="text"
@@ -410,10 +411,10 @@ export function SettingsIntegrations() {
           )}
 
           {githubTestResult && (
-            <div className={`mt-4 flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium ${githubTestResult.ok ? 'bg-emerald-900/20 text-emerald-400' : 'bg-red-900/20 text-red-400'}`}>
+            <div className={`mt-4 flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium ${githubTestResult.ok ? 'bg-[var(--color-success-soft)] text-[var(--color-success)]' : 'bg-[var(--color-danger-soft)] text-[var(--color-danger)]'}`}>
               {githubTestResult.ok ? <CheckCircle size={15} /> : <XCircle size={15} />}
               {githubTestResult.mode && (
-                <span className="rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide" style={{ backgroundColor: 'rgba(0,0,0,0.18)' }}>
+                <span className="rounded-[8px] px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide" style={{ backgroundColor: 'rgba(0,0,0,0.18)' }}>
                   {modeLabel(githubTestResult.mode)}
                 </span>
               )}
@@ -421,7 +422,7 @@ export function SettingsIntegrations() {
             </div>
           )}
 
-          {githubError && <p className="mt-3 text-sm" style={{ color: '#dc2626' }}>{githubError}</p>}
+          {githubError && <p className="mt-3 text-sm" style={{ color: '#d8341a' }}>{githubError}</p>}
 
           <div className="mt-5 flex flex-wrap items-center gap-3">
             <ButtonDefault
@@ -441,7 +442,7 @@ export function SettingsIntegrations() {
               </button>
             )}
             {githubSaved && (
-              <div className="flex items-center gap-1.5 text-sm" style={{ color: '#10b981' }}>
+              <div className="flex items-center gap-1.5 text-sm" style={{ color: '#12a150' }}>
                 <Check size={14} />
                 Salvo com sucesso
               </div>
@@ -453,7 +454,7 @@ export function SettingsIntegrations() {
         <Card>
           <div className="mb-4 flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl" style={{ backgroundColor: 'rgba(99,38,194,0.08)' }}>
-              <Database size={15} style={{ color: '#6326c2' }} />
+              <Database size={15} style={{ color: '#9c1f8c' }} />
             </div>
             <div>
               <p className="text-sm font-black" style={{ color: 'var(--color-foreground)' }}>Datadog</p>
@@ -462,14 +463,14 @@ export function SettingsIntegrations() {
               </p>
             </div>
             {ddSettings?.configured && (
-              <span className="ml-auto rounded-full px-2.5 py-1 text-xs font-semibold" style={{ backgroundColor: 'rgba(16,185,129,0.1)', color: '#059669' }}>
+              <span className="ml-auto rounded-[8px] px-2.5 py-1 text-xs font-semibold" style={{ backgroundColor: 'rgba(16,185,129,0.1)', color: '#0e8a44' }}>
                 Ativo
               </span>
             )}
           </div>
 
           <p className="mb-5 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
-            Usado pelo assistente ARIA para análise de métricas via MCP Datadog. As credenciais são
+            Usado pela coleta de métricas (descoberta de serviços e custos) via API Datadog. As credenciais são
             armazenadas de forma criptografada e nunca expostas na UI.
           </p>
 
@@ -595,9 +596,9 @@ export function SettingsIntegrations() {
             {ddSettings?.configured && hasQueueData && (
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { label: 'Descoberta', value: queuesByState!.discovering, color: 'rgba(99,102,241,0.12)', text: '#6366f1' },
-                  { label: 'Aprendendo', value: queuesByState!.learning, color: 'rgba(245,158,11,0.12)', text: '#d97706' },
-                  { label: 'Monitorando', value: queuesByState!.monitoring, color: 'rgba(16,185,129,0.12)', text: '#059669' },
+                  { label: 'Descoberta', value: queuesByState!.discovering, color: 'rgba(99,102,241,0.12)', text: '#c42bae' },
+                  { label: 'Aprendendo', value: queuesByState!.learning, color: 'rgba(245,158,11,0.12)', text: '#a06e00' },
+                  { label: 'Monitorando', value: queuesByState!.monitoring, color: 'rgba(16,185,129,0.12)', text: '#0e8a44' },
                 ].map(({ label, value, color, text }) => (
                   <div key={label} className="rounded-2xl px-3 py-2.5 text-center" style={{ backgroundColor: color }}>
                     <p className="text-lg font-black" style={{ color: text }}>{value}</p>
@@ -610,13 +611,13 @@ export function SettingsIntegrations() {
 
           {/* Feedback de conexão */}
           {testResult && (
-            <div className={`mt-4 flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium ${testResult.ok ? 'bg-emerald-900/20 text-emerald-400' : 'bg-red-900/20 text-red-400'}`}>
+            <div className={`jc-alert mt-4 flex items-center gap-2 ${testResult.ok ? 'jc-alert-success' : 'jc-alert-danger'}`}>
               {testResult.ok ? <CheckCircle size={15} /> : <XCircle size={15} />}
               {testResult.message}
             </div>
           )}
 
-          {ddError && <p className="mt-3 text-sm" style={{ color: '#dc2626' }}>{ddError}</p>}
+          {ddError && <p className="mt-3 text-sm" style={{ color: '#d8341a' }}>{ddError}</p>}
 
           <div className="mt-5 flex flex-wrap items-center gap-3">
             <ButtonDefault
@@ -636,7 +637,7 @@ export function SettingsIntegrations() {
               </button>
             )}
             {ddSaved && (
-              <div className="flex items-center gap-1.5 text-sm" style={{ color: '#10b981' }}>
+              <div className="flex items-center gap-1.5 text-sm" style={{ color: '#12a150' }}>
                 <Check size={14} />
                 Salvo com sucesso
               </div>
@@ -648,7 +649,7 @@ export function SettingsIntegrations() {
         <Card>
           <div className="mb-4 flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-xl" style={{ backgroundColor: 'rgba(37,99,235,0.08)' }}>
-              <ShieldCheck size={15} style={{ color: '#2563eb' }} />
+              <ShieldCheck size={15} style={{ color: '#0784b0' }} />
             </div>
             <div>
               <p className="text-sm font-black" style={{ color: 'var(--color-foreground)' }}>Veracode</p>
@@ -657,7 +658,7 @@ export function SettingsIntegrations() {
               </p>
             </div>
             {veracodeSettings?.hasApiId && veracodeSettings?.hasApiKey && (
-              <span className="ml-auto rounded-full px-2.5 py-1 text-xs font-semibold" style={{ backgroundColor: 'rgba(16,185,129,0.1)', color: '#059669' }}>
+              <span className="ml-auto rounded-[8px] px-2.5 py-1 text-xs font-semibold" style={{ backgroundColor: 'rgba(16,185,129,0.1)', color: '#0e8a44' }}>
                 Ativo
               </span>
             )}
@@ -704,7 +705,7 @@ export function SettingsIntegrations() {
             </div>
           </div>
 
-          {veracodeError && <p className="mt-3 text-sm" style={{ color: '#dc2626' }}>{veracodeError}</p>}
+          {veracodeError && <p className="mt-3 text-sm" style={{ color: '#d8341a' }}>{veracodeError}</p>}
 
           <div className="mt-5 flex flex-wrap items-center gap-3">
             <ButtonDefault
@@ -713,7 +714,7 @@ export function SettingsIntegrations() {
               disabled={veracodeSaving || (!veracodeApiId.trim() && !veracodeApiKey.trim())}
             />
             {veracodeSaved && (
-              <div className="flex items-center gap-1.5 text-sm" style={{ color: '#10b981' }}>
+              <div className="flex items-center gap-1.5 text-sm" style={{ color: '#12a150' }}>
                 <Check size={14} />
                 Salvo com sucesso
               </div>
@@ -740,7 +741,7 @@ export function SettingsIntegrations() {
               </p>
             </div>
             {costSettings?.enabled && (
-              <span className="rounded-full px-2.5 py-1 text-xs font-semibold" style={{ backgroundColor: 'rgba(16,185,129,0.1)', color: '#10b981' }}>
+              <span className="rounded-[8px] px-2.5 py-1 text-xs font-semibold" style={{ backgroundColor: 'rgba(16,185,129,0.1)', color: '#12a150' }}>
                 Ativo
               </span>
             )}
@@ -751,7 +752,7 @@ export function SettingsIntegrations() {
               disabled={costToggling}
             />
           </div>
-          {costError && <p className="mt-3 text-sm" style={{ color: '#dc2626' }}>{costError}</p>}
+          {costError && <p className="mt-3 text-sm" style={{ color: '#d8341a' }}>{costError}</p>}
         </Card>
 
       </div>

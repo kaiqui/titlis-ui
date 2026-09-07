@@ -10,8 +10,8 @@ export function EmptyState({ icon: Icon, title, description }: EmptyStateProps) 
   return (
     <div className="flex flex-col items-center justify-center px-4 py-16 text-center">
       <div
-        className="mb-4 flex h-14 w-14 items-center justify-center rounded-[1.35rem] border"
-        style={{ backgroundColor: 'var(--color-muted)', borderColor: 'var(--color-border)' }}
+        className="mb-4 flex h-14 w-14 items-center justify-center rounded-[12px] border-2"
+        style={{ backgroundColor: 'var(--brand-yellow)', borderColor: 'var(--color-foreground)', boxShadow: 'var(--shadow-brutal-sm)' }}
       >
         <Icon size={20} style={{ color: 'var(--color-muted-foreground)' }} />
       </div>

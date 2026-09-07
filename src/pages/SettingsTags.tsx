@@ -27,7 +27,7 @@ function TagChip({
 }) {
   return (
     <span
-      className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[12px] font-medium"
+      className="inline-flex items-center gap-1 rounded-[8px] px-2.5 py-0.5 text-[12px] font-medium"
       style={{ backgroundColor: 'var(--color-primary-soft)', color: 'var(--color-primary)' }}
     >
       {tag}
@@ -35,7 +35,7 @@ function TagChip({
         type="button"
         onClick={onRemove}
         disabled={removing}
-        className="ml-0.5 rounded-full p-0.5 opacity-70 transition-opacity hover:opacity-100 disabled:opacity-30"
+        className="ml-0.5 rounded-[4px] p-0.5 opacity-70 transition-opacity hover:opacity-100 disabled:opacity-30"
         title={`Remover tag "${tag}"`}
       >
         <X size={10} />
@@ -112,7 +112,7 @@ function AddTagForm({
           Cancelar
         </button>
       </div>
-      {error && <p className="text-[11px] text-red-500">{error}</p>}
+      {error && <p className="text-[11px] text-[var(--color-danger)]">{error}</p>}
     </div>
   )
 }

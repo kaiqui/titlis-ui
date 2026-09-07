@@ -27,20 +27,20 @@ const ROLE_LABELS: Record<string, string> = {
 }
 
 const ROLE_COLORS: Record<string, string> = {
-  admin: 'bg-purple-500/15 text-purple-400',
+  admin: 'bg-[var(--color-accent-soft)] text-[var(--color-accent)]',
   viewer: 'bg-slate-500/15 text-slate-400',
 }
 
 function scoreTextColor(score: number) {
-  if (score >= 80) return 'text-emerald-500'
-  if (score >= 50) return 'text-amber-500'
-  return 'text-red-500'
+  if (score >= 80) return 'text-[var(--color-success)]'
+  if (score >= 50) return 'text-[var(--color-warning)]'
+  return 'text-[var(--color-danger)]'
 }
 
 function scoreBgColor(score: number) {
-  if (score >= 80) return 'bg-emerald-500'
-  if (score >= 50) return 'bg-amber-500'
-  return 'bg-red-500'
+  if (score >= 80) return 'bg-[var(--color-success)]'
+  if (score >= 50) return 'bg-[var(--color-warning)]'
+  return 'bg-[var(--color-danger)]'
 }
 
 function formatRelativeTime(dateStr: string | null): string {
@@ -143,7 +143,7 @@ export function AdminOverview({ standalone = true }: { standalone?: boolean }) {
             value={`${compliance.compliancePercent.toFixed(0)}%`}
             sub={`${fmt(compliance.compliantWorkloads)} de ${fmt(compliance.totalWorkloads)} workloads`}
             icon={CheckCircle2}
-            iconColor="text-emerald-500"
+            iconColor="text-[var(--color-success)]"
             delay={0.05}
           />
           <MetricCard
@@ -151,7 +151,7 @@ export function AdminOverview({ standalone = true }: { standalone?: boolean }) {
             value={fmt(compliance.totalWorkloads)}
             sub=" "
             icon={Activity}
-            iconColor="text-blue-500"
+            iconColor="text-[var(--color-info)]"
             delay={0.10}
           />
           <MetricCard
@@ -159,7 +159,7 @@ export function AdminOverview({ standalone = true }: { standalone?: boolean }) {
             value={fmt(remediations.totalAutomated)}
             sub={`${fmt(remediations.merged)} PRs mesclados`}
             icon={GitMerge}
-            iconColor="text-violet-500"
+            iconColor="text-[var(--color-accent)]"
             delay={0.15}
           />
         </div>
@@ -219,7 +219,7 @@ export function AdminOverview({ standalone = true }: { standalone?: boolean }) {
                         <td className="py-3 pr-4">
                           {isPending ? (
                             <div className="flex items-center gap-2">
-                              <span className={cn('inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold', ROLE_COLORS[targetRole!] ?? 'bg-slate-500/15 text-slate-400')}>
+                              <span className={cn('inline-flex items-center rounded-[8px] px-2.5 py-1 text-xs font-semibold', ROLE_COLORS[targetRole!] ?? 'bg-slate-500/15 text-slate-400')}>
                                 {ROLE_LABELS[targetRole!] ?? targetRole}
                               </span>
                               <button
@@ -230,7 +230,7 @@ export function AdminOverview({ standalone = true }: { standalone?: boolean }) {
                                   )
                                 }}
                                 disabled={updateRole.isPending}
-                                className="rounded px-2 py-0.5 text-xs font-semibold bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 disabled:opacity-50 transition-colors"
+                                className="rounded px-2 py-0.5 text-xs font-semibold bg-[var(--color-success-soft)] text-[var(--color-success)] hover:bg-[var(--color-success-soft)] disabled:opacity-50 transition-colors"
                               >
                                 {updateRole.isPending ? '...' : 'Confirmar'}
                               </button>
@@ -245,7 +245,7 @@ export function AdminOverview({ standalone = true }: { standalone?: boolean }) {
                             </div>
                           ) : (
                             <div className="flex items-center gap-2">
-                              <span className={cn('inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold', ROLE_COLORS[user.role] ?? 'bg-slate-500/15 text-slate-400')}>
+                              <span className={cn('inline-flex items-center rounded-[8px] px-2.5 py-1 text-xs font-semibold', ROLE_COLORS[user.role] ?? 'bg-slate-500/15 text-slate-400')}>
                                 {ROLE_LABELS[user.role] ?? user.role}
                               </span>
                               {!isSelf && (
@@ -265,7 +265,7 @@ export function AdminOverview({ standalone = true }: { standalone?: boolean }) {
                         </td>
                         <td className="py-3 pr-4">
                           <span
-                            className={cn('text-[13px]', user.lastLoginAt ? '' : 'text-amber-500')}
+                            className={cn('text-[13px]', user.lastLoginAt ? '' : 'text-[var(--color-warning)]')}
                             style={user.lastLoginAt ? { color: 'var(--color-foreground)' } : undefined}
                           >
                             {formatRelativeTime(user.lastLoginAt)}
@@ -276,7 +276,7 @@ export function AdminOverview({ standalone = true }: { standalone?: boolean }) {
                         </td>
                         <td className="py-3">
                           <span className="flex items-center gap-1.5">
-                            <span className={cn('inline-block h-2 w-2 rounded-full', user.isActive ? 'bg-emerald-500' : 'bg-slate-400')} />
+                            <span className={cn('inline-block h-2 w-2 rounded-full', user.isActive ? 'bg-[var(--color-success)]' : 'bg-slate-400')} />
                             <span className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
                               {user.isActive ? 'Ativo' : 'Inativo'}
                             </span>
@@ -324,9 +324,9 @@ export function AdminOverview({ standalone = true }: { standalone?: boolean }) {
               <CardTitle>Automação</CardTitle>
             </CardHeader>
             <div className="space-y-3">
-              <SectionRow icon="✓" iconClass="text-emerald-500 text-base" label="PRs mesclados" value={fmt(remediations.merged)} />
-              <SectionRow icon="◷" iconClass="text-blue-400 text-base" label="Em andamento" value={fmt(remediations.inProgress)} />
-              <SectionRow icon="✗" iconClass="text-red-500 text-base" label="Com falha" value={fmt(remediations.failed)} />
+              <SectionRow icon="✓" iconClass="text-[var(--color-success)] text-base" label="PRs mesclados" value={fmt(remediations.merged)} />
+              <SectionRow icon="◷" iconClass="text-[var(--color-info)] text-base" label="Em andamento" value={fmt(remediations.inProgress)} />
+              <SectionRow icon="✗" iconClass="text-[var(--color-danger)] text-base" label="Com falha" value={fmt(remediations.failed)} />
               <div className="mt-4 border-t pt-4" style={{ borderColor: 'var(--color-border)' }}>
                 <div className="flex items-center justify-between">
                   <span className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>Taxa de sucesso</span>
@@ -345,13 +345,13 @@ export function AdminOverview({ standalone = true }: { standalone?: boolean }) {
             <div className="space-y-3">
               <SectionRow
                 icon={<ShieldAlert size={15} />}
-                iconClass="text-red-500"
+                iconClass="text-[var(--color-danger)]"
                 label="Workloads críticos (score < 50)"
                 value={fmt(compliance.criticalWorkloads)}
               />
               <SectionRow
                 icon={<AlertTriangle size={15} />}
-                iconClass="text-amber-500"
+                iconClass="text-[var(--color-warning)]"
                 label="Falhas críticas acumuladas"
                 value={fmt(compliance.totalCriticalFailures)}
               />
@@ -381,9 +381,9 @@ export function AdminOverview({ standalone = true }: { standalone?: boolean }) {
                   <span className="w-32 shrink-0 text-right text-xs font-medium" style={{ color: 'var(--color-muted-foreground)' }}>
                     {PILLAR_LABELS[p.pillar] ?? p.pillar}
                   </span>
-                  <div className="h-2 flex-1 overflow-hidden rounded-full" style={{ backgroundColor: 'var(--color-border)' }}>
+                  <div className="h-2 flex-1 overflow-hidden rounded-[4px]" style={{ backgroundColor: 'var(--color-border)' }}>
                     <div
-                      className={cn('h-full rounded-full transition-all', scoreBgColor(p.averageScore))}
+                      className={cn('h-full rounded-[4px] transition-all', scoreBgColor(p.averageScore))}
                       style={{ width: `${Math.min(p.averageScore, 100)}%` }}
                     />
                   </div>
@@ -406,7 +406,7 @@ export function AdminOverview({ standalone = true }: { standalone?: boolean }) {
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <StatMini label="Total" value={fmt(users.total)} />
-              <StatMini label="Ativos (30d)" value={fmt(users.activeLastThirtyDays)} colorClass="text-emerald-500" />
+              <StatMini label="Ativos (30d)" value={fmt(users.activeLastThirtyDays)} colorClass="text-[var(--color-success)]" />
             </div>
             <div className="border-t pt-4" style={{ borderColor: 'var(--color-border)' }}>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--color-muted-foreground)' }}>
@@ -416,7 +416,7 @@ export function AdminOverview({ standalone = true }: { standalone?: boolean }) {
                 {Object.entries(users.byRole).map(([role, count]) => (
                   <span
                     key={role}
-                    className={cn('inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold', ROLE_COLORS[role] ?? 'bg-slate-500/15 text-slate-400')}
+                    className={cn('inline-flex items-center gap-1.5 rounded-[8px] px-3 py-1 text-xs font-semibold', ROLE_COLORS[role] ?? 'bg-slate-500/15 text-slate-400')}
                   >
                     {ROLE_LABELS[role] ?? role}
                     <span className="font-black">{count}</span>

@@ -103,7 +103,7 @@ function EvolutionTooltip({ active, payload, label }: EvolutionTooltipProps) {
 function DeltaBadge({ delta }: { delta: number | null }) {
   if (delta == null) return <span className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>—</span>
   const stable = Math.abs(delta) < 0.05
-  const color = stable ? 'var(--color-muted-foreground)' : delta > 0 ? '#10b981' : '#ef4444'
+  const color = stable ? 'var(--color-muted-foreground)' : delta > 0 ? '#12a150' : '#d8341a'
   const Icon = stable ? Minus : delta > 0 ? ArrowUpRight : ArrowDownRight
   return (
     <span className="flex items-center gap-1 text-xs font-black tabular-nums" style={{ color }}>
@@ -119,7 +119,7 @@ function MoverRow({ mover }: { mover: ReliabilityMover }) {
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <p className="truncate text-sm font-semibold" style={{ color: 'var(--color-foreground)' }}>{mover.name}</p>
-          <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
+          <span className="rounded-[8px] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
             {KIND_LABEL[mover.kind] ?? mover.kind}
           </span>
         </div>
@@ -284,7 +284,7 @@ export function EvolutionHistory({ standalone = true }: { standalone?: boolean }
                   a postura de <span className="font-black">{scopeName}</span> sobe de{' '}
                   <span className="font-black">{formatNumber(currentRi)}</span> para{' '}
                   <span className="font-black">{formatNumber(potentialRi!)}</span>{' '}
-                  (<span className="font-black" style={{ color: '#10b981' }}>+{formatNumber(potentialGain)} pts</span>).
+                  (<span className="font-black" style={{ color: '#12a150' }}>+{formatNumber(potentialGain)} pts</span>).
                 </p>
               </div>
             )}
@@ -377,7 +377,7 @@ export function EvolutionHistory({ standalone = true }: { standalone?: boolean }
                       type="monotone"
                       dataKey="proj"
                       name="RI projetado"
-                      stroke="#10b981"
+                      stroke="#12a150"
                       strokeWidth={2}
                       strokeDasharray="6 5"
                       dot={false}
@@ -387,11 +387,11 @@ export function EvolutionHistory({ standalone = true }: { standalone?: boolean }
                 </ResponsiveContainer>
                 <div className="mt-3 flex items-center gap-5 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
                   <span className="flex items-center gap-1.5">
-                    <span className="inline-block h-0.5 w-5 rounded-full" style={{ backgroundColor: 'var(--color-primary)' }} />
+                    <span className="inline-block h-0.5 w-5 rounded-[2px]" style={{ backgroundColor: 'var(--color-primary)' }} />
                     Histórico
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <svg width={20} height={2} aria-hidden><line x1={0} y1={1} x2={20} y2={1} stroke="#10b981" strokeWidth={2} strokeDasharray="4 3" /></svg>
+                    <svg width={20} height={2} aria-hidden><line x1={0} y1={1} x2={20} y2={1} stroke="#12a150" strokeWidth={2} strokeDasharray="4 3" /></svg>
                     Projeção (findings resolvidos)
                   </span>
                 </div>
@@ -469,16 +469,16 @@ export function EvolutionHistory({ standalone = true }: { standalone?: boolean }
                           <td className="py-2.5 pr-4 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
                             {o.pillar ? (PILLAR_LABEL[o.pillar.toLowerCase()] ?? o.pillar) : '—'}
                           </td>
-                          <td className="py-2.5 pr-4 text-xs" style={{ color: o.severity === 'critical' ? '#ef4444' : o.severity === 'error' ? '#f59e0b' : 'var(--color-muted-foreground)' }}>
+                          <td className="py-2.5 pr-4 text-xs" style={{ color: o.severity === 'critical' ? '#d8341a' : o.severity === 'error' ? '#d99400' : 'var(--color-muted-foreground)' }}>
                             {o.severity ? (SEVERITY_LABEL[o.severity.toLowerCase()] ?? o.severity) : '—'}
                           </td>
                           <td className="py-2.5 pr-4 text-right text-xs tabular-nums" style={{ color: 'var(--color-foreground)' }}>{o.occurrences}</td>
-                          <td className="py-2.5 pr-4 text-right text-xs font-black tabular-nums" style={{ color: '#10b981' }}>
+                          <td className="py-2.5 pr-4 text-right text-xs font-black tabular-nums" style={{ color: '#12a150' }}>
                             +{formatNumber(o.riGain)}
                           </td>
                           <td className="py-2.5">
                             {o.remediable ? (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-indigo-900/30 px-2 py-0.5 text-[11px] font-semibold text-indigo-300">
+                              <span className="inline-flex items-center gap-1 rounded-[8px] bg-[var(--color-accent-soft)] px-2 py-0.5 text-[11px] font-semibold text-[var(--color-accent)]">
                                 <Wrench size={11} /> remediável
                               </span>
                             ) : (

@@ -14,17 +14,15 @@ import { Login } from '@/pages/Login'
 import { LoginCallback } from '@/pages/LoginCallback'
 import { Onboarding } from '@/pages/Onboarding'
 import { SettingsApiKeys } from '@/pages/SettingsApiKeys'
-import { SettingsAi } from '@/pages/SettingsAi'
 import { SettingsScoreConfig } from '@/pages/SettingsScoreConfig'
 import { SettingsTags } from '@/pages/SettingsTags'
 import { GettingStarted } from '@/pages/GettingStarted'
-import { RemediatePage } from '@/pages/RemediatePage'
-import { AriaPage } from '@/pages/AriaPage'
 import { SettingsIntegrations } from '@/pages/SettingsIntegrations'
 import { Queues } from '@/pages/Queues'
 import { Coverage } from '@/pages/Coverage'
 import { CoverageDetail } from '@/pages/CoverageDetail'
 import { Reliability } from '@/pages/Reliability'
+import { Confia } from '@/pages/Confia'
 import { Governance } from '@/pages/Governance'
 import { Docs } from '@/pages/Docs'
 
@@ -44,14 +42,13 @@ const queryClient = new QueryClient({
   },
 })
 
-const appLogoUrl = import.meta.env.VITE_APP_LOGO_URL?.trim() || '/logo.png'
-const faviconUrl = import.meta.env.VITE_FAVICON_URL?.trim() || appLogoUrl
+const faviconUrl = import.meta.env.VITE_FAVICON_URL?.trim() || '/jeitto-icon.svg'
 
 export default function App() {
   useEffect(() => {
     const link = document.querySelector<HTMLLinkElement>('link[rel="icon"]') ?? document.createElement('link')
     link.rel = 'icon'
-    link.type = 'image/png'
+    link.type = faviconUrl.endsWith('.svg') ? 'image/svg+xml' : 'image/png'
     link.href = faviconUrl
     if (!link.parentNode) {
       document.head.appendChild(link)
@@ -100,7 +97,7 @@ export default function App() {
                 <Route path="/costs" element={<Costs />} />
                 <Route path="/coverage" element={<Coverage />} />
                 <Route path="/coverage/:uid" element={<CoverageDetail />} />
-                <Route path="/recommendations" element={<Navigate to="/aria" replace />} />
+                <Route path="/recommendations" element={<Navigate to="/reliability" replace />} />
                 <Route path="/history" element={<Navigate to="/governance" replace />} />
                 <Route
                   path="/governance"
@@ -110,8 +107,6 @@ export default function App() {
                     </AuthGate>
                   )}
                 />
-                <Route path="/aria" element={<AriaPage />} />
-                <Route path="/scorecards/:id/remediate" element={<RemediatePage />} />
                 <Route
                   path="/settings/hpa-templates"
                   element={<Navigate to="/settings/score-config" replace />}
@@ -134,6 +129,7 @@ export default function App() {
                 />
                 <Route path="/queues" element={<Queues />} />
                 <Route path="/reliability" element={<Reliability />} />
+                <Route path="/confia" element={<Confia />} />
                 <Route path="/topology" element={<Navigate to="/coverage" replace />} />
                 <Route path="/squads" element={<Navigate to="/coverage" replace />} />
                 <Route
@@ -144,14 +140,7 @@ export default function App() {
                     </AuthGate>
                   )}
                 />
-                <Route
-                  path="/settings/ai"
-                  element={(
-                    <AuthGate requireAdmin>
-                      <SettingsAi />
-                    </AuthGate>
-                  )}
-                />
+                <Route path="/settings/ai" element={<Navigate to="/settings/integrations" replace />} />
                 <Route
                   path="/settings/score-config"
                   element={(

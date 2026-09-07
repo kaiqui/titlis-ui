@@ -176,14 +176,6 @@ export function useAdminUsers() {
   })
 }
 
-export function useRemediationHistory(days: number) {
-  return useQuery({
-    queryKey: ['remediation-history', days],
-    queryFn: () => api.remediation.history(days),
-    staleTime: 60_000,
-  })
-}
-
 export function useQueues(filters?: QueueFilters) {
   return useQuery({
     queryKey: ['queues', filters ?? null],

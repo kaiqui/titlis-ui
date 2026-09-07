@@ -109,10 +109,10 @@ export function ScorecardDetail() {
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <ScoreBadge score={workload.overallScore} />
-                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone(workload.complianceStatus)}`}>
+                  <span className={`rounded-[8px] px-3 py-1 text-xs font-semibold ${statusTone(workload.complianceStatus)}`}>
                     {formatEnum(workload.complianceStatus)}
                   </span>
-                  <span className="rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
+                  <span className="rounded-[8px] px-3 py-1 text-xs font-semibold" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
                     versão {workload.version ?? 'N/D'}
                   </span>
                 </div>

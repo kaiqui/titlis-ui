@@ -1,10 +1,9 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
-import { AlertTriangle, ArrowLeft, ArrowRight, Bot, CheckCircle2, ExternalLink, GitPullRequest, Layers3, ShieldAlert, ShieldCheck, Sparkles, XCircle } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, ExternalLink, GitPullRequest, Layers3, ShieldAlert, ShieldCheck, XCircle } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { ButtonDefault } from '@/components/jeitto/ButtonDefault'
-import { FeatureGuard } from '@/components/atoms/FeatureGuard'
 import { Card } from '@/components/jeitto/Card'
 import { EmptyState } from '@/components/jeitto/EmptyState'
 import { PageError, PageLoading } from '@/components/jeitto/PageState'
@@ -15,13 +14,10 @@ import { DetailPanel } from '@/components/sre/DetailPanel'
 import { FocusTabs } from '@/components/sre/FocusTabs'
 import { InlineAccordion } from '@/components/sre/InlineAccordion'
 import { SummaryStrip } from '@/components/sre/SummaryStrip'
-import { AiExplainDrawer } from '@/components/ai/AiExplainDrawer'
 import { useScoreConfigOverrides, useWorkloadRemediation, useWorkloadScorecard } from '@/hooks/useApi'
-import { useAuth } from '@/contexts/useAuth'
 import { fadeInUp } from '@/lib/motion/tokens'
 import { formatDate, formatEnum, formatEnvironment, severityColor, statusTone } from '@/lib/utils'
 import type { ScoreConfigOverride } from '@/lib/api'
-import type { Finding } from '@/types'
 
 function isOverrideApplicable(o: ScoreConfigOverride, workload: { id: string; cluster: string; namespace: string }): boolean {
   if (o.scope === 'tenant') return true
@@ -46,11 +42,9 @@ export function ApplicationDetail({
 }: ApplicationDetailProps) {
   const { id = '' } = useParams()
   const navigate = useNavigate()
-  const { user } = useAuth()
   const scorecardQuery = useWorkloadScorecard(id)
   const remediationQuery = useWorkloadRemediation(id)
   const [focus, setFocus] = useState<DetailFocus>('overview')
-  const [explainFinding, setExplainFinding] = useState<Finding | null>(null)
   const { data: overrides = [] } = useScoreConfigOverrides()
 
   if (scorecardQuery.isLoading) return <><Header title="Detalhe do workload" /><PageLoading /></>
@@ -85,7 +79,6 @@ export function ApplicationDetail({
   const activeFindings = workload.validationResults.filter(f => !disabledRuleIds.has(f.ruleId))
   const failedFindings = activeFindings.filter(item => !item.passed)
   const passedFindings = activeFindings.filter(item => item.passed)
-  const canUseAi = user?.canRemediate ?? false
 
   const evaluationMetrics: EvaluationMetric[] = [
     { label: 'Regras totais', value: workload.totalRules, icon: Layers3 },
@@ -100,14 +93,6 @@ export function ApplicationDetail({
     <div className="flex min-h-screen flex-col">
       <Header title={workload.name} subtitle={`${workload.namespace} · ${workload.cluster} · ${formatEnvironment(workload.environment)}`} />
 
-      {explainFinding && (
-        <AiExplainDrawer
-          finding={explainFinding}
-          workload={workload}
-          onClose={() => setExplainFinding(null)}
-        />
-      )}
-
       <div className="flex-1 space-y-5 px-4 py-6 lg:px-8">
         <div className="flex flex-wrap gap-3">
           <ButtonDefault label={backLabel} visual="secondary" icon={ArrowLeft} onClick={() => navigate(backPath)} />
@@ -117,15 +102,6 @@ export function ApplicationDetail({
               icon={ArrowRight}
               onClick={() => navigate(`/applications/${workload.id}/scorecard`)}
             />
-          )}
-          {canUseAi && failedFindings.length > 0 && (
-            <FeatureGuard id="btn_remediate">
-              <ButtonDefault
-                label="Corrigir com ARIA"
-                icon={Bot}
-                onClick={() => navigate(`/scorecards/${workload.id}/remediate`)}
-              />
-            </FeatureGuard>
           )}
         </div>
 
@@ -145,10 +121,10 @@ export function ApplicationDetail({
               <div className="space-y-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <ScoreBadge score={workload.overallScore} />
-                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone(workload.complianceStatus)}`}>
+                  <span className={`rounded-[8px] px-3 py-1 text-xs font-semibold ${statusTone(workload.complianceStatus)}`}>
                     {formatEnum(workload.complianceStatus)}
                   </span>
-                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone(remediation?.status ?? workload.remediationStatus)}`}>
+                  <span className={`rounded-[8px] px-3 py-1 text-xs font-semibold ${statusTone(remediation?.status ?? workload.remediationStatus)}`}>
                     {formatEnum(remediation?.status ?? workload.remediationStatus)}
                   </span>
                 </div>
@@ -177,7 +153,7 @@ export function ApplicationDetail({
           <DetailPanel
             title="Resumo do workload"
             subtitle="Contexto operacional e leitura rápida."
-            headerMeta={<span className="rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>v{workload.version ?? 'N/D'}</span>}
+            headerMeta={<span className="rounded-[8px] px-3 py-1 text-xs font-semibold" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>v{workload.version ?? 'N/D'}</span>}
           >
             <div className="grid gap-3 md:grid-cols-4">
               {[
@@ -228,10 +204,10 @@ export function ApplicationDetail({
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
                               <p className="text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{finding.ruleName}</p>
-                              <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${severityColor(finding.severity)}`}>
+                              <span className={`rounded-[8px] border px-2.5 py-1 text-[11px] font-semibold ${severityColor(finding.severity)}`}>
                                 {formatEnum(finding.severity)}
                               </span>
-                              <span className="rounded-full px-2.5 py-1 text-[11px] font-semibold" style={{ backgroundColor: 'var(--color-card)', color: 'var(--color-muted-foreground)' }}>
+                              <span className="rounded-[8px] px-2.5 py-1 text-[11px] font-semibold" style={{ backgroundColor: 'var(--color-card)', color: 'var(--color-muted-foreground)' }}>
                                 {finding.ruleId}
                               </span>
                               {finding.remediationPending && (
@@ -239,8 +215,8 @@ export function ApplicationDetail({
                                   href={finding.remediationPrUrl ?? undefined}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold hover:opacity-80"
-                                  style={{ backgroundColor: 'rgba(59,130,246,0.1)', color: '#3b82f6' }}
+                                  className="flex items-center gap-1 rounded-[8px] px-2.5 py-1 text-[11px] font-semibold hover:opacity-80"
+                                  style={{ backgroundColor: 'rgba(59,130,246,0.1)', color: '#0784b0' }}
                                 >
                                   <GitPullRequest size={10} />
                                   PR em andamento
@@ -251,25 +227,15 @@ export function ApplicationDetail({
                               {finding.message ?? 'Sem mensagem detalhada para esta regra.'}
                             </p>
                           </div>
-                          <span className="rounded-full px-3 py-1 text-xs font-semibold" style={{ backgroundColor: 'rgba(239,68,68,0.1)', color: '#dc2626' }}>
+                          <span className="rounded-[8px] px-3 py-1 text-xs font-semibold" style={{ backgroundColor: 'rgba(239,68,68,0.1)', color: '#d8341a' }}>
                             Falhou
                           </span>
                         </div>
                         <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
-                          <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--color-card)', color: 'var(--color-muted-foreground)' }}>{formatEnum(finding.pillar)}</span>
-                          <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--color-card)', color: 'var(--color-muted-foreground)' }}>{formatEnum(finding.ruleType)}</span>
-                          {finding.weight !== null && <span className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--color-card)', color: 'var(--color-muted-foreground)' }}>peso {finding.weight}</span>}
-                          {finding.remediable && <span className="rounded-full px-3 py-1 font-semibold" style={{ backgroundColor: 'rgba(var(--color-primary-rgb),0.1)', color: 'var(--color-primary)' }}>Remediável</span>}
-                          {canUseAi && (
-                            <button
-                              onClick={() => setExplainFinding(finding)}
-                              className="flex items-center gap-1.5 rounded-full px-3 py-1 font-semibold transition-opacity hover:opacity-70"
-                              style={{ backgroundColor: 'rgba(139,92,246,0.1)', color: '#7c3aed' }}
-                            >
-                              <Sparkles size={10} />
-                              Explicar com ARIA
-                            </button>
-                          )}
+                          <span className="rounded-[8px] px-3 py-1" style={{ backgroundColor: 'var(--color-card)', color: 'var(--color-muted-foreground)' }}>{formatEnum(finding.pillar)}</span>
+                          <span className="rounded-[8px] px-3 py-1" style={{ backgroundColor: 'var(--color-card)', color: 'var(--color-muted-foreground)' }}>{formatEnum(finding.ruleType)}</span>
+                          {finding.weight !== null && <span className="rounded-[8px] px-3 py-1" style={{ backgroundColor: 'var(--color-card)', color: 'var(--color-muted-foreground)' }}>peso {finding.weight}</span>}
+                          {finding.remediable && <span className="rounded-[8px] px-3 py-1 font-semibold" style={{ backgroundColor: 'rgba(var(--color-primary-rgb),0.1)', color: 'var(--color-primary)' }}>Remediável</span>}
                         </div>
                       </div>
                     ))}
@@ -283,7 +249,7 @@ export function ApplicationDetail({
                       <div key={`${finding.ruleId}-passed`} className="rounded-2xl px-4 py-3" style={{ backgroundColor: 'var(--color-muted)' }}>
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{finding.ruleName}</p>
-                          <span className="rounded-full px-2.5 py-1 text-[11px] font-semibold" style={{ backgroundColor: 'rgba(16,185,129,0.1)', color: '#059669' }}>Passou</span>
+                          <span className="rounded-[8px] px-2.5 py-1 text-[11px] font-semibold" style={{ backgroundColor: 'rgba(16,185,129,0.1)', color: '#0e8a44' }}>Passou</span>
                         </div>
                         <p className="mt-1 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
                           {finding.ruleId} · {formatEnum(finding.pillar)} · {formatEnum(finding.severity)}
@@ -320,10 +286,10 @@ export function ApplicationDetail({
         {focus === 'remediation' && (
           <DetailPanel title="Estado de remediação" subtitle="Abra o detalhe só se houver ação registrada.">
             {workload.activeRemediation && (
-              <div className="mb-4 rounded-2xl border px-4 py-4" style={{ borderColor: 'rgba(59,130,246,0.3)', backgroundColor: 'rgba(59,130,246,0.06)' }}>
+              <div className="jc-alert jc-alert-info mb-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <GitPullRequest size={14} style={{ color: '#3b82f6' }} />
-                  <p className="text-sm font-semibold" style={{ color: '#3b82f6' }}>PR em andamento</p>
+                  <GitPullRequest size={14} style={{ color: '#0784b0' }} />
+                  <p className="text-sm font-semibold" style={{ color: '#0784b0' }}>PR em andamento</p>
                 </div>
                 <p className="text-xs mb-3" style={{ color: 'var(--color-muted-foreground)' }}>
                   Findings cobertos: {workload.activeRemediation.pendingRuleIds.join(', ') || 'todos'}

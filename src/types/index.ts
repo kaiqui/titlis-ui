@@ -576,6 +576,45 @@ export interface PostureTrendPoint {
   confidencePct: number
 }
 
+// RPM Fase C — ConfiaAI (titlis-lookout). Formato cru das rotas /v1/lookout/* (drizzle camelCase).
+export interface LookoutBriefing {
+  briefingId: number
+  scope: string
+  scopeRef: string | null
+  kind: string
+  title: string
+  bodyMd: string
+  severity: string
+  feedback: 'util' | 'ruido' | null
+  investigationId: number | null
+  createdAt: string
+}
+
+export interface LookoutPlaybook {
+  playbookId: number
+  title: string
+  appliesWhen: string | null
+  bodyMd: string
+  retired: boolean
+  revalidatedAt: string | null
+  createdAt: string
+}
+
+export interface LookoutInvestigation {
+  investigationId: number
+  workloadUid: string | null
+  triggerKind: string
+  hypothesis: string | null
+  verdict: string | null
+  confidence: string | null
+  createdAt: string
+}
+
+export interface LookoutServiceContext {
+  investigations: LookoutInvestigation[]
+  memory: Array<{ estateMemoryId: number; fact: string; confidence: string | null; lastConfirmedAt: string }>
+}
+
 export interface CoverageGraphNeighbor {
   provider: string
   kind: string

@@ -39,10 +39,10 @@ const PILLAR_ORDER = ['resilience', 'security', 'performance', 'operational', 'o
 const RULE_PILLAR_ORDER = PILLAR_ORDER
 
 const SEVERITY_STYLES: Record<string, { label: string; color: string; bg: string }> = {
-  error:    { label: 'Erro',    color: '#dc2626', bg: 'rgba(220,38,38,0.1)'  },
-  warning:  { label: 'Aviso',   color: '#d97706', bg: 'rgba(217,119,6,0.1)'  },
-  info:     { label: 'Info',    color: '#3b82f6', bg: 'rgba(59,130,246,0.1)' },
-  critical: { label: 'Crítico', color: '#7c3aed', bg: 'rgba(124,58,237,0.1)' },
+  error:    { label: 'Erro',    color: '#d8341a', bg: 'rgba(220,38,38,0.1)'  },
+  warning:  { label: 'Aviso',   color: '#a06e00', bg: 'rgba(217,119,6,0.1)'  },
+  info:     { label: 'Info',    color: '#0784b0', bg: 'rgba(59,130,246,0.1)' },
+  critical: { label: 'Crítico', color: '#c42bae', bg: 'rgba(124,58,237,0.1)' },
 }
 
 // Espelha os defaults do scoreops (internal/scoring/engine.go, defaultPillarWeights) — os dois
@@ -62,10 +62,10 @@ const SCOPE_LABELS: Record<ScopeType, string> = {
 }
 
 const SCOPE_COLORS: Record<ScopeType, { color: string; bg: string; border: string }> = {
-  tenant:    { color: '#3b82f6', bg: 'rgba(59,130,246,0.1)',  border: '#3b82f6' },
-  cluster:   { color: '#8b5cf6', bg: 'rgba(139,92,246,0.1)',  border: '#8b5cf6' },
-  namespace: { color: '#06b6d4', bg: 'rgba(6,182,212,0.1)',   border: '#06b6d4' },
-  workload:  { color: '#10b981', bg: 'rgba(16,185,129,0.1)',  border: '#10b981' },
+  tenant:    { color: '#0784b0', bg: 'rgba(59,130,246,0.1)',  border: '#0784b0' },
+  cluster:   { color: '#c42bae', bg: 'rgba(139,92,246,0.1)',  border: '#c42bae' },
+  namespace: { color: '#0784b0', bg: 'rgba(6,182,212,0.1)',   border: '#0784b0' },
+  workload:  { color: '#12a150', bg: 'rgba(16,185,129,0.1)',  border: '#12a150' },
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -74,7 +74,7 @@ function ScopePill({ scope }: { scope: ScopeType }) {
   const s = SCOPE_COLORS[scope]
   return (
     <span
-      className="inline-flex shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
+      className="inline-flex shrink-0 rounded-[8px] px-2.5 py-0.5 text-[11px] font-semibold"
       style={{ backgroundColor: s.bg, color: s.color }}
     >
       {SCOPE_LABELS[scope]}
@@ -201,13 +201,13 @@ function OverridePanel({ rule, overrides, workloads }: OverridePanelProps) {
                 {PILLAR_LABELS[rule.pillar] ?? rule.pillar}
               </span>
               <span
-                className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                className="rounded-[8px] px-2 py-0.5 text-[11px] font-semibold"
                 style={{ backgroundColor: sev.bg, color: sev.color }}
               >
                 {sev.label}
               </span>
               <span
-                className="rounded-full px-2 py-0.5 text-[11px]"
+                className="rounded-[8px] px-2 py-0.5 text-[11px]"
                 style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}
               >
                 padrão: {rule.enabled_by_default ? 'ativa' : 'inativa'}
@@ -241,10 +241,10 @@ function OverridePanel({ rule, overrides, workloads }: OverridePanelProps) {
                     {overrideScopeValue(o, workloads)}
                   </span>
                   <span
-                    className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold"
+                    className="shrink-0 rounded-[8px] px-2 py-0.5 text-[10px] font-bold"
                     style={o.enabled
-                      ? { backgroundColor: 'rgba(16,185,129,0.12)', color: '#10b981' }
-                      : { backgroundColor: 'rgba(220,38,38,0.08)', color: '#dc2626' }}
+                      ? { backgroundColor: 'rgba(16,185,129,0.12)', color: '#12a150' }
+                      : { backgroundColor: 'rgba(220,38,38,0.08)', color: '#d8341a' }}
                   >
                     {o.enabled ? 'Ativa' : 'Desativada'}
                   </span>
@@ -258,8 +258,8 @@ function OverridePanel({ rule, overrides, workloads }: OverridePanelProps) {
                   type="button"
                   onClick={() => void handleDelete(o.id)}
                   disabled={deletingId === o.id}
-                  className="shrink-0 rounded-full p-1.5 transition-colors disabled:opacity-40"
-                  style={{ color: '#dc2626' }}
+                  className="shrink-0 rounded-[6px] p-1.5 transition-colors disabled:opacity-40"
+                  style={{ color: '#d8341a' }}
                   title="Remover override"
                 >
                   <Trash2 size={14} />
@@ -290,7 +290,7 @@ function OverridePanel({ rule, overrides, workloads }: OverridePanelProps) {
                   key={s}
                   type="button"
                   onClick={() => handleScopeChange(s)}
-                  className="rounded-full px-4 py-1.5 text-sm font-semibold transition-all"
+                  className="rounded-[8px] px-4 py-1.5 text-sm font-semibold transition-all"
                   style={active
                     ? { backgroundColor: c.bg, color: c.color, border: `1.5px solid ${c.border}` }
                     : { backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)', border: '1.5px solid transparent' }}
@@ -367,9 +367,9 @@ function OverridePanel({ rule, overrides, workloads }: OverridePanelProps) {
             <button
               type="button"
               onClick={() => setEnabled(false)}
-              className="rounded-full px-4 py-1.5 text-sm font-semibold transition-all"
+              className="rounded-[8px] px-4 py-1.5 text-sm font-semibold transition-all"
               style={!enabled
-                ? { backgroundColor: 'rgba(220,38,38,0.08)', color: '#dc2626', border: '1.5px solid #dc2626' }
+                ? { backgroundColor: 'rgba(220,38,38,0.08)', color: '#d8341a', border: '1.5px solid #d8341a' }
                 : { backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)', border: '1.5px solid transparent' }}
             >
               Desativar
@@ -377,9 +377,9 @@ function OverridePanel({ rule, overrides, workloads }: OverridePanelProps) {
             <button
               type="button"
               onClick={() => setEnabled(true)}
-              className="rounded-full px-4 py-1.5 text-sm font-semibold transition-all"
+              className="rounded-[8px] px-4 py-1.5 text-sm font-semibold transition-all"
               style={enabled
-                ? { backgroundColor: 'rgba(16,185,129,0.12)', color: '#10b981', border: '1.5px solid #10b981' }
+                ? { backgroundColor: 'rgba(16,185,129,0.12)', color: '#12a150', border: '1.5px solid #12a150' }
                 : { backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)', border: '1.5px solid transparent' }}
             >
               Ativar
@@ -404,7 +404,7 @@ function OverridePanel({ rule, overrides, workloads }: OverridePanelProps) {
         </div>
 
         {formError && (
-          <p className="mb-3 text-sm" style={{ color: '#dc2626' }}>{formError}</p>
+          <p className="mb-3 text-sm" style={{ color: '#d8341a' }}>{formError}</p>
         )}
 
         <ButtonDefault
@@ -483,15 +483,15 @@ function RulesTab() {
     <div className="flex flex-col gap-4">
       {/* Sincronização do catálogo — fonte de verdade é o titlis-scoreops (config.rule_catalog_synced) */}
       <div className="flex flex-wrap items-center justify-end gap-2">
-        {syncError && <span className="text-sm" style={{ color: '#dc2626' }}>{syncError}</span>}
+        {syncError && <span className="text-sm" style={{ color: '#d8341a' }}>{syncError}</span>}
         {syncedCount !== null && !syncError && (
-          <span className="text-sm" style={{ color: '#10b981' }}>{syncedCount} regras sincronizadas</span>
+          <span className="text-sm" style={{ color: '#12a150' }}>{syncedCount} regras sincronizadas</span>
         )}
         <button
           type="button"
           onClick={() => void handleSyncCatalog()}
           disabled={syncing}
-          className="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold transition-all disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-[8px] px-4 py-1.5 text-sm font-semibold transition-all disabled:opacity-50"
           style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-foreground)' }}
         >
           <RefreshCw size={14} className={syncing ? 'animate-spin' : undefined} />
@@ -531,7 +531,7 @@ function RulesTab() {
                 key={tab.id}
                 type="button"
                 onClick={() => setPillarFilter(tab.id)}
-                className="rounded-full px-3 py-1 text-xs font-semibold transition-all"
+                className="rounded-[8px] px-3 py-1 text-xs font-semibold transition-all"
                 style={pillarFilter === tab.id
                   ? { backgroundColor: 'var(--color-primary)', color: '#fff' }
                   : { backgroundColor: 'transparent', color: 'var(--color-muted-foreground)' }}
@@ -574,8 +574,8 @@ function RulesTab() {
                       </span>
                       {count > 0 && (
                         <span
-                          className="shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold"
-                          style={{ backgroundColor: 'rgba(59,130,246,0.12)', color: '#3b82f6' }}
+                          className="shrink-0 rounded-[8px] px-1.5 py-0.5 text-[10px] font-bold"
+                          style={{ backgroundColor: 'rgba(59,130,246,0.12)', color: '#0784b0' }}
                           title={`${count} override${count > 1 ? 's' : ''} configurado${count > 1 ? 's' : ''}`}
                         >
                           {count}
@@ -592,7 +592,7 @@ function RulesTab() {
 
                   <div className="flex shrink-0 items-center gap-2">
                     <span
-                      className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
+                      className="rounded-[8px] px-2 py-0.5 text-[11px] font-semibold"
                       style={{ backgroundColor: sev.bg, color: sev.color }}
                     >
                       {sev.label}
@@ -622,7 +622,7 @@ function RulesTab() {
           <Card>
             <div className="flex flex-col items-center py-14 text-center">
               <div
-                className="mb-4 flex h-12 w-12 items-center justify-center rounded-full"
+                className="mb-4 flex h-12 w-12 items-center justify-center rounded-[12px]"
                 style={{ backgroundColor: 'var(--color-muted)' }}
               >
                 <Search size={22} style={{ color: 'var(--color-muted-foreground)' }} />
@@ -737,13 +737,13 @@ function WeightsTab() {
           }}
         >
           <span className="text-sm font-semibold" style={{ color: 'var(--color-foreground)' }}>Total</span>
-          <span className="text-sm font-bold" style={{ color: total === 100 ? '#10b981' : '#dc2626' }}>
+          <span className="text-sm font-bold" style={{ color: total === 100 ? '#12a150' : '#d8341a' }}>
             {total}%
           </span>
         </div>
 
-        {validationError && <p className="mt-3 text-sm" style={{ color: '#dc2626' }}>{validationError}</p>}
-        {saveError       && <p className="mt-3 text-sm" style={{ color: '#dc2626' }}>{saveError}</p>}
+        {validationError && <p className="mt-3 text-sm" style={{ color: '#d8341a' }}>{validationError}</p>}
+        {saveError       && <p className="mt-3 text-sm" style={{ color: '#d8341a' }}>{saveError}</p>}
 
         <div className="mt-5 flex items-center gap-3">
           <ButtonDefault
@@ -753,7 +753,7 @@ function WeightsTab() {
           />
           <AnimatePresence>
           {saved && (
-            <motion.div {...fadeInUp} className="flex items-center gap-1.5 text-sm" style={{ color: '#10b981' }}>
+            <motion.div {...fadeInUp} className="flex items-center gap-1.5 text-sm" style={{ color: '#12a150' }}>
               <Check size={14} />
               Salvo com sucesso
             </motion.div>
@@ -781,10 +781,10 @@ function WeightsTab() {
 // ─── TagPoliciesTab ───────────────────────────────────────────────────────────
 
 const TAG_SEVERITY_STYLES: Record<string, { label: string; color: string; bg: string }> = {
-  info:     { label: 'Info',     color: '#3b82f6', bg: 'rgba(59,130,246,0.1)'  },
-  warning:  { label: 'Aviso',    color: '#d97706', bg: 'rgba(217,119,6,0.1)'   },
-  critical: { label: 'Crítico',  color: '#7c3aed', bg: 'rgba(124,58,237,0.1)'  },
-  blocker:  { label: 'Blocker',  color: '#dc2626', bg: 'rgba(220,38,38,0.1)'   },
+  info:     { label: 'Info',     color: '#0784b0', bg: 'rgba(59,130,246,0.1)'  },
+  warning:  { label: 'Aviso',    color: '#a06e00', bg: 'rgba(217,119,6,0.1)'   },
+  critical: { label: 'Crítico',  color: '#c42bae', bg: 'rgba(124,58,237,0.1)'  },
+  blocker:  { label: 'Blocker',  color: '#d8341a', bg: 'rgba(220,38,38,0.1)'   },
 }
 
 function TagPoliciesTab() {
@@ -838,7 +838,7 @@ function TagPoliciesTab() {
   }
 
   if (isLoading) return <div className="py-8 text-center text-sm" style={{ color: 'var(--color-muted-foreground)' }}>Carregando…</div>
-  if (isError) return <div className="py-8 text-center text-sm text-red-500">Erro ao carregar políticas.</div>
+  if (isError) return <div className="py-8 text-center text-sm text-[var(--color-danger)]">Erro ao carregar políticas.</div>
 
   return (
     <div className="space-y-6">
@@ -915,7 +915,7 @@ function TagPoliciesTab() {
             </div>
           )}
 
-          {saveError && <p className="text-[12px] text-red-500">{saveError}</p>}
+          {saveError && <p className="text-[12px] text-[var(--color-danger)]">{saveError}</p>}
 
           <ButtonDefault
             label={saving ? 'Salvando…' : 'Criar política'}
@@ -946,7 +946,7 @@ function TagPoliciesTab() {
                 >
                   <div className="flex flex-wrap items-center gap-2">
                     <span
-                      className="rounded-full px-2.5 py-0.5 text-[12px] font-semibold"
+                      className="rounded-[8px] px-2.5 py-0.5 text-[12px] font-semibold"
                       style={{ backgroundColor: 'var(--color-primary-soft)', color: 'var(--color-primary)' }}
                     >
                       {p.tag}
@@ -954,14 +954,14 @@ function TagPoliciesTab() {
                     <span className="text-[12px]" style={{ color: 'var(--color-muted-foreground)' }}>→ desabilitar</span>
                     {sev ? (
                       <span
-                        className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
+                        className="rounded-[8px] px-2.5 py-0.5 text-[11px] font-semibold"
                         style={{ backgroundColor: sev.bg, color: sev.color }}
                       >
                         {sev.label}
                       </span>
                     ) : (
                       <span
-                        className="rounded-full px-2.5 py-0.5 text-[11px] font-mono font-semibold"
+                        className="rounded-[8px] px-2.5 py-0.5 text-[11px] font-mono font-semibold"
                         style={{ backgroundColor: 'rgba(107,114,128,0.12)', color: 'var(--color-muted-foreground)' }}
                       >
                         {p.rule_id}
@@ -973,7 +973,7 @@ function TagPoliciesTab() {
                     onClick={() => void handleDelete(p.id)}
                     disabled={deletingId === p.id}
                     className="shrink-0 rounded-lg p-1.5 transition-opacity hover:opacity-70 disabled:opacity-30"
-                    style={{ color: '#dc2626' }}
+                    style={{ color: '#d8341a' }}
                     title="Remover política"
                   >
                     <Trash2 size={14} />

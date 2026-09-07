@@ -7,8 +7,6 @@ import {
   Copy,
   FileQuestion,
   Network,
-  Sparkles,
-  Wrench,
 } from 'lucide-react'
 import { motion } from 'motion/react'
 import { Card } from '@/components/jeitto/Card'
@@ -19,7 +17,6 @@ import { PageError, PageLoading } from '@/components/jeitto/PageState'
 import { ScoreRing } from '@/components/jeitto/ScoreRing'
 import { Header } from '@/components/layout/Header'
 import { SummaryStrip } from '@/components/sre/SummaryStrip'
-import { CoverageExplainDrawer } from '@/components/ai/CoverageExplainDrawer'
 import { useCoverageDetail, useCoverageGraph } from '@/hooks/useApi'
 import { formatDate, formatNumber, severityColor } from '@/lib/utils'
 import {
@@ -27,13 +24,12 @@ import {
   dimensionLabel,
   distinctNaSources,
   findingsForDimension,
-  isFindingRemediable,
   naGroupsForDimension,
   overallBand,
   postureBand,
   stripIcon,
 } from '@/lib/posture'
-import type { CoverageDimension, CoverageFinding, CoverageGraphNeighbor, CoverageScorecard } from '@/types'
+import type { CoverageDimension, CoverageGraphNeighbor, CoverageScorecard } from '@/types'
 
 function isPendingCoverage(trustScore: number | null, dimensionCount: number, findingCount: number): boolean {
   return trustScore === null && dimensionCount === 0 && findingCount === 0
@@ -60,7 +56,6 @@ export function CoverageDetail() {
   const navigate = useNavigate()
   const detail = useCoverageDetail(uid)
   const graph = useCoverageGraph(uid)
-  const [explain, setExplain] = useState<CoverageFinding | null>(null)
   const [copied, setCopied] = useState(false)
 
   if (detail.isLoading) return <><Header title="Detalhe da postura" /><PageLoading /></>
@@ -100,8 +95,6 @@ export function CoverageDetail() {
     })
   }
 
-  const remediate = () => navigate(`/scorecards/${encodeURIComponent(sc.workloadUid)}/remediate`)
-
   return (
     <div className="flex min-h-screen flex-col">
       <Header
@@ -115,11 +108,11 @@ export function CoverageDetail() {
           <button
             type="button"
             onClick={handleCopyUid}
-            className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-[11px] transition-colors hover:opacity-80"
+            className="inline-flex items-center gap-1.5 rounded-[8px] border px-3 py-1.5 font-mono text-[11px] transition-colors hover:opacity-80"
             style={{ borderColor: 'var(--color-border)', color: 'var(--color-muted-foreground)' }}
             title="Copiar UID do workload"
           >
-            {copied ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
+            {copied ? <Check className="h-3 w-3 text-[var(--color-success)]" /> : <Copy className="h-3 w-3" />}
             {copied ? 'Copiado!' : sc.workloadUid}
           </button>
         </div>
@@ -148,7 +141,7 @@ export function CoverageDetail() {
                 <div className="min-w-0 flex-1 space-y-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <span
-                      className="rounded-full px-3 py-1 text-sm font-bold"
+                      className="rounded-[8px] px-3 py-1 text-sm font-bold"
                       style={{ color: band.color, backgroundColor: 'var(--color-muted)' }}
                     >
                       {formatNumber(sc.trustScore)} · {band.label}
@@ -178,16 +171,7 @@ export function CoverageDetail() {
                 <div key={m.code} className="flex items-baseline gap-3 py-2.5 text-sm">
                   <span className="font-mono text-xs" style={{ color: 'var(--color-primary)' }}>{String(m.rank).padStart(2, '0')}</span>
                   <span className="min-w-0">{stripIcon(m.description)}</span>
-                  {m.isRemediable && (
-                    <button
-                      onClick={remediate}
-                      className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium hover:opacity-80"
-                      style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }}
-                    >
-                      <Wrench className="h-3 w-3" />Corrigir com IA
-                    </button>
-                  )}
-                  <span className="ml-auto whitespace-nowrap font-mono text-xs" style={{ color: '#16a34a' }}>+{Math.round(m.lift)}</span>
+                  <span className="ml-auto whitespace-nowrap font-mono text-xs" style={{ color: '#12a150' }}>+{Math.round(m.lift)}</span>
                 </div>
               ))}
             </div>
@@ -202,8 +186,6 @@ export function CoverageDetail() {
                 sc={sc}
                 d={d}
                 index={index}
-                onExplain={setExplain}
-                onRemediate={remediate}
               />
             ))}
           </div>
@@ -242,15 +224,6 @@ export function CoverageDetail() {
           </Card>
         )}
 
-        {explain && (
-          <CoverageExplainDrawer
-            finding={explain}
-            workloadUid={sc.workloadUid}
-            serviceName={sc.serviceName ?? sc.workloadUid}
-            cluster={sc.cluster}
-            onClose={() => setExplain(null)}
-          />
-        )}
       </div>
     </div>
   )
@@ -260,14 +233,10 @@ function DimensionCard({
   sc,
   d,
   index,
-  onExplain,
-  onRemediate,
 }: {
   sc: CoverageScorecard
   d: CoverageDimension
   index: number
-  onExplain: (f: CoverageFinding) => void
-  onRemediate: () => void
 }) {
   const [open, setOpen] = useState(false)
   const [showPass, setShowPass] = useState(false)
@@ -285,16 +254,16 @@ function DimensionCard({
         <button type="button" onClick={() => setOpen((o) => !o)} className="w-full text-left">
           <div className="flex items-center justify-between gap-3">
             <p className="truncate font-semibold">{d.label ?? dimensionLabel(d.pillar)}</p>
-            <span className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ color: band.color, backgroundColor: 'var(--color-muted)' }}>
+            <span className="shrink-0 rounded-[8px] px-2 py-0.5 text-[11px] font-semibold" style={{ color: band.color, backgroundColor: 'var(--color-muted)' }}>
               {band.label}
             </span>
           </div>
           {d.question && (
             <p className="mt-1 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>{d.question}</p>
           )}
-          <div className="mt-3 h-1.5 overflow-hidden rounded-full" style={{ backgroundColor: 'var(--color-border)' }}>
+          <div className="mt-3 h-1.5 overflow-hidden rounded-[4px]" style={{ backgroundColor: 'var(--color-border)' }}>
             <motion.div
-              className="h-full rounded-full"
+              className="h-full rounded-[4px]"
               style={{ backgroundColor: band.color }}
               initial={{ width: 0 }}
               animate={{ width: `${pct}%` }}
@@ -323,27 +292,10 @@ function DimensionCard({
                     <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[10px]" style={{ color: 'var(--color-muted-foreground)' }}>
                       {f.source && <span className="font-mono">{f.source}</span>}
                       {f.severity && (
-                        <span className={`rounded-full border px-1.5 py-px font-semibold uppercase ${severityColor(f.severity)}`}>{f.severity}</span>
+                        <span className={`rounded-[6px] border px-1.5 py-px font-semibold uppercase ${severityColor(f.severity)}`}>{f.severity}</span>
                       )}
                       <span className="rounded bg-[var(--color-muted)] px-1 py-px font-mono">{f.code}</span>
                     </p>
-                    <div className="mt-2 flex gap-2">
-                      <button
-                        onClick={() => onExplain(f)}
-                        className="inline-flex items-center gap-1 rounded-full border border-[var(--color-border)] px-2.5 py-1 text-[11px] font-medium hover:opacity-80"
-                      >
-                        <Sparkles className="h-3 w-3" />Explicar com IA
-                      </button>
-                      {isFindingRemediable(f) && (
-                        <button
-                          onClick={onRemediate}
-                          className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium hover:opacity-80"
-                          style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }}
-                        >
-                          <Wrench className="h-3 w-3" />Corrigir com IA
-                        </button>
-                      )}
-                    </div>
                   </div>
                 ))}
               </div>
@@ -368,7 +320,7 @@ function DimensionCard({
                 <button
                   type="button"
                   onClick={() => setShowPass((s) => !s)}
-                  className="text-[11px] font-semibold uppercase tracking-wide text-emerald-500"
+                  className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-success)]"
                 >
                   {passes.length} {passes.length === 1 ? 'check OK' : 'checks OK'} {showPass ? '▲' : '▼'}
                 </button>

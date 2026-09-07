@@ -37,7 +37,7 @@ export function Header({ title, subtitle, timeRange }: HeaderProps) {
           {timeRange && <TimeRangePicker />}
           {user && (
             <div
-              className="flex items-center gap-3 rounded-full border px-4 py-2 text-sm"
+              className="flex items-center gap-3 rounded-[8px] border px-4 py-2 text-sm"
               style={{
                 borderColor: 'var(--color-border)',
                 backgroundColor: 'var(--color-card)',
@@ -51,7 +51,7 @@ export function Header({ title, subtitle, timeRange }: HeaderProps) {
               <button
                 type="button"
                 onClick={signOut}
-                className="rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-[0.14em]"
+                className="rounded-[8px] border px-3 py-1.5 text-xs font-bold uppercase tracking-[0.14em]"
                 style={{ borderColor: 'var(--color-border)', color: 'var(--color-muted-foreground)' }}
               >
                 Sair
@@ -66,7 +66,7 @@ export function Header({ title, subtitle, timeRange }: HeaderProps) {
           <motion.button
             onClick={toggleTheme}
             whileTap={{ scale: 0.94 }}
-            className="button-nav inline-flex items-center gap-2 rounded-full border px-4 py-2.5 text-sm transition-transform hover:-translate-y-0.5"
+            className="button-nav inline-flex items-center gap-2 rounded-[8px] border px-4 py-2.5 text-sm transition-transform hover:-translate-y-0.5"
             style={{
               borderColor: 'var(--color-border)',
               backgroundColor: 'var(--color-card)',

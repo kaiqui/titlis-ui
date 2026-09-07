@@ -24,10 +24,10 @@ export function dimensionLabel(p: string): string {
 }
 
 export const POSTURE_BAND: Record<string, { label: string; color: string }> = {
-  forte: { label: 'Forte', color: '#16a34a' },
-  adequado: { label: 'Adequado', color: '#d97706' },
-  fragil: { label: 'Frágil', color: '#ea580c' },
-  exposto: { label: 'Exposto', color: '#dc2626' },
+  forte: { label: 'Forte', color: '#12a150' },
+  adequado: { label: 'Adequado', color: '#a06e00' },
+  fragil: { label: 'Frágil', color: '#ff542b' },
+  exposto: { label: 'Exposto', color: '#d8341a' },
   sem_sinal: { label: 'Sem sinal', color: 'var(--color-muted-foreground)' },
 }
 

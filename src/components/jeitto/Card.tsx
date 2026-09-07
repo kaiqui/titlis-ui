@@ -12,15 +12,15 @@ export function Card({ children, className, onClick, hover }: CardProps) {
     <section
       onClick={onClick}
       className={cn(
-        'relative overflow-hidden rounded-[2rem] border p-5 transition-all duration-200',
-        hover && 'cursor-pointer hover:-translate-y-1 hover:shadow-2xl hover:saturate-[1.02]',
+        'relative overflow-hidden rounded-[14px] border-2 p-5 transition-transform duration-100',
+        hover && 'cursor-pointer hover:-translate-x-0.5 hover:-translate-y-0.5',
         onClick && 'cursor-pointer',
         className,
       )}
       style={{
         background: 'var(--color-card)',
-        borderColor: 'var(--color-border)',
-        boxShadow: '0 10px 24px rgba(15, 23, 42, 0.06)',
+        borderColor: 'var(--color-foreground)',
+        boxShadow: 'var(--shadow-brutal)',
       }}
     >
       <div className="relative z-[1]">{children}</div>

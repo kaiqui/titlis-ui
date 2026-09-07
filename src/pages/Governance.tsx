@@ -3,11 +3,10 @@ import { AnimatePresence, motion } from 'motion/react'
 import { Header } from '@/components/layout/Header'
 import { AdminOverview } from './AdminOverview'
 import { EvolutionHistory } from './EvolutionHistory'
-import { RemediationHistory } from './RemediationHistory'
 import { useAuth } from '@/contexts/useAuth'
 import { fadeInUp } from '@/lib/motion/tokens'
 
-type GovernanceTab = 'evolution' | 'history' | 'overview'
+type GovernanceTab = 'evolution' | 'overview'
 
 export function Governance() {
   const { user } = useAuth()
@@ -17,7 +16,6 @@ export function Governance() {
 
   const tabs: { id: GovernanceTab; label: string }[] = [
     { id: 'evolution', label: 'Evolução' },
-    { id: 'history', label: 'Histórico de Remediações' },
     ...(isAdmin ? [{ id: 'overview' as GovernanceTab, label: 'Visão Executiva' }] : []),
   ]
 
@@ -35,7 +33,7 @@ export function Governance() {
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className="rounded-full border px-4 py-1.5 text-sm font-semibold transition-all"
+              className="rounded-[8px] border px-4 py-1.5 text-sm font-semibold transition-all"
               style={
                 activeTab === tab.id
                   ? { backgroundColor: 'var(--color-primary)', color: '#fff', borderColor: 'var(--color-primary)' }
@@ -51,7 +49,6 @@ export function Governance() {
       <AnimatePresence mode="wait">
         <motion.div key={activeTab} {...fadeInUp}>
           {activeTab === 'evolution' && <EvolutionHistory standalone={false} />}
-          {activeTab === 'history' && <RemediationHistory standalone={false} />}
           {activeTab === 'overview' && isAdmin && <AdminOverview standalone={false} />}
         </motion.div>
       </AnimatePresence>

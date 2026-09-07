@@ -15,7 +15,7 @@ export function InfoTip({ content, label, side = 'top' }: InfoTipProps) {
           <button
             type="button"
             aria-label={label ?? content}
-            className="inline-flex h-4 w-4 items-center justify-center rounded-full border align-middle outline-none transition-colors hover:text-[var(--color-primary)] hover:border-[var(--color-primary)] focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
+            className="inline-flex h-4 w-4 items-center justify-center rounded-[4px] border align-middle outline-none transition-colors hover:text-[var(--color-primary)] hover:border-[var(--color-primary)] focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
             style={{
               borderColor: 'var(--color-border)',
               color: 'var(--color-muted-foreground)',

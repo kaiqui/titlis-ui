@@ -22,7 +22,7 @@ export function FocusTabs({ items, active, onChange }: FocusTabsProps) {
           <button
             key={item.id}
             onClick={() => onChange(item.id)}
-            className={cn('rounded-full border px-4 py-2 text-sm font-semibold transition-colors')}
+            className={cn('rounded-[8px] border px-4 py-2 text-sm font-semibold transition-colors')}
             style={{
               borderColor: isActive ? 'var(--color-primary)' : 'var(--color-border)',
               backgroundColor: isActive ? 'var(--color-primary-soft)' : 'var(--color-card)',
@@ -33,7 +33,7 @@ export function FocusTabs({ items, active, onChange }: FocusTabsProps) {
             {item.label}
             {item.count !== undefined && (
               <span
-                className="ml-2 rounded-full px-2 py-0.5 text-xs"
+                className="ml-2 rounded-[8px] px-2 py-0.5 text-xs"
                 style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}
               >
                 {item.count}

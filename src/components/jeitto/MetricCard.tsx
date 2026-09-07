@@ -46,8 +46,8 @@ export function MetricCard({
               </p>
             )}
             {trend && trendValue && (
-              <div className={`mt-4 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
-                trend === 'up' ? 'bg-emerald-500/10 text-emerald-500' : trend === 'down' ? 'bg-red-500/10 text-red-500' : 'bg-slate-500/10 text-slate-500'
+              <div className={`mt-4 inline-flex items-center gap-1 rounded-[8px] px-2.5 py-1 text-xs font-semibold ${
+                trend === 'up' ? 'bg-[var(--color-success-soft)] text-[var(--color-success)]' : trend === 'down' ? 'bg-[var(--color-danger-soft)] text-[var(--color-danger)]' : 'bg-slate-500/10 text-slate-500'
               }`}>
                 {trend === 'up' ? <TrendingUp size={12} /> : trend === 'down' ? <TrendingDown size={12} /> : <Minus size={12} />}
                 {trendValue}

@@ -7,12 +7,12 @@ enviar notificações e criar PRs de correção.
 
 ## GitHub
 
-A integração com GitHub é necessária para que o ARIA e as campanhas possam criar
+A integração com GitHub é necessária para que o ConfiaAI e as campanhas possam criar
 branches, commits e Pull Requests nos repositórios dos seus workloads.
 
 ### Configurar
 
-1. Acesse **Configurações → Configurar ARIA**
+1. Acesse **Configurações → Integrações**
 2. No campo **Token do GitHub**, informe um:
    - **Personal Access Token (PAT)** com escopo `repo` e `workflow`; ou
    - **Token de GitHub App** instalado nos repositórios de destino
@@ -38,7 +38,7 @@ branches, commits e Pull Requests nos repositórios dos seus workloads.
 ### Configurando o webhook (campanhas)
 
 Para que as campanhas avancem automaticamente ao detectar merges, configure um webhook
-no GitHub apontando para a plataforma. Na tela **Configurações → Configurar ARIA**,
+no GitHub apontando para a plataforma. Na tela **Configurações → Integrações**,
 há um botão **Copiar URL do webhook**. Configure no GitHub com:
 - **URL:** a URL copiada da plataforma
 - **Content type:** `application/json`
@@ -57,7 +57,7 @@ A integração com Datadog permite que o Titlis:
 1. No Datadog, crie uma API Key e uma Application Key com as permissões:
    - API Key: permissão padrão de ingestão
    - Application Key: `metrics_read`, `slos_read`, `slos_write`
-2. Acesse **Configurações → Configurar ARIA** na plataforma
+2. Acesse **Configurações → Integrações** na plataforma
 3. Preencha os campos **Datadog API Key** e **Datadog Application Key**
 4. Selecione o **site** Datadog da sua organização (US1, US3, EU1, etc.)
 5. Clique em **Testar conexão** para validar
@@ -86,14 +86,14 @@ relevantes acontecem na plataforma.
 | Nova degradação crítica | Um workload entra em estado Critical |
 | Breach de SLO | Um SLO viola a meta na janela atual |
 | Campanha iniciada | Uma nova campanha de remediação começa |
-| PR criado | ARIA ou campanha abre um PR no GitHub |
+| PR criado | ConfiaAI ou campanha abre um PR no GitHub |
 | Aprovação necessária | Campanha aguardando aprovação para promoção em prd |
 
 ### Configurar
 
 1. No Slack, crie um Incoming Webhook para o canal de destino
    (Configurações do workspace → Aplicativos → Incoming Webhooks)
-2. Acesse **Configurações → Configurar ARIA** na plataforma
+2. Acesse **Configurações → Integrações** na plataforma
 3. Preencha a **URL do Webhook do Slack**
 4. Selecione as categorias de eventos que deseja receber
 5. Salve e use o botão **Enviar teste** para verificar
@@ -122,7 +122,7 @@ tiers, lifecycle — para enriquecer os scorecards e a Topologia.
 ### Configurar
 
 1. No Backstage, gere um token de acesso para a API catalog
-2. Acesse **Configurações → Configurar ARIA** na plataforma
+2. Acesse **Configurações → Integrações** na plataforma
 3. Preencha a **URL do Backstage** e o **Token de API**
 4. Clique em **Sincronizar catálogo** para importação inicial
 
@@ -135,7 +135,7 @@ A sincronização acontece automaticamente a cada ciclo do operator após a conf
 **Preciso de todas as integrações para usar a plataforma?**
 Não. Cada integração habilita uma feature específica:
 - Sem GitHub: scorecard e SLOs funcionam, mas sem remediação automática
-- Sem Datadog: scorecard e ARIA funcionam, mas sem recomendações de HPA e sem sincronização de SLO
+- Sem Datadog: scorecard e ConfiaAI funcionam, mas sem recomendações de HPA e sem sincronização de SLO
 - Sem Slack: tudo funciona, sem notificações
 - Sem Backstage: tudo funciona, metadados de owner precisam ser configurados manualmente
 

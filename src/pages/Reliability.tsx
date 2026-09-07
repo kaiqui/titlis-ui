@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Gauge, Sparkles, Wrench } from 'lucide-react'
+import { Gauge } from 'lucide-react'
 import { motion } from 'motion/react'
 import { Card } from '@/components/jeitto/Card'
 import { fadeInUp } from '@/lib/motion/tokens'
@@ -48,7 +48,7 @@ function Sparkline({ points }: { points: PostureTrendPoint[] }) {
   const up = vals[vals.length - 1] >= vals[0]
   return (
     <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} aria-label="tendência da postura">
-      <polyline points={coords} fill="none" stroke={up ? '#16a34a' : '#ef4444'} strokeWidth={2} strokeLinejoin="round" />
+      <polyline points={coords} fill="none" stroke={up ? '#12a150' : '#d8341a'} strokeWidth={2} strokeLinejoin="round" />
     </svg>
   )
 }
@@ -95,7 +95,7 @@ export function Reliability() {
               <ScoreRing score={root.postureWeighted} size={88} strokeWidth={8} showFraction />
               <div>
                 <p className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full px-3 py-1 text-sm font-bold" style={{ color: band.color, backgroundColor: 'var(--color-muted)' }}>
+                  <span className="rounded-[8px] px-3 py-1 text-sm font-bold" style={{ color: band.color, backgroundColor: 'var(--color-muted)' }}>
                     {formatNumber(root.postureWeighted)} · {band.label}
                   </span>
                 </p>
@@ -140,15 +140,10 @@ export function Reliability() {
                 <div key={m.code} className="flex items-baseline gap-3 py-2 text-sm">
                   <span className="font-mono text-xs" style={{ color: 'var(--color-primary)' }}>{String(i + 1).padStart(2, '0')}</span>
                   <span className="min-w-0">{stripIcon(m.description)}</span>
-                  <span className="shrink-0 rounded-full px-1.5 py-0.5 text-[10px]" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
+                  <span className="shrink-0 rounded-[8px] px-1.5 py-0.5 text-[10px]" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
                     {m.serviceCount} serviço{m.serviceCount === 1 ? '' : 's'}
                   </span>
-                  {m.isRemediable && (
-                    <Link to="/aria" className="inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium" style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }}>
-                      <Wrench size={10} />ARIA
-                    </Link>
-                  )}
-                  <span className="ml-auto shrink-0 font-mono text-xs" style={{ color: '#16a34a' }}>+{Math.round(m.totalLift / Math.max(1, m.serviceCount))}</span>
+                  <span className="ml-auto shrink-0 font-mono text-xs" style={{ color: '#12a150' }}>+{Math.round(m.totalLift / Math.max(1, m.serviceCount))}</span>
                 </div>
               ))}
             </div>
@@ -187,17 +182,13 @@ export function Reliability() {
                         {leaf.tier && <span className="ml-2 text-[10px]" style={{ color: 'var(--color-muted-foreground)' }}>tier {leaf.tier}</span>}
                       </td>
                       <td className="py-2 pr-4">
-                        <span className="rounded-full px-2 py-0.5 text-xs font-semibold" style={{ color: lband.color, backgroundColor: 'var(--color-muted)' }}>
+                        <span className="rounded-[8px] px-2 py-0.5 text-xs font-semibold" style={{ color: lband.color, backgroundColor: 'var(--color-muted)' }}>
                           {formatNumber(leaf.trustScore ?? null)} · {lband.label}
                         </span>
                       </td>
                       <td className="py-2 pr-4" style={{ color: 'var(--color-muted-foreground)' }}>{weak ? weak.label : 'sinal insuficiente'}</td>
-                      <td className="py-2 pr-4 font-mono text-xs" style={{ color: '#16a34a' }}>{lift > 0 ? `+${Math.round(lift)}` : '—'}</td>
-                      <td className="py-2">
-                        <Link to="/aria" className="inline-flex items-center gap-1 text-xs" style={{ color: 'var(--color-primary)' }}>
-                          <Sparkles size={12} />ARIA
-                        </Link>
-                      </td>
+                      <td className="py-2 pr-4 font-mono text-xs" style={{ color: '#12a150' }}>{lift > 0 ? `+${Math.round(lift)}` : '—'}</td>
+                      <td className="py-2" />
                     </motion.tr>
                   )
                 })}

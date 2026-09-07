@@ -10,7 +10,7 @@ interface AuthGateProps {
 function AuthLoading() {
   return (
     <div className="flex min-h-screen items-center justify-center px-6" style={{ background: 'var(--app-background)' }}>
-      <div className="w-full max-w-md rounded-[2rem] border p-8 text-center" style={{ borderColor: 'var(--color-border)', background: 'var(--color-card)' }}>
+      <div className="w-full max-w-md rounded-[var(--radius-nb-lg)] border-2 p-8 text-center" style={{ borderColor: 'var(--color-foreground)', background: 'var(--color-card)', boxShadow: 'var(--shadow-brutal)' }}>
         <p className="family-neighbor text-lg font-black" style={{ color: 'var(--color-foreground)' }}>
           Carregando acesso
         </p>

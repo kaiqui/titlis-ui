@@ -28,6 +28,9 @@ import type {
   CoverageScorecard,
   ServiceMap,
   EstateNode,
+  LookoutBriefing,
+  LookoutPlaybook,
+  LookoutServiceContext,
   PostureTrendPoint,
   SloLookupResult,
   WorkloadDetail,
@@ -715,78 +718,6 @@ export interface DatadogProbeResult {
 export interface DatadogConfigStatus {
   configured: boolean
   probeStatus: 'ok' | 'error' | 'not_configured'
-}
-
-type SseEvent = { type: string } & Record<string, unknown>
-
-async function fetchWithBackoff(url: string, options: RequestInit, maxRetries = 3): Promise<Response> {
-  let lastError: Error = new Error('fetch failed')
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    if (attempt > 0) {
-      await new Promise(r => setTimeout(r, Math.min(1000 * 2 ** (attempt - 1), 8000)))
-    }
-    try {
-      const response = await fetch(url, options)
-      return response
-    } catch (err) {
-      lastError = err instanceof Error ? err : new Error(String(err))
-    }
-  }
-  throw lastError
-}
-
-async function* streamSse(path: string, body: unknown, signal?: AbortSignal): AsyncGenerator<SseEvent> {
-  const url = buildUrl(path)
-  const token = getStoredAccessToken()
-  const authMode = getAuthMode()
-  const devAuth = getDevAuthConfig()
-
-  const response = await fetchWithBackoff(url.toString(), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(authMode === 'mock'
-        ? {
-            'X-Dev-Auth': 'true',
-            'X-Dev-Tenant-Id': String(devAuth.tenantId),
-            'X-Dev-User': devAuth.email,
-            'X-Dev-Roles': devAuth.roles.join(','),
-          }
-        : {}),
-      ...(authMode !== 'mock' && token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify(body),
-    signal,
-  })
-
-  if (!response.ok) {
-    const message = await response.text()
-    throw new Error(message || `API error ${response.status}`)
-  }
-
-  const reader = response.body!.getReader()
-  const decoder = new TextDecoder()
-  let buffer = ''
-
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    buffer += decoder.decode(value, { stream: true })
-    const lines = buffer.split('\n')
-    buffer = lines.pop() ?? ''
-    for (const line of lines) {
-      if (line.startsWith('data: ')) {
-        const json = line.slice(6).trim()
-        if (json) {
-          try {
-            yield JSON.parse(json) as SseEvent
-          } catch {
-            /* skip malformed */
-          }
-        }
-      }
-    }
-  }
 }
 
 function mapAiConfig(item: AiConfigApiResponse): AiConfig {
@@ -1604,12 +1535,18 @@ export const api = {
     },
   },
   datadogConfig: {
+    // Rota legada de compatibilidade (settingsInsights.ts no titlis-api-ts): espera `site` solto
+    // no body, não `ddSite`. NÃO confundir com datadogSettings.save (PUT em settingsDatadog.ts,
+    // que usa `ddSite`) — são dois handlers HTTP diferentes no mesmo path.
     save: async (payload: { ddApiKey: string; ddAppKey?: string; site?: string }): Promise<void> => {
       await request('/settings/datadog', {
         method: 'POST' as const,
         body: payload,
       })
     },
+    // GET /settings/datadog/status NUNCA faz probe de verdade — só diz se existe credencial salva
+    // (probeStatus fica 'not_checked'/'not_configured', nunca 'ok'/'error'). Para saber se a
+    // credencial funciona de fato, use datadogSettings.test() (GET /settings/datadog/test).
     status: async (): Promise<DatadogConfigStatus> => {
       const res = await request<DatadogConfigStatus>('/settings/datadog/status', { optional: true })
       return res ?? { configured: false, probeStatus: 'not_configured' }
@@ -1721,75 +1658,6 @@ export const api = {
       await request(`/settings/scoring/tag-policies/${id}`, { method: 'DELETE' as const })
     },
   },
-  ai: {
-    explainStream: (
-      workloadId: string,
-      ruleId: string,
-      body: {
-        pillar: string
-        severity: string
-        deploymentName: string
-        namespace: string
-        actualValue?: string | null
-        containerName?: string | null
-      },
-      signal?: AbortSignal,
-    ) =>
-      streamSse(`/ai/workloads/${workloadId}/findings/${ruleId}/explain`, {
-        pillar: body.pillar,
-        severity: body.severity,
-        deploymentName: body.deploymentName,
-        namespace: body.namespace,
-        actualValue: body.actualValue ?? null,
-        containerName: body.containerName ?? null,
-      }, signal),
-    remediateStream: (
-      workloadId: string,
-      body: { findingIds: string[]; repoUrl: string; deployManifestPath?: string; serviceYamlPath?: string },
-    ) =>
-      streamSse(`/ai/workloads/${workloadId}/remediate`, {
-        findingIds: body.findingIds,
-        repoUrl: body.repoUrl,
-        deployManifestPath: body.deployManifestPath ?? 'manifests/kubernetes/main/deploy.yaml',
-        serviceYamlPath: body.serviceYamlPath ?? '.titlis/service.yaml',
-      }),
-    confirmRemediation: (threadId: string, approved: boolean) =>
-      streamSse(`/ai/remediate/${threadId}/confirm`, { approved }),
-    setManifestPath: (threadId: string, manifestPath: string) =>
-      streamSse(`/ai/remediate/${threadId}/set-path`, { manifestPath }),
-    submitServiceYaml: (
-      threadId: string,
-      form: {
-        manifestPath: string
-        baseBranch: string
-        name: string
-        team: string
-        namespaces: string[]
-        namePattern: string
-        env: string
-        contacts?: Array<Record<string, unknown>>
-        extraPaths?: Record<string, unknown>
-      },
-    ) =>
-      streamSse(`/ai/remediate/${threadId}/submit-service-yaml`, {
-        manifestPath: form.manifestPath,
-        baseBranch: form.baseBranch,
-        name: form.name,
-        team: form.team,
-        namespaces: form.namespaces,
-        namePattern: form.namePattern,
-        env: form.env,
-        contacts: form.contacts ?? null,
-        extraPaths: form.extraPaths ?? null,
-      }),
-    agentChat: (sessionId: string, message: string, workloadId?: string) =>
-      streamSse('/ai/agent/chat', { sessionId, message, ...(workloadId ? { workloadId } : {}) }),
-    agentToolsRespond: (
-      sessionId: string,
-      decisions: { proposalId: string; approved: boolean; editedArgs?: Record<string, unknown> }[],
-    ) =>
-      streamSse(`/ai/agent/${sessionId}/tools/respond`, { decisions }),
-  },
   remediation: {
     history: async (days = 30): Promise<RemediationTimelineResponse> => {
       const res = await request<RemediationTimelineResponse>(`/remediation/history?days=${days}`)
@@ -1878,9 +1746,12 @@ export const api = {
     save: async (payload: { ddApiKey?: string; ddAppKey?: string; ddSite?: string; queueMonitoringEnabled?: boolean; monitorCreationEnabled?: boolean }): Promise<void> => {
       await request('/settings/datadog', { method: 'PUT' as const, body: payload })
     },
+    // GET /settings/datadog/test (settingsDatadog.ts) — único endpoint que faz probe de verdade
+    // contra a API do Datadog. Responde { ok: true } ou { ok: false, error }, nunca `message`.
     test: async (): Promise<{ ok: boolean; message: string }> => {
-      const res = await request<{ ok: boolean; message: string }>('/settings/datadog/test', { optional: true })
-      return res ?? { ok: false, message: 'Sem resposta do servidor.' }
+      const res = await request<{ ok: boolean; error?: string }>('/settings/datadog/test')
+      if (!res) return { ok: false, message: 'Sem resposta do servidor.' }
+      return { ok: res.ok, message: res.ok ? 'Conexão com o Datadog verificada com sucesso.' : (res.error ?? 'Falha ao validar as credenciais.') }
     },
   },
 
@@ -1967,6 +1838,35 @@ export const api = {
     get: async (): Promise<ServiceMap> => {
       const res = await request<ServiceMap>('/service-map', { optional: true })
       return res ?? { products: [], orphans: [] }
+    },
+  },
+
+  // RPM Fase C — ConfiaAI: mural do analista de confiabilidade (briefings + playbooks + contexto).
+  lookout: {
+    briefings: async (days = 14): Promise<LookoutBriefing[]> => {
+      const res = await request<LookoutBriefing[]>('/lookout/briefings', { params: { days: String(days) }, optional: true })
+      return res ?? []
+    },
+    feedback: async (id: number, verdict: 'util' | 'ruido'): Promise<void> => {
+      await request(`/lookout/briefings/${id}/feedback`, { method: 'POST', body: JSON.stringify({ verdict }) })
+    },
+    playbooks: async (): Promise<LookoutPlaybook[]> => {
+      const res = await request<LookoutPlaybook[]>('/lookout/playbooks', { optional: true })
+      return res ?? []
+    },
+    estateReport: async (): Promise<LookoutBriefing | null> => {
+      return await request<LookoutBriefing>('/lookout/estate-report/latest', { optional: true })
+    },
+    serviceContext: async (uid: string): Promise<LookoutServiceContext> => {
+      const res = await request<LookoutServiceContext>(`/lookout/service/${encodeURIComponent(uid)}/context`, { optional: true })
+      return res ?? { investigations: [], memory: [] }
+    },
+    investigate: async (workloadUid: string): Promise<{ investigation_id?: number; message?: string }> => {
+      const res = await request<{ investigation_id?: number; message?: string }>('/lookout/investigate', {
+        method: 'POST',
+        body: JSON.stringify({ workloadUid }),
+      })
+      return res ?? {}
     },
   },
 

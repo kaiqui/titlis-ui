@@ -1,10 +1,10 @@
 import { NavLink } from 'react-router-dom'
 import { motion, useReducedMotion } from 'motion/react'
 import {
-  Bot,
   ChevronLeft,
   Gauge,
   Inbox,
+  Sparkles,
   Key,
   LayoutDashboard,
   Plug2,
@@ -19,13 +19,13 @@ import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/useAuth'
 import { FeatureGuard } from '@/components/atoms/FeatureGuard'
 
-const appLogoUrl = import.meta.env.VITE_APP_LOGO_URL?.trim() || '/logo.png'
-const appName = import.meta.env.VITE_APP_NAME?.trim() || 'Titlis'
+const appName = import.meta.env.VITE_APP_NAME?.trim() || 'Confia'
 const displayAppName = appName.replace(/([a-z0-9])([A-Z])/g, '$1 $2')
 
 const primaryNavItems = [
   { to: '/', icon: LayoutDashboard, label: 'Hub', exact: true },
   { to: '/reliability', icon: Gauge, label: 'Confiabilidade', featureId: 'nav_reliability' },
+  { to: '/confia', icon: Sparkles, label: 'ConfiaAI', featureId: 'nav_confia' },
   { to: '/queues', icon: Inbox, label: 'Filas', featureId: 'nav_queues' },
 ]
 
@@ -43,7 +43,6 @@ const settingsNavItems = {
     { to: '/settings/api-keys', icon: Key, label: 'Chaves de API', featureId: 'nav_settings_api_keys' },
   ],
   admin: [
-    { to: '/settings/ai', icon: Bot, label: 'Configurar ARIA', featureId: 'nav_settings_ai' },
     { to: '/settings/score-config', icon: SlidersHorizontal, label: 'Score & Regras', featureId: 'nav_settings_score_config' },
     { to: '/settings/integrations', icon: Plug2, label: 'Integrações', featureId: 'nav_settings_integrations' },
     { to: '/settings/tags', icon: Tag, label: 'Tags', featureId: 'nav_settings_tags' },
@@ -73,7 +72,7 @@ function NavItems({
         )}
         style={({ isActive }) => ({
           position: 'relative',
-          color: isActive ? '#fff' : 'rgba(255,255,255,0.62)',
+          color: isActive ? '#17161a' : 'rgba(255,255,255,0.62)',
         })}
         title={collapsed && !mobile ? label : undefined}
       >
@@ -83,7 +82,7 @@ function NavItems({
               <motion.span
                 layoutId={mobile ? 'sidebar-nav-active-mobile' : 'sidebar-nav-active'}
                 className="absolute inset-0 rounded-xl"
-                style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}
+                style={{ backgroundColor: 'var(--color-primary)', border: '2px solid #fff', boxShadow: '3px 3px 0 #fff' }}
                 transition={{ type: 'spring', stiffness: 500, damping: 40 }}
               />
             )}
@@ -149,25 +148,54 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   return (
     <>
       <aside
-        className={`fixed left-4 top-4 hidden h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-[2rem] transition-[width] duration-300 lg:flex ${collapsed ? 'w-24' : 'w-[17rem]'}`}
+        className={`fixed left-4 top-4 hidden h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-[var(--radius-nb-lg)] transition-[width] duration-300 lg:flex ${collapsed ? 'w-24' : 'w-[17rem]'}`}
         style={{
           background: 'var(--sidebar-background)',
         }}
       >
-        <div className="absolute inset-0 rounded-[2rem]" style={{ backgroundColor: 'var(--sidebar-background)' }} />
+        <div className="absolute inset-0 rounded-[var(--radius-nb-lg)] border-2 border-white/10" style={{ backgroundColor: 'var(--sidebar-background)' }} />
         <div className={`${collapsed ? 'px-3' : 'px-4'} relative z-[1] flex items-center gap-3 border-b py-4`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
           <motion.div
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
-            style={{ backgroundColor: 'rgba(255,255,255,0.08)' }}
+            style={{ backgroundColor: 'var(--color-primary)' }}
             whileHover={reduceMotion ? undefined : { scale: 1.06, rotate: -4 }}
             transition={{ type: 'spring', stiffness: 350, damping: 14 }}
           >
-            <img src={appLogoUrl} alt="" className="h-5 w-5 object-contain" />
+            <span
+              aria-hidden
+              className="h-4 w-4"
+              style={{
+                backgroundColor: '#fff',
+                WebkitMaskImage: 'url(/jeitto-icon.svg)',
+                maskImage: 'url(/jeitto-icon.svg)',
+                WebkitMaskRepeat: 'no-repeat',
+                maskRepeat: 'no-repeat',
+                WebkitMaskSize: 'contain',
+                maskSize: 'contain',
+                WebkitMaskPosition: 'center',
+                maskPosition: 'center',
+              }}
+            />
           </motion.div>
           {!collapsed && (
-            <p className="min-w-0 flex-1 truncate text-[13px] font-semibold tracking-[0.02em] text-white/92">
-              {displayAppName}
-            </p>
+            <div className="flex min-w-0 flex-1 flex-col gap-1 leading-none">
+              <span
+                aria-label="Jeitto"
+                className="h-4 w-[3.4rem]"
+                style={{
+                  backgroundColor: '#fff',
+                  WebkitMaskImage: 'url(/jeitto-logo.svg)',
+                  maskImage: 'url(/jeitto-logo.svg)',
+                  WebkitMaskRepeat: 'no-repeat',
+                  maskRepeat: 'no-repeat',
+                  WebkitMaskSize: 'contain',
+                  maskSize: 'contain',
+                }}
+              />
+              <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-white/45">
+                {displayAppName}
+              </span>
+            </div>
           )}
           <button
             onClick={onToggle}
@@ -195,10 +223,11 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       </aside>
 
       <nav
-        className="fixed inset-x-3 bottom-3 z-30 flex gap-2 rounded-[28px] border px-2 py-2 shadow-2xl lg:hidden"
+        className="fixed inset-x-3 bottom-3 z-30 flex gap-2 rounded-[var(--radius-nb)] border-2 px-2 py-2 lg:hidden"
         style={{
-          borderColor: 'var(--sidebar-border)',
+          borderColor: '#fff',
           background: 'var(--sidebar-background)',
+          boxShadow: 'var(--shadow-brutal)',
         }}
       >
         <NavItems items={[...navItems, ...configurationItems]} mobile />

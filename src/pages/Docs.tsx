@@ -19,12 +19,11 @@ const modules = [
   { slug: 'confiabilidade',      title: 'Confiabilidade',                     file: () => import('../docs/14-confiabilidade.md?raw') },
   { slug: 'scorecards',          title: 'Scorecards (legado)',                file: () => import('../docs/02-scorecards.md?raw') },
   { slug: 'slos',                title: 'SLOs',                               file: () => import('../docs/03-slos.md?raw') },
-  { slug: 'assistente-ia',       title: 'ARIA — Assistente de IA',            file: () => import('../docs/05-assistente-ia.md?raw') },
   { slug: 'configuracoes',       title: 'Configurações',                      file: () => import('../docs/09-configuracoes.md?raw') },
   { slug: 'integracoes',         title: 'Integrações',                        file: () => import('../docs/10-integracoes.md?raw') },
 ]
 
-const appLogoUrl = import.meta.env.VITE_APP_LOGO_URL?.trim() || '/logo.png'
+const appLogoUrl = import.meta.env.VITE_APP_LOGO_URL?.trim() || '/jeitto-icon.svg'
 const appName    = import.meta.env.VITE_APP_NAME?.trim()    || 'Titlis'
 
 // --------------------------------------------------------------------------

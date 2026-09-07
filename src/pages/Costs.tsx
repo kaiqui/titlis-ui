@@ -26,7 +26,7 @@ function VariationBadge({ pct }: { pct: number | null }) {
   }
   const stable = Math.abs(pct) < 0.5
   const Icon = stable ? Minus : pct > 0 ? ArrowUpRight : ArrowDownRight
-  const color = stable ? 'var(--color-muted-foreground)' : pct > 0 ? '#ef4444' : '#10b981'
+  const color = stable ? 'var(--color-muted-foreground)' : pct > 0 ? '#d8341a' : '#12a150'
   return (
     <span className="flex items-center gap-1 text-sm font-black tabular-nums" style={{ color }}>
       <Icon size={14} />
@@ -190,9 +190,9 @@ export function Costs() {
                       >
                         {t.team}
                       </span>
-                      <div className="h-4 flex-1 overflow-hidden rounded-full" style={{ backgroundColor: 'var(--color-muted)' }}>
+                      <div className="h-4 flex-1 overflow-hidden rounded-[4px]" style={{ backgroundColor: 'var(--color-muted)' }}>
                         <div
-                          className="h-full rounded-full"
+                          className="h-full rounded-[4px]"
                           style={{ width: `${Math.max(t.sharePct, 1)}%`, backgroundColor: 'var(--color-primary)' }}
                         />
                       </div>

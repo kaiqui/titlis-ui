@@ -51,21 +51,21 @@ function sloState(item: SloListItem): SloFilter {
 function stateColors(state: string | null): { border: string; color: string; bg: string } {
   switch (state) {
     case 'OK':
-      return { border: 'rgba(34,197,94,0.3)', color: '#16a34a', bg: 'rgba(240,253,244,0.8)' }
+      return { border: 'rgba(34,197,94,0.3)', color: '#12a150', bg: 'rgba(240,253,244,0.8)' }
     case 'BREACHED':
     case 'NO_DATA':
-      return { border: 'rgba(239,68,68,0.3)', color: '#dc2626', bg: 'rgba(254,242,242,0.8)' }
+      return { border: 'rgba(239,68,68,0.3)', color: '#d8341a', bg: 'rgba(254,242,242,0.8)' }
     case 'WARNING':
-      return { border: 'rgba(245,158,11,0.3)', color: '#d97706', bg: 'rgba(255,251,235,0.8)' }
+      return { border: 'rgba(245,158,11,0.3)', color: '#a06e00', bg: 'rgba(255,251,235,0.8)' }
     default:
       return { border: 'rgba(107,114,128,0.3)', color: '#6b7280', bg: 'rgba(249,250,251,0.8)' }
   }
 }
 
 function StateIcon({ state }: { state: string | null }) {
-  if (state === 'OK') return <CheckCircle2 size={13} style={{ color: '#16a34a', flexShrink: 0 }} />
-  if (state === 'BREACHED') return <AlertCircle size={13} style={{ color: '#dc2626', flexShrink: 0 }} />
-  if (state === 'WARNING') return <AlertTriangle size={13} style={{ color: '#d97706', flexShrink: 0 }} />
+  if (state === 'OK') return <CheckCircle2 size={13} style={{ color: '#12a150', flexShrink: 0 }} />
+  if (state === 'BREACHED') return <AlertCircle size={13} style={{ color: '#d8341a', flexShrink: 0 }} />
+  if (state === 'WARNING') return <AlertTriangle size={13} style={{ color: '#a06e00', flexShrink: 0 }} />
   if (state === 'NO_DATA') return <Info size={13} style={{ color: '#6b7280', flexShrink: 0 }} />
   return <Clock size={13} style={{ color: '#9ca3af', flexShrink: 0 }} />
 }
@@ -127,7 +127,7 @@ function ProposeChangeForm({
   if (submitted) {
     return (
       <div className="flex items-center gap-2 rounded-2xl border px-4 py-3 text-sm"
-        style={{ borderColor: 'rgba(34,197,94,0.3)', color: '#16a34a', background: 'rgba(240,253,244,0.8)' }}>
+        style={{ borderColor: 'rgba(34,197,94,0.3)', color: '#12a150', background: 'rgba(240,253,244,0.8)' }}>
         <CheckCircle2 size={14} />
         Proposta enviada! O operator aplicará a alteração no próximo ciclo.
       </div>
@@ -181,7 +181,7 @@ function ProposeChangeForm({
       </div>
 
       {mutation.error && (
-        <p className="text-xs" style={{ color: '#dc2626' }}>
+        <p className="text-xs" style={{ color: '#d8341a' }}>
           {mutation.error instanceof Error ? mutation.error.message : 'Erro ao enviar proposta.'}
         </p>
       )}
@@ -249,30 +249,30 @@ function SloCard({ slo, canAdmin }: { slo: SloListItem; canAdmin: boolean }) {
               </span>
               {/* State badge */}
               <span
-                className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+                className="inline-flex items-center rounded-[8px] px-2 py-0.5 text-xs font-medium"
                 style={{ border: `1px solid ${colors.border}`, color: colors.color, background: colors.bg }}
               >
                 {state ?? 'Sem estado'}
               </span>
               {/* Type badge */}
               <span
-                className="inline-flex items-center rounded-full px-2 py-0.5 text-xs"
+                className="inline-flex items-center rounded-[8px] px-2 py-0.5 text-xs"
                 style={{ color: 'var(--color-muted-foreground)', background: 'rgba(0,0,0,0.04)' }}
               >
                 {sloTypeLabel(slo.sloType)}
               </span>
               {slo.autoDetectFramework && (
                 <span
-                  className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium"
-                  style={{ color: '#7c3aed', background: 'rgba(245,243,255,0.8)', border: '1px solid rgba(124,58,237,0.2)' }}
+                  className="inline-flex items-center rounded-[8px] px-2 py-0.5 text-[10px] font-medium"
+                  style={{ color: '#c42bae', background: 'rgba(245,243,255,0.8)', border: '1px solid rgba(124,58,237,0.2)' }}
                 >
                   auto-detect
                 </span>
               )}
               {hasError && (
                 <span
-                  className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium"
-                  style={{ color: '#dc2626', background: 'rgba(254,242,242,0.8)', border: '1px solid rgba(220,38,38,0.2)' }}
+                  className="inline-flex items-center gap-1 rounded-[8px] px-2 py-0.5 text-[10px] font-medium"
+                  style={{ color: '#d8341a', background: 'rgba(254,242,242,0.8)', border: '1px solid rgba(220,38,38,0.2)' }}
                 >
                   <Zap size={9} /> erro de sync
                 </span>
@@ -296,7 +296,7 @@ function SloCard({ slo, canAdmin }: { slo: SloListItem; canAdmin: boolean }) {
                 <span>sync {formatDate(slo.lastSyncAt)}</span>
               )}
               {notSynced && (
-                <span style={{ color: '#d97706' }}>sem sincronização</span>
+                <span style={{ color: '#a06e00' }}>sem sincronização</span>
               )}
             </div>
           </div>
@@ -350,7 +350,7 @@ function SloCard({ slo, canAdmin }: { slo: SloListItem; canAdmin: boolean }) {
             </div>
             {slo.syncError && (
               <div className="col-span-2 rounded-xl border px-3 py-2 font-mono text-[10px] break-all leading-relaxed"
-                style={{ borderColor: 'rgba(220,38,38,0.2)', background: 'rgba(254,242,242,0.8)', color: '#b91c1c' }}>
+                style={{ borderColor: 'rgba(220,38,38,0.2)', background: 'rgba(254,242,242,0.8)', color: '#b02a13' }}>
                 <span className="font-semibold not-italic font-sans">Erro de sync: </span>
                 {slo.syncError}
               </div>
@@ -389,14 +389,14 @@ function coverageStatusLabel(status: SloStatus): string {
 }
 
 function coverageStatusColor(status: SloStatus): { border: string; color: string; bg: string } {
-  if (status === 'WITH_SLO') return { border: 'rgba(34,197,94,0.3)', color: '#16a34a', bg: 'rgba(240,253,244,0.8)' }
-  if (status === 'CANDIDATE') return { border: 'rgba(245,158,11,0.3)', color: '#d97706', bg: 'rgba(255,251,235,0.8)' }
+  if (status === 'WITH_SLO') return { border: 'rgba(34,197,94,0.3)', color: '#12a150', bg: 'rgba(240,253,244,0.8)' }
+  if (status === 'CANDIDATE') return { border: 'rgba(245,158,11,0.3)', color: '#a06e00', bg: 'rgba(255,251,235,0.8)' }
   return { border: 'rgba(107,114,128,0.3)', color: '#6b7280', bg: 'rgba(249,250,251,0.8)' }
 }
 
 function CoverageStatusIcon({ status }: { status: SloStatus }) {
-  if (status === 'WITH_SLO') return <CheckCircle2 size={13} style={{ color: '#16a34a', flexShrink: 0 }} />
-  if (status === 'CANDIDATE') return <AlertTriangle size={13} style={{ color: '#d97706', flexShrink: 0 }} />
+  if (status === 'WITH_SLO') return <CheckCircle2 size={13} style={{ color: '#12a150', flexShrink: 0 }} />
+  if (status === 'CANDIDATE') return <AlertTriangle size={13} style={{ color: '#a06e00', flexShrink: 0 }} />
   return <CircleDashed size={13} style={{ color: '#9ca3af', flexShrink: 0 }} />
 }
 
@@ -413,7 +413,7 @@ function CoverageCard({ item }: { item: WorkloadSLOCoverage }) {
           <CoverageStatusIcon status={item.sloStatus} />
           <span className="font-semibold text-sm" style={{ color: 'var(--color-foreground)' }}>{item.name}</span>
           <span
-            className="rounded-full px-2 py-0.5 text-[10px] font-bold"
+            className="rounded-[8px] px-2 py-0.5 text-[10px] font-bold"
             style={{ background: colors.border, color: colors.color }}
           >
             {coverageStatusLabel(item.sloStatus)}
@@ -432,7 +432,7 @@ function CoverageCard({ item }: { item: WorkloadSLOCoverage }) {
         </div>
         {item.sloStatus === 'CANDIDATE' && (
           <div className="mt-2 rounded-xl border px-3 py-2 text-xs leading-5"
-            style={{ borderColor: 'rgba(245,158,11,0.2)', background: 'rgba(255,251,235,0.6)', color: '#92400e' }}>
+            style={{ borderColor: 'rgba(245,158,11,0.2)', background: 'rgba(255,251,235,0.6)', color: '#7a5400' }}>
             <strong>Candidato a SLO</strong> — workload registrado no Datadog mas sem{' '}
             <code className="font-mono text-[11px]">SLOConfig</code> CRD no cluster. Aplique o manifesto
             para que o operator crie e reconcilie o SLO automaticamente.
@@ -491,8 +491,8 @@ function CoverageView({ onRefresh }: { onRefresh: () => void }) {
 
   const coverageFilterTabs: Array<{ id: CoverageFilter; label: string; count: number; color?: string }> = [
     { id: 'todos',      label: 'Todos',        count: summary.total },
-    { id: 'WITH_SLO',   label: 'Com SLO',      count: summary.with_slo,   color: '#16a34a' },
-    { id: 'CANDIDATE',  label: 'Sem SLO',       count: summary.candidate,  color: '#d97706' },
+    { id: 'WITH_SLO',   label: 'Com SLO',      count: summary.with_slo,   color: '#12a150' },
+    { id: 'CANDIDATE',  label: 'Sem SLO',       count: summary.candidate,  color: '#a06e00' },
     { id: 'NO_DATADOG', label: 'Sem Datadog',  count: summary.no_datadog, color: '#6b7280' },
   ]
 
@@ -503,8 +503,8 @@ function CoverageView({ onRefresh }: { onRefresh: () => void }) {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           { label: 'Serviços', value: summary.total },
-          { label: 'Sustentam Observabilidade', value: summary.with_slo, color: '#16a34a' },
-          { label: 'Sem SLO (OBS-003)', value: summary.candidate, color: '#d97706' },
+          { label: 'Sustentam Observabilidade', value: summary.with_slo, color: '#12a150' },
+          { label: 'Sem SLO (OBS-003)', value: summary.candidate, color: '#a06e00' },
           { label: 'Sem Datadog (N/A)', value: summary.no_datadog, color: '#6b7280' },
         ].map(({ label, value, color }) => (
           <div key={label} className="rounded-2xl border px-4 py-3"
@@ -518,8 +518,8 @@ function CoverageView({ onRefresh }: { onRefresh: () => void }) {
       {/* Banner explicativo */}
       <div className="rounded-2xl border px-4 py-3 flex items-start gap-3"
         style={{ borderColor: 'rgba(245,158,11,0.2)', background: 'rgba(255,251,235,0.5)' }}>
-        <BarChart2 size={15} className="mt-0.5 shrink-0" style={{ color: '#d97706' }} />
-        <p className="text-xs leading-5" style={{ color: '#92400e' }}>
+        <BarChart2 size={15} className="mt-0.5 shrink-0" style={{ color: '#a06e00' }} />
+        <p className="text-xs leading-5" style={{ color: '#7a5400' }}>
           <strong>Postura de objetivos</strong> — cada SLO saudável sustenta a dimensão{' '}
           <strong>Observabilidade</strong> do serviço dono. Serviços <strong>sem SLO</strong> geram o
           finding <code>OBS-003</code> na postura — criar o SLO fecha a lacuna. Serviços{' '}
@@ -534,7 +534,7 @@ function CoverageView({ onRefresh }: { onRefresh: () => void }) {
             <button
               key={tab.id}
               type="button"
-              className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-all"
+              className="flex items-center gap-1.5 rounded-[8px] px-3 py-1 text-xs font-semibold transition-all"
               style={{
                 background: filter === tab.id ? 'var(--color-primary)' : 'rgba(0,0,0,0.04)',
                 color: filter === tab.id ? '#fff' : 'var(--color-muted-foreground)',
@@ -542,7 +542,7 @@ function CoverageView({ onRefresh }: { onRefresh: () => void }) {
               onClick={() => setFilter(tab.id)}
             >
               {tab.label}
-              <span className="rounded-full px-1.5 py-0.5 text-[10px] font-bold"
+              <span className="rounded-[8px] px-1.5 py-0.5 text-[10px] font-bold"
                 style={{ background: filter === tab.id ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.08)' }}>
                 {tab.count}
               </span>
@@ -621,22 +621,22 @@ function DiscoveredSloCard({ slo, canAdmin }: { slo: DiscoveredSlo; canAdmin: bo
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 flex-wrap">
           {hasWorkload
-            ? <Link2 size={13} style={{ color: '#16a34a', flexShrink: 0 }} />
+            ? <Link2 size={13} style={{ color: '#12a150', flexShrink: 0 }} />
             : <Link2Off size={13} style={{ color: '#9ca3af', flexShrink: 0 }} />}
           <span className="font-semibold text-sm truncate" style={{ color: 'var(--color-foreground)' }}>
             {slo.name}
           </span>
           {slo.type && (
             <span
-              className="inline-flex items-center rounded-full px-2 py-0.5 text-xs"
+              className="inline-flex items-center rounded-[8px] px-2 py-0.5 text-xs"
               style={{ color: 'var(--color-muted-foreground)', background: 'rgba(0,0,0,0.04)' }}
             >
               {sloTypeLabel(slo.type.toUpperCase())}
             </span>
           )}
           <span
-            className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium"
-            style={{ color: '#7c3aed', background: 'rgba(245,243,255,0.8)', border: '1px solid rgba(124,58,237,0.2)' }}
+            className="inline-flex items-center rounded-[8px] px-2 py-0.5 text-[10px] font-medium"
+            style={{ color: '#c42bae', background: 'rgba(245,243,255,0.8)', border: '1px solid rgba(124,58,237,0.2)' }}
           >
             não gerenciado
           </span>
@@ -647,7 +647,7 @@ function DiscoveredSloCard({ slo, canAdmin }: { slo: DiscoveredSlo; canAdmin: bo
           {hasWorkload ? (
             <span>{slo.workloadName} · {slo.namespace} · {slo.cluster}</span>
           ) : (
-            <span style={{ color: '#d97706' }}>sem workload correlacionado</span>
+            <span style={{ color: '#a06e00' }}>sem workload correlacionado</span>
           )}
         </div>
       </div>
@@ -655,7 +655,7 @@ function DiscoveredSloCard({ slo, canAdmin }: { slo: DiscoveredSlo; canAdmin: bo
       {canAdmin && (
         <div className="shrink-0">
           {adopted ? (
-            <span className="flex items-center gap-1 text-xs font-semibold" style={{ color: '#16a34a' }}>
+            <span className="flex items-center gap-1 text-xs font-semibold" style={{ color: '#12a150' }}>
               <CheckCircle2 size={13} /> adoção enfileirada
             </span>
           ) : (
@@ -673,7 +673,7 @@ function DiscoveredSloCard({ slo, canAdmin }: { slo: DiscoveredSlo; canAdmin: bo
             </button>
           )}
           {mutation.error && (
-            <p className="mt-1 text-[10px]" style={{ color: '#dc2626' }}>
+            <p className="mt-1 text-[10px]" style={{ color: '#d8341a' }}>
               {mutation.error instanceof Error ? mutation.error.message : 'Erro ao adotar.'}
             </p>
           )}
@@ -712,12 +712,12 @@ function DiscoveredView({ canAdmin, onRefresh }: { canAdmin: boolean; onRefresh:
       {/* Banner explicativo */}
       <div className="rounded-2xl border px-4 py-3 flex items-start gap-3"
         style={{ borderColor: 'rgba(124,58,237,0.2)', background: 'rgba(245,243,255,0.6)' }}>
-        <Radar size={15} className="mt-0.5 shrink-0" style={{ color: '#7c3aed' }} />
-        <p className="text-xs leading-5" style={{ color: '#5b21b6' }}>
+        <Radar size={15} className="mt-0.5 shrink-0" style={{ color: '#c42bae' }} />
+        <p className="text-xs leading-5" style={{ color: '#9c1f8c' }}>
           <strong>SLOs descobertos</strong> — SLOs que já existem no Datadog (criados manualmente,
           por Terraform ou por outro time), encontrados pela coleta e correlacionados ao serviço
           correspondente. <strong>Adotar</strong> traz o SLO para a governança do Titlis (metas,
-          propostas de alteração via ARIA) sem criar nem alterar nada no Datadog.
+          propostas de alteração) sem criar nem alterar nada no Datadog.
         </p>
       </div>
 
@@ -822,7 +822,7 @@ export function SLOs() {
     <div className="flex flex-1 flex-col overflow-hidden">
       <Header
         title="SLOs"
-        subtitle="Postura de objetivos — a base da dimensão Observabilidade. Serviço sem SLO gera o finding OBS-003; SLO estourado vira um movimento para a ARIA."
+        subtitle="Postura de objetivos — a base da dimensão Observabilidade. Serviço sem SLO gera o finding OBS-003; SLO estourado vira um movimento a priorizar."
       />
 
       {/* View toggle */}
@@ -873,8 +873,8 @@ export function SLOs() {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
               { label: 'Total', value: summary.total },
-              { label: 'Saudáveis', value: summary.saudaveis, color: '#16a34a' },
-              { label: 'Atenção', value: summary.atencao + summary.erro, color: '#d97706' },
+              { label: 'Saudáveis', value: summary.saudaveis, color: '#12a150' },
+              { label: 'Atenção', value: summary.atencao + summary.erro, color: '#a06e00' },
               { label: 'Sem sync', value: summary.sem_sync, color: '#6b7280' },
             ].map(({ label, value, color }) => (
               <div key={label} className="rounded-2xl border px-4 py-3"
@@ -893,7 +893,7 @@ export function SLOs() {
                 <button
                   key={tab.id}
                   type="button"
-                  className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-all"
+                  className="flex items-center gap-1.5 rounded-[8px] px-3 py-1 text-xs font-semibold transition-all"
                   style={{
                     background: filter === tab.id ? 'var(--color-primary)' : 'rgba(0,0,0,0.04)',
                     color: filter === tab.id ? '#fff' : 'var(--color-muted-foreground)',
@@ -902,7 +902,7 @@ export function SLOs() {
                 >
                   {tab.label}
                   <span
-                    className="rounded-full px-1.5 py-0.5 text-[10px] font-bold"
+                    className="rounded-[8px] px-1.5 py-0.5 text-[10px] font-bold"
                     style={{
                       background: filter === tab.id ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.08)',
                     }}
@@ -937,8 +937,8 @@ export function SLOs() {
           {/* How SLOs are created — informative banner */}
           <div className="rounded-2xl border px-4 py-3 flex items-start gap-3"
             style={{ borderColor: 'rgba(124,58,237,0.2)', background: 'rgba(245,243,255,0.6)' }}>
-            <Layers3 size={15} className="mt-0.5 shrink-0" style={{ color: '#7c3aed' }} />
-            <p className="text-xs leading-5" style={{ color: '#5b21b6' }}>
+            <Layers3 size={15} className="mt-0.5 shrink-0" style={{ color: '#c42bae' }} />
+            <p className="text-xs leading-5" style={{ color: '#9c1f8c' }}>
               <strong>Como funcionam os SLOs?</strong> A plataforma descobre os SLOs que já existem
               no Datadog e os traz para a governança. Cada SLO saudável sustenta a dimensão{' '}
               <strong>Observabilidade</strong> do serviço dono; um serviço crítico sem SLO gera o
