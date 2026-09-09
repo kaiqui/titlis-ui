@@ -79,15 +79,16 @@ const K8S_CONFIG_CODES = new Set([
 
 function sourceOfNaFinding(f: CoverageFinding): string {
   if (f.source && f.source.trim().length > 0) return f.source
-  if (K8S_CONFIG_CODES.has(f.code)) return 'Discovery Kubernetes (operator)'
+  if (K8S_CONFIG_CODES.has(f.code)) return 'Manifesto Kubernetes (repositório)'
   if (/^SEC-00[789]|^SEC-010/.test(f.code)) return 'Veracode'
-  return 'Datadog'
+  return 'Observabilidade (Datadog / Grafana / Prometheus)'
 }
 
 function cleanNaLabel(msg: string): string {
   return msg
     .replace(/^[⏭❌✅]\s*/u, '')
     .replace(/\s*—\s*requer discovery Kubernetes \(operator\)\s*$/u, '')
+    .replace(/\s*—\s*requer .*$/u, '')
     .replace(/^não avaliável.*$/i, '')
     .trim()
 }

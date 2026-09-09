@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -7,8 +8,12 @@ import {
   Copy,
   FileQuestion,
   Network,
+  Sparkles,
 } from 'lucide-react'
 import { motion } from 'motion/react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import { api } from '@/lib/api'
 import { Card } from '@/components/jeitto/Card'
 import { ButtonDefault } from '@/components/jeitto/ButtonDefault'
 import { fadeInUp } from '@/lib/motion/tokens'
@@ -17,7 +22,8 @@ import { PageError, PageLoading } from '@/components/jeitto/PageState'
 import { ScoreRing } from '@/components/jeitto/ScoreRing'
 import { Header } from '@/components/layout/Header'
 import { SummaryStrip } from '@/components/sre/SummaryStrip'
-import { useCoverageDetail, useCoverageGraph } from '@/hooks/useApi'
+import { useCoverageDetail, useCoverageGraph, useLookoutServiceContext } from '@/hooks/useApi'
+import { isFeatureEnabled } from '@/lib/featureFlags'
 import { formatDate, formatNumber, severityColor } from '@/lib/utils'
 import {
   confidenceLabel,
@@ -46,8 +52,8 @@ function kindLabel(k: string): string {
 }
 
 function neighborLink(n: CoverageGraphNeighbor): string | null {
-  if (n.kind === 'dd_slo') return '/slos'
-  if (n.kind === 'queue') return '/queues'
+  if (n.kind === 'dd_slo') return isFeatureEnabled('slos') ? '/slos' : null
+  if (n.kind === 'queue') return isFeatureEnabled('queues') ? '/queues' : null
   return null
 }
 
@@ -56,6 +62,11 @@ export function CoverageDetail() {
   const navigate = useNavigate()
   const detail = useCoverageDetail(uid)
   const graph = useCoverageGraph(uid)
+  const memory = useLookoutServiceContext(uid)
+  const investigate = useMutation({
+    mutationFn: () => api.lookout.investigate(uid),
+    onSettled: () => void memory.refetch(),
+  })
   const [copied, setCopied] = useState(false)
 
   if (detail.isLoading) return <><Header title="Detalhe da postura" /><PageLoading /></>
@@ -191,6 +202,15 @@ export function CoverageDetail() {
           </div>
         )}
 
+        {isFeatureEnabled('ai') && (
+          <MemoryCard
+            ctx={memory.data}
+            investigating={investigate.isPending}
+            investigateMsg={investigate.data?.message ?? (investigate.isError ? 'ConfiaAI indisponível para este tenant.' : null)}
+            onInvestigate={() => investigate.mutate()}
+          />
+        )}
+
         {(graph.data?.neighbors.length ?? 0) > 0 && (
           <Card className="p-5">
             <div className="mb-2 flex items-center gap-2">
@@ -226,6 +246,104 @@ export function CoverageDetail() {
 
       </div>
     </div>
+  )
+}
+
+const VERDICT_LABEL: Record<string, string> = {
+  regressao_real: 'regressão real',
+  postura_fraca: 'postura fraca',
+  ruido: 'ruído',
+  postura_saudavel: 'postura saudável',
+  sinal_insuficiente: 'sinal insuficiente',
+  erro: 'erro',
+  quota_exceeded: 'orçamento de tokens esgotado',
+}
+
+// Memória do ConfiaAI para este serviço (LKT §8): fatos aprendidos + investigações + botão de
+// investigação sob demanda. Sempre visível — quando vazio, convida a investigar.
+function MemoryCard({
+  ctx,
+  investigating,
+  investigateMsg,
+  onInvestigate,
+}: {
+  ctx?: { investigations: Array<{ investigationId: number; hypothesis: string | null; verdict: string | null; createdAt: string }>; memory: Array<{ estateMemoryId: number; fact: string; lastConfirmedAt: string }> }
+  investigating: boolean
+  investigateMsg: string | null
+  onInvestigate: () => void
+}) {
+  const facts = ctx?.memory ?? []
+  const investigations = ctx?.investigations ?? []
+  return (
+    <Card className="p-5">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <Sparkles className="h-5 w-5" style={{ color: 'var(--color-primary)' }} />
+        <h3 className="text-lg font-semibold">Memória do ConfiaAI</h3>
+        <ButtonDefault
+          label={investigating ? 'Investigando…' : 'Investigar com o ConfiaAI'}
+          visual="secondary"
+          icon={Sparkles}
+          onClick={onInvestigate}
+          disabled={investigating}
+          className="ml-auto"
+        />
+      </div>
+
+      {facts.length === 0 && investigations.length === 0 ? (
+        <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
+          O ConfiaAI ainda não investigou este serviço. A investigação lê a postura, correlaciona com
+          Datadog/GitHub e registra a causa provável aqui.
+        </p>
+      ) : (
+        <div className="space-y-4">
+          {facts.length > 0 && (
+            <div>
+              <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--color-muted-foreground)' }}>
+                O que aprendeu
+              </p>
+              <ul className="space-y-1.5 text-sm">
+                {facts.map((f) => (
+                  <li key={f.estateMemoryId} className="flex gap-2">
+                    <span style={{ color: 'var(--color-primary)' }}>•</span>
+                    <span className="min-w-0">
+                      {f.fact}{' '}
+                      <span className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>({formatDate(f.lastConfirmedAt)})</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {investigations.length > 0 && (
+            <div>
+              <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--color-muted-foreground)' }}>
+                Investigações
+              </p>
+              <div className="space-y-2">
+                {investigations.slice(0, 4).map((inv) => (
+                  <div key={inv.investigationId} className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: 'var(--color-border)' }}>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-semibold" style={{ color: 'var(--color-primary)' }}>
+                        {VERDICT_LABEL[inv.verdict ?? ''] ?? inv.verdict ?? '—'}
+                      </span>
+                      <span className="ml-auto text-[10px]" style={{ color: 'var(--color-muted-foreground)' }}>{formatDate(inv.createdAt)}</span>
+                    </div>
+                    {inv.hypothesis && (
+                      <div className="mt-1 text-[13px] leading-relaxed" style={{ color: 'var(--color-muted-foreground)' }}>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{inv.hypothesis}</ReactMarkdown>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      {investigateMsg && (
+        <p className="mt-3 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>{investigateMsg}</p>
+      )}
+    </Card>
   )
 }
 
@@ -290,11 +408,10 @@ function DimensionCard({
                   <div key={f.code} className="rounded-lg border px-3 py-2" style={{ borderColor: 'var(--color-border)' }}>
                     <p className="text-sm">{stripIcon(f.message)}</p>
                     <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[10px]" style={{ color: 'var(--color-muted-foreground)' }}>
-                      {f.source && <span className="font-mono">{f.source}</span>}
+                      {f.source && <span>{f.source}</span>}
                       {f.severity && (
                         <span className={`rounded-[6px] border px-1.5 py-px font-semibold uppercase ${severityColor(f.severity)}`}>{f.severity}</span>
                       )}
-                      <span className="rounded bg-[var(--color-muted)] px-1 py-px font-mono">{f.code}</span>
                     </p>
                   </div>
                 ))}

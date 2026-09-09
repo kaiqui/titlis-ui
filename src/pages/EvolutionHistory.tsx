@@ -30,6 +30,7 @@ const PILLAR_LABEL: Record<string, string> = {
   resilience: 'Resiliência', security: 'Segurança', performance: 'Performance',
   operational: 'Operacional', cost: 'Custo', compliance: 'Compliance',
   observability: 'Observabilidade', coverage: 'Cobertura',
+  res: 'Resiliência', sec: 'Segurança', perf: 'Performance', ops: 'Operacional', obs: 'Observabilidade',
 }
 
 const SEVERITY_LABEL: Record<string, string> = {
@@ -93,7 +94,7 @@ function EvolutionTooltip({ active, payload, label }: EvolutionTooltipProps) {
       <p className="mb-1 font-semibold">{label}</p>
       {payload.map((p) => (
         <p key={p.dataKey} style={{ color: 'var(--color-muted-foreground)' }}>
-          {p.dataKey === 'ri' ? 'Postura' : 'Postura projetada'}: <span className="font-black" style={{ color: 'var(--color-foreground)' }}>{formatNumber(p.value)}</span>
+          {p.dataKey === 'ri' ? 'Postura' : 'Postura projetada'}: <span className="font-bold" style={{ color: 'var(--color-foreground)' }}>{formatNumber(p.value)}</span>
         </p>
       ))}
     </div>
@@ -106,7 +107,7 @@ function DeltaBadge({ delta }: { delta: number | null }) {
   const color = stable ? 'var(--color-muted-foreground)' : delta > 0 ? '#12a150' : '#d8341a'
   const Icon = stable ? Minus : delta > 0 ? ArrowUpRight : ArrowDownRight
   return (
-    <span className="flex items-center gap-1 text-xs font-black tabular-nums" style={{ color }}>
+    <span className="flex items-center gap-1 text-xs font-bold tabular-nums" style={{ color }}>
       <Icon size={13} />
       {stable ? 'estável' : `${delta > 0 ? '+' : ''}${formatNumber(delta)}`}
     </span>
@@ -267,7 +268,7 @@ export function EvolutionHistory({ standalone = true }: { standalone?: boolean }
             <EmptyState
               icon={LineChartIcon}
               title="Sem dados de evolução"
-              description="Assim que o operator enviar avaliações de score, a série histórica começa a acumular aqui."
+              description="A série histórica começa a acumular assim que houver avaliações de postura para este serviço."
             />
           </Card>
         ) : (
@@ -280,11 +281,11 @@ export function EvolutionHistory({ standalone = true }: { standalone?: boolean }
               >
                 <Sparkles size={18} style={{ color: 'var(--color-primary)', flexShrink: 0 }} />
                 <p className="text-sm" style={{ color: 'var(--color-foreground)' }}>
-                  Resolvendo os <span className="font-black">{remediableFindings}</span> finding{remediableFindings !== 1 ? 's' : ''} remediáve{remediableFindings !== 1 ? 'is' : 'l'} abertos,
-                  a postura de <span className="font-black">{scopeName}</span> sobe de{' '}
-                  <span className="font-black">{formatNumber(currentRi)}</span> para{' '}
-                  <span className="font-black">{formatNumber(potentialRi!)}</span>{' '}
-                  (<span className="font-black" style={{ color: '#12a150' }}>+{formatNumber(potentialGain)} pts</span>).
+                  Resolvendo os <span className="font-bold">{remediableFindings}</span> finding{remediableFindings !== 1 ? 's' : ''} remediáve{remediableFindings !== 1 ? 'is' : 'l'} abertos,
+                  a postura de <span className="font-bold">{scopeName}</span> sobe de{' '}
+                  <span className="font-bold">{formatNumber(currentRi)}</span> para{' '}
+                  <span className="font-bold">{formatNumber(potentialRi!)}</span>{' '}
+                  (<span className="font-bold" style={{ color: '#12a150' }}>+{formatNumber(potentialGain)} pts</span>).
                 </p>
               </div>
             )}
@@ -332,7 +333,7 @@ export function EvolutionHistory({ standalone = true }: { standalone?: boolean }
               <Card>
                 <div className="mb-5 flex flex-wrap items-center gap-2">
                   <TrendingUp size={16} style={{ color: 'var(--color-primary)' }} />
-                  <p className="text-sm font-black" style={{ color: 'var(--color-foreground)' }}>
+                  <p className="text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>
                     Evolução da confiabilidade — {scopeName}
                   </p>
                   <span className="ml-auto text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
@@ -410,7 +411,7 @@ export function EvolutionHistory({ standalone = true }: { standalone?: boolean }
             {(risers.length > 0 || fallers.length > 0) && (
               <div className="grid gap-5 lg:grid-cols-2">
                 <Card>
-                  <p className="mb-4 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>
+                  <p className="mb-4 text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>
                     Maiores evoluções
                     <span className="ml-2 text-xs font-normal" style={{ color: 'var(--color-muted-foreground)' }}>Δ RI no período</span>
                   </p>
@@ -423,7 +424,7 @@ export function EvolutionHistory({ standalone = true }: { standalone?: boolean }
                   )}
                 </Card>
                 <Card>
-                  <p className="mb-4 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>
+                  <p className="mb-4 text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>
                     Maiores regressões
                     <span className="ml-2 text-xs font-normal" style={{ color: 'var(--color-muted-foreground)' }}>onde a confiabilidade caiu</span>
                   </p>
@@ -441,30 +442,29 @@ export function EvolutionHistory({ standalone = true }: { standalone?: boolean }
             {/* ── oportunidades (visão futura) ── */}
             {projection && projection.opportunities.length > 0 && (
               <Card>
-                <p className="mb-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>
+                <p className="mb-1 text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>
                   Para onde podemos chegar
                 </p>
                 <p className="mb-4 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
-                  Findings abertos agregados por regra, ordenados pelo ganho de RI ao resolver — {openFindings} ocorrência{openFindings !== 1 ? 's' : ''} no escopo.
+                  Lacunas de cobertura agregadas, ordenadas pelo ganho de postura ao fechá-las — {openFindings} ocorrência{openFindings !== 1 ? 's' : ''} no escopo.
                 </p>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm">
                     <thead>
                       <tr className="text-[11px] uppercase tracking-wide" style={{ color: 'var(--color-muted-foreground)' }}>
-                        <th className="pb-2 pr-4 font-semibold">Regra</th>
-                        <th className="pb-2 pr-4 font-semibold">Pilar</th>
+                        <th className="pb-2 pr-4 font-semibold">O que falta</th>
+                        <th className="pb-2 pr-4 font-semibold">Dimensão</th>
                         <th className="pb-2 pr-4 font-semibold">Severidade</th>
                         <th className="pb-2 pr-4 text-right font-semibold">Ocorrências</th>
-                        <th className="pb-2 pr-4 text-right font-semibold">Ganho de RI</th>
-                        <th className="pb-2 font-semibold">Remediação</th>
+                        <th className="pb-2 pr-4 text-right font-semibold">Ganho de postura</th>
+                        <th className="pb-2 font-semibold">Onde corrigir</th>
                       </tr>
                     </thead>
                     <tbody>
                       {projection.opportunities.map((o) => (
                         <tr key={o.ruleId} className="border-t" style={{ borderColor: 'var(--color-border)' }}>
                           <td className="py-2.5 pr-4">
-                            <p className="font-mono text-xs font-semibold" style={{ color: 'var(--color-foreground)' }}>{o.ruleId}</p>
-                            {o.message && <p className="mt-0.5 max-w-md truncate text-[11px]" style={{ color: 'var(--color-muted-foreground)' }}>{o.message}</p>}
+                            <p className="max-w-md text-xs font-semibold" style={{ color: 'var(--color-foreground)' }}>{o.message ?? o.ruleId}</p>
                           </td>
                           <td className="py-2.5 pr-4 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
                             {o.pillar ? (PILLAR_LABEL[o.pillar.toLowerCase()] ?? o.pillar) : '—'}
@@ -473,17 +473,13 @@ export function EvolutionHistory({ standalone = true }: { standalone?: boolean }
                             {o.severity ? (SEVERITY_LABEL[o.severity.toLowerCase()] ?? o.severity) : '—'}
                           </td>
                           <td className="py-2.5 pr-4 text-right text-xs tabular-nums" style={{ color: 'var(--color-foreground)' }}>{o.occurrences}</td>
-                          <td className="py-2.5 pr-4 text-right text-xs font-black tabular-nums" style={{ color: '#12a150' }}>
+                          <td className="py-2.5 pr-4 text-right text-xs font-bold tabular-nums" style={{ color: '#12a150' }}>
                             +{formatNumber(o.riGain)}
                           </td>
                           <td className="py-2.5">
-                            {o.remediable ? (
-                              <span className="inline-flex items-center gap-1 rounded-[8px] bg-[var(--color-accent-soft)] px-2 py-0.5 text-[11px] font-semibold text-[var(--color-accent)]">
-                                <Wrench size={11} /> remediável
-                              </span>
-                            ) : (
-                              <span className="text-[11px]" style={{ color: 'var(--color-muted-foreground)' }}>manual</span>
-                            )}
+                            <span className="inline-flex items-center gap-1 text-[11px]" style={{ color: 'var(--color-muted-foreground)' }}>
+                              <Wrench size={11} /> {o.remediable ? 'manifesto do repositório' : 'observabilidade'}
+                            </span>
                           </td>
                         </tr>
                       ))}

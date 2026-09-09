@@ -109,10 +109,10 @@ export function GettingStarted() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-10">
-      <p className="text-sm font-extrabold uppercase tracking-[0.18em]" style={{ color: 'var(--color-primary-strong)' }}>
+      <p className="text-xs font-semibold uppercase tracking-[0.1em]" style={{ color: 'var(--color-primary-strong)' }}>
         Primeiros passos
       </p>
-      <h1 className="family-neighbor mt-3 text-3xl font-black tracking-tight" style={{ color: 'var(--color-foreground)' }}>
+      <h1 className="family-neighbor mt-3 text-3xl font-bold tracking-tight" style={{ color: 'var(--color-foreground)' }}>
         Configure suas integrações
       </h1>
       <p className="mt-3 text-sm leading-6" style={{ color: 'var(--color-muted-foreground)' }}>
@@ -125,7 +125,7 @@ export function GettingStarted() {
           return (
             <li
               key={step.title}
-              className="flex gap-4 rounded-[var(--radius-nb)] border-2 p-5 transition-colors duration-300"
+              className="flex gap-4 rounded-[var(--radius-nb)] border p-5 transition-colors duration-300"
               style={{
                 borderColor: step.done ? 'var(--color-primary)' : 'var(--color-foreground)',
                 background: 'var(--color-card)',

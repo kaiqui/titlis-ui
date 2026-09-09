@@ -21,7 +21,7 @@ export function SummaryStrip({ items }: SummaryStripProps) {
             {item.label}
             {item.info && <InfoTip label={item.label} content={item.info} />}
           </p>
-          <p className="mt-2 family-neighbor text-[1.6rem] font-black tracking-tight" style={{ color: 'var(--color-foreground)' }}>
+          <p className="mt-2 family-neighbor text-[1.6rem] font-bold tracking-tight" style={{ color: 'var(--color-foreground)' }}>
             {item.value}
           </p>
           {item.helper && (

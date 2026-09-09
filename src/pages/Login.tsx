@@ -63,8 +63,8 @@ export function Login() {
     <div className="flex min-h-screen items-center justify-center px-6 py-10" style={{ background: 'var(--app-background)' }}>
       <div className="grid w-full max-w-5xl gap-6 lg:grid-cols-[1.1fr_0.9fr]">
         <motion.section
-          className="relative overflow-hidden rounded-[var(--radius-nb-lg)] border-2 p-8 lg:p-10"
-          style={{ borderColor: 'var(--color-foreground)', background: 'var(--hero-background)', boxShadow: 'var(--shadow-brutal-lg)' }}
+          className="relative overflow-hidden rounded-[var(--radius-nb-lg)] border p-8 lg:p-10"
+          style={{ borderColor: 'var(--color-hairline)', background: 'var(--hero-background)', boxShadow: 'var(--shadow-brutal-lg)' }}
           {...fadeInUp}
         >
           <MotionGate>
@@ -88,10 +88,10 @@ export function Login() {
                 }}
               />
             </div>
-            <p className="mt-6 text-sm font-extrabold uppercase tracking-[0.18em]" style={{ color: 'var(--color-primary-strong)' }}>
+            <p className="mt-6 text-xs font-semibold uppercase tracking-[0.1em]" style={{ color: 'var(--color-primary-strong)' }}>
               Acesso {import.meta.env.VITE_APP_NAME ?? 'Titlis'}
             </p>
-            <h1 className="family-neighbor mt-3 text-3xl font-black tracking-tight lg:text-4xl" style={{ color: 'var(--color-foreground)' }}>
+            <h1 className="family-neighbor mt-3 text-3xl font-bold tracking-tight lg:text-4xl" style={{ color: 'var(--color-foreground)' }}>
               Entre com sua conta da plataforma.
             </h1>
             <p className="mt-4 max-w-xl text-sm leading-6" style={{ color: 'var(--color-muted-foreground)' }}>
@@ -111,14 +111,14 @@ export function Login() {
         </motion.section>
 
         <motion.section
-          className="rounded-[var(--radius-nb-lg)] border-2 p-8"
-          style={{ borderColor: 'var(--color-foreground)', background: 'var(--color-card)', boxShadow: 'var(--shadow-brutal)' }}
+          className="rounded-[var(--radius-nb-lg)] border p-8"
+          style={{ borderColor: 'var(--color-hairline)', background: 'var(--color-card)', boxShadow: 'var(--shadow-brutal)' }}
           {...fadeInUp}
           transition={{ ...fadeInUp.transition, delay: 0.1 }}
         >
           {hasOktaConfig && (
             <div className="mb-5 space-y-3 rounded-[1.8rem] border p-4" style={{ borderColor: 'var(--color-border)', background: 'var(--hero-background)' }}>
-              <p className="text-xs font-extrabold uppercase tracking-[0.18em]" style={{ color: 'var(--color-primary-strong)' }}>
+              <p className="text-xs font-semibold uppercase tracking-[0.1em]" style={{ color: 'var(--color-primary-strong)' }}>
                 Login Corporativo
               </p>
               <button

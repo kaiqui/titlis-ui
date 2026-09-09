@@ -211,6 +211,26 @@ export interface ActiveRemediation {
   pendingRuleIds: string[]
 }
 
+export interface AiUsageSummary {
+  month: {
+    tokensUsed: number
+    monthlyTokenBudget: number | null
+    usagePct: number | null
+    provider: string | null
+    model: string | null
+    estimatedUsd: number
+    budgetUsd: number | null
+  }
+  windowDays: number
+  windowTokens: number
+  windowRuns: number
+  windowEstimatedUsd: number
+  pricePer1MTokensUsd: number
+  daily: { date: string; tokens: number; runs: number; estimatedUsd: number }[]
+  byKind: { kind: string; label: string; tokens: number; runs: number; estimatedUsd: number }[]
+  recentRuns: { kind: string; label: string; status: string; tokens: number; estimatedUsd: number; startedAt: string; durationMs: number | null }[]
+}
+
 export interface AiConfig {
   provider: string
   model: string
@@ -614,6 +634,15 @@ export interface LookoutServiceContext {
   investigations: LookoutInvestigation[]
   memory: Array<{ estateMemoryId: number; fact: string; confidence: string | null; lastConfirmedAt: string }>
 }
+
+export interface LookoutSeal {
+  investigations: number
+  memory: number
+  lastVerdict: string | null
+  noise: boolean
+}
+
+export type LookoutSeals = Record<string, LookoutSeal>
 
 export interface CoverageGraphNeighbor {
   provider: string

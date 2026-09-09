@@ -73,8 +73,8 @@ function WizardCard({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen items-center justify-center px-6 py-10" style={{ background: 'var(--app-background)' }}>
       <div className="w-full max-w-lg">
         <motion.div
-          className="rounded-[var(--radius-nb-lg)] border-2 p-8"
-          style={{ borderColor: 'var(--color-foreground)', background: 'var(--color-card)', boxShadow: 'var(--shadow-brutal)' }}
+          className="rounded-[var(--radius-nb-lg)] border p-8"
+          style={{ borderColor: 'var(--color-hairline)', background: 'var(--color-card)', boxShadow: 'var(--shadow-brutal)' }}
           {...fadeInUp}
         >
           {children}
@@ -186,7 +186,7 @@ function Step1Account({ onSuccess }: Step1Props) {
           <Building2 size={22} />
         </div>
         <div>
-          <h2 className="family-neighbor text-xl font-black tracking-tight" style={{ color: 'var(--color-foreground)' }}>
+          <h2 className="family-neighbor text-xl font-bold tracking-tight" style={{ color: 'var(--color-foreground)' }}>
             Crie sua conta
           </h2>
           <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Etapa 1 de 3 — workspace e admin</p>
@@ -285,7 +285,7 @@ function Step2ApiKey({ apiKey, onNext }: Step2Props) {
           <KeyRound size={22} />
         </div>
         <div>
-          <h2 className="family-neighbor text-xl font-black tracking-tight" style={{ color: 'var(--color-foreground)' }}>
+          <h2 className="family-neighbor text-xl font-bold tracking-tight" style={{ color: 'var(--color-foreground)' }}>
             Chave de API
           </h2>
           <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Etapa 2 de 3 — exibida apenas uma vez</p>
@@ -298,7 +298,7 @@ function Step2ApiKey({ apiKey, onNext }: Step2Props) {
         SLOs e custos a partir de fora. Não é possível recuperá-la depois.
       </p>
 
-      <div className="rounded-[var(--radius-nb)] border-2 p-4 mb-4" style={{ borderColor: 'var(--color-foreground)', background: 'var(--app-background)', boxShadow: 'var(--shadow-brutal-sm)' }}>
+      <div className="rounded-[var(--radius-nb)] border p-4 mb-4" style={{ borderColor: 'var(--color-hairline)', background: 'var(--app-background)', boxShadow: 'var(--shadow-brutal-sm)' }}>
         <p className="mb-2 text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--color-muted-foreground)' }}>
           Chave de API (MCP)
         </p>
@@ -313,8 +313,8 @@ function Step2ApiKey({ apiKey, onNext }: Step2Props) {
               setCopied(true)
               setTimeout(() => setCopied(false), 2000)
             }}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] border-2 transition-colors"
-            style={{ borderColor: 'var(--color-foreground)', color: copied ? 'var(--color-primary-strong)' : 'var(--color-muted-foreground)' }}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[8px] border transition-colors"
+            style={{ borderColor: 'var(--color-hairline)', color: copied ? 'var(--color-primary-strong)' : 'var(--color-muted-foreground)' }}
             title="Copiar chave"
           >
             {copied ? <Check size={16} /> : <Copy size={16} />}
@@ -402,7 +402,7 @@ function Step4Datadog({ onFinish }: Step4Props) {
           <Database size={22} />
         </div>
         <div>
-          <h2 className="family-neighbor text-xl font-black tracking-tight" style={{ color: 'var(--color-foreground)' }}>
+          <h2 className="family-neighbor text-xl font-bold tracking-tight" style={{ color: 'var(--color-foreground)' }}>
             Conecte o Datadog
           </h2>
           <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Etapa 3 de 3 — métricas para recomendações de HPA</p>

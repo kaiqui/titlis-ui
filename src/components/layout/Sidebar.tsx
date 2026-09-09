@@ -9,8 +9,6 @@ import {
   LayoutDashboard,
   Plug2,
   ShieldCheck,
-  SlidersHorizontal,
-  Tag,
   Target,
   TrendingUp,
   Wallet,
@@ -18,6 +16,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/useAuth'
 import { FeatureGuard } from '@/components/atoms/FeatureGuard'
+import { isFeatureEnabled, type Feature } from '@/lib/featureFlags'
 
 const appName = import.meta.env.VITE_APP_NAME?.trim() || 'Confia'
 const displayAppName = appName.replace(/([a-z0-9])([A-Z])/g, '$1 $2')
@@ -25,13 +24,13 @@ const displayAppName = appName.replace(/([a-z0-9])([A-Z])/g, '$1 $2')
 const primaryNavItems = [
   { to: '/', icon: LayoutDashboard, label: 'Hub', exact: true },
   { to: '/reliability', icon: Gauge, label: 'Confiabilidade', featureId: 'nav_reliability' },
-  { to: '/confia', icon: Sparkles, label: 'ConfiaAI', featureId: 'nav_confia' },
-  { to: '/queues', icon: Inbox, label: 'Filas', featureId: 'nav_queues' },
+  { to: '/confia', icon: Sparkles, label: 'ConfiaAI', featureId: 'nav_confia', feature: 'ai' as Feature },
+  { to: '/queues', icon: Inbox, label: 'Filas', featureId: 'nav_queues', feature: 'queues' as Feature },
 ]
 
 const secondaryNavItems = [
   { to: '/coverage', icon: ShieldCheck, label: 'Postura', featureId: 'nav_coverage' },
-  { to: '/slos', icon: Target, label: 'SLOs', featureId: 'nav_slos' },
+  { to: '/slos', icon: Target, label: 'SLOs', featureId: 'nav_slos', feature: 'slos' as Feature },
   { to: '/costs', icon: Wallet, label: 'Custos', featureId: 'nav_costs' },
 ]
 
@@ -43,9 +42,7 @@ const settingsNavItems = {
     { to: '/settings/api-keys', icon: Key, label: 'Chaves de API', featureId: 'nav_settings_api_keys' },
   ],
   admin: [
-    { to: '/settings/score-config', icon: SlidersHorizontal, label: 'Score & Regras', featureId: 'nav_settings_score_config' },
     { to: '/settings/integrations', icon: Plug2, label: 'Integrações', featureId: 'nav_settings_integrations' },
-    { to: '/settings/tags', icon: Tag, label: 'Tags', featureId: 'nav_settings_tags' },
   ],
 }
 
@@ -54,13 +51,35 @@ function NavItems({
   mobile = false,
   collapsed = false,
 }: {
-  items: { to: string; icon: React.ElementType; label: string; exact?: boolean; featureId?: string }[]
+  items: { to: string; icon: React.ElementType; label: string; exact?: boolean; featureId?: string; feature?: Feature }[]
   mobile?: boolean
   collapsed?: boolean
 }) {
   const reduceMotion = useReducedMotion()
 
-  return items.map(({ to, icon: Icon, label, exact, featureId }) => (
+  return items.map(({ to, icon: Icon, label, exact, featureId, feature }) => (
+    feature && !isFeatureEnabled(feature) ? (
+      <div
+        key={to}
+        aria-disabled="true"
+        title="Em breve"
+        className={cn(
+          'group flex cursor-not-allowed items-center gap-3 rounded-xl text-sm font-medium opacity-45',
+          mobile ? 'flex-1 justify-center px-3 py-3 text-[11px]' : collapsed ? 'justify-center px-3 py-2.5' : 'px-3 py-2.5',
+        )}
+        style={{ color: 'rgba(255,255,255,0.62)' }}
+      >
+        <span className="flex shrink-0"><Icon size={mobile ? 16 : 17} strokeWidth={1.75} /></span>
+        {!mobile && !collapsed && (
+          <span className="relative flex flex-1 items-center gap-2 truncate">
+            {label}
+            <span className="rounded-[6px] border border-white/25 px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide text-white/70">
+              em breve
+            </span>
+          </span>
+        )}
+      </div>
+    ) : (
     <FeatureGuard key={to} id={featureId ?? ''}>
       <NavLink
         to={to}
@@ -82,13 +101,13 @@ function NavItems({
               <motion.span
                 layoutId={mobile ? 'sidebar-nav-active-mobile' : 'sidebar-nav-active'}
                 className="absolute inset-0 rounded-xl"
-                style={{ backgroundColor: 'var(--color-primary)', border: '2px solid #fff', boxShadow: '3px 3px 0 #fff' }}
+                style={{ backgroundColor: 'var(--color-primary)', boxShadow: '0 2px 8px rgba(0,0,0,0.25)' }}
                 transition={{ type: 'spring', stiffness: 500, damping: 40 }}
               />
             )}
             <motion.span
               className="relative flex shrink-0"
-              whileHover={reduceMotion ? undefined : { scale: 1.12, rotate: [0, -8, 0] }}
+              whileHover={reduceMotion ? undefined : { scale: 1.05 }}
               transition={{ type: 'spring', stiffness: 400, damping: 15 }}
             >
               <Icon size={mobile ? 16 : 17} strokeWidth={isActive ? 2.25 : 1.75} />
@@ -100,6 +119,7 @@ function NavItems({
         )}
       </NavLink>
     </FeatureGuard>
+    )
   ))
 }
 
@@ -153,12 +173,12 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           background: 'var(--sidebar-background)',
         }}
       >
-        <div className="absolute inset-0 rounded-[var(--radius-nb-lg)] border-2 border-white/10" style={{ backgroundColor: 'var(--sidebar-background)' }} />
+        <div className="absolute inset-0 rounded-[var(--radius-nb-lg)] border border-white/10" style={{ backgroundColor: 'var(--sidebar-background)' }} />
         <div className={`${collapsed ? 'px-3' : 'px-4'} relative z-[1] flex items-center gap-3 border-b py-4`} style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
           <motion.div
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
             style={{ backgroundColor: 'var(--color-primary)' }}
-            whileHover={reduceMotion ? undefined : { scale: 1.06, rotate: -4 }}
+            whileHover={reduceMotion ? undefined : { scale: 1.04 }}
             transition={{ type: 'spring', stiffness: 350, damping: 14 }}
           >
             <span
@@ -223,9 +243,9 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       </aside>
 
       <nav
-        className="fixed inset-x-3 bottom-3 z-30 flex gap-2 rounded-[var(--radius-nb)] border-2 px-2 py-2 lg:hidden"
+        className="fixed inset-x-3 bottom-3 z-30 flex gap-2 rounded-[var(--radius-nb)] border px-2 py-2 lg:hidden"
         style={{
-          borderColor: '#fff',
+          borderColor: 'rgba(255,255,255,0.12)',
           background: 'var(--sidebar-background)',
           boxShadow: 'var(--shadow-brutal)',
         }}

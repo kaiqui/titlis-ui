@@ -1,8 +1,8 @@
 import type {
-  ActiveRemediation,
   AdminOverview,
   AdminUsersResponse,
   AiConfig,
+  AiUsageSummary,
   DatadogQueueSettings,
   Finding,
   LifecycleState,
@@ -20,7 +20,6 @@ import type {
   ReliabilityProjection,
   ReliabilityTrendPoint,
   ServiceOption,
-  RemediationDetail,
   Severity,
   SloListItem,
   DiscoveredSlo,
@@ -31,9 +30,9 @@ import type {
   LookoutBriefing,
   LookoutPlaybook,
   LookoutServiceContext,
+  LookoutSeals,
   PostureTrendPoint,
   SloLookupResult,
-  WorkloadDetail,
   WorkloadSLOCoverage,
   WorkloadSummary,
 } from '@/types'
@@ -72,66 +71,12 @@ interface ApiDashboardItem {
   is_favorite: boolean
 }
 
-interface ApiScorecardItem {
-  workload_id: string
-  workload: string
-  workload_kind: string | null
-  namespace: string
-  cluster: string
-  environment: string
-  overall_score: number | string | null
-  compliance_status: string | null
-  version: number | null
-  evaluated_at: string | null
-  total_rules: number | null
-  passed_rules: number | null
-  failed_rules: number | null
-  critical_failures: number | null
-  error_count: number | null
-  warning_count: number | null
-  pillar_scores: ApiPillarScoreItem[]
-  validation_results: ApiValidationResultItem[]
-  active_remediation?: ApiActiveRemediation | null
-}
-
-interface ApiPillarScoreItem {
-  pillar: string
-  score: number | string | null
-  passed_checks: number | null
-  failed_checks: number | null
-  weighted_score: number | string | null
-}
-
-interface ApiValidationResultItem {
-  rule_id: string
-  rule_name: string
-  pillar: string
-  severity: string
-  rule_type: string
-  weight: number | string | null
-  passed: boolean
-  message: string | null
-  actual_value: string | null
-  is_remediable: boolean
-  remediation_category: string | null
-  evaluated_at: string | null
-  remediation_pending?: boolean
-  remediation_pr_url?: string | null
-}
-
-interface ApiActiveRemediation {
-  status: string
-  pr_url: string | null
-  pr_number: number | null
-  pending_rule_ids: string[]
-}
-
-interface ApiRemediationItem {
-  status: string
-  version: number
-  github_pr_url: string | null
-  github_pr_number: number | null
-  triggered_at: string | null
+function mapSeverity(value: string): Finding['severity'] {
+  const normalized = value.toLowerCase()
+  if (normalized === 'critical') return 'critical'
+  if (normalized === 'error') return 'error'
+  if (normalized === 'warning') return 'warning'
+  return 'info'
 }
 
 interface ApiSloItem {
@@ -365,88 +310,6 @@ function mapAuthSettingsError(code: string): string {
   }
 }
 
-function mapScorecardItem(item: ApiScorecardItem): WorkloadDetail {
-  return {
-    id: item.workload_id,
-    name: item.workload,
-    namespace: item.namespace,
-    cluster: item.cluster,
-    environment: item.environment,
-    kind: item.workload_kind,
-    overallScore: parseNumber(item.overall_score),
-    complianceStatus: item.compliance_status,
-    remediationStatus: null,
-    githubPrUrl: null,
-    isFavorite: false,
-    version: item.version,
-    evaluatedAt: item.evaluated_at,
-    totalRules: item.total_rules ?? 0,
-    passedRules: item.passed_rules ?? 0,
-    failedRules: item.failed_rules ?? 0,
-    criticalFailures: item.critical_failures ?? 0,
-    errorCount: item.error_count ?? 0,
-    warningCount: item.warning_count ?? 0,
-    pillarScores: (item.pillar_scores ?? []).map(mapPillarScoreItem),
-    validationResults: (item.validation_results ?? []).map(mapValidationResultItem),
-    activeRemediation: item.active_remediation ? mapActiveRemediation(item.active_remediation) : null,
-  }
-}
-
-function mapPillarScoreItem(item: ApiPillarScoreItem): PillarScore {
-  return {
-    pillar: item.pillar.toLowerCase(),
-    score: parseNumber(item.score),
-    passedChecks: item.passed_checks ?? 0,
-    failedChecks: item.failed_checks ?? 0,
-    weightedScore: parseNumber(item.weighted_score),
-  }
-}
-
-function mapSeverity(value: string): Finding['severity'] {
-  const normalized = value.toLowerCase()
-  if (normalized === 'critical') return 'critical'
-  if (normalized === 'error') return 'error'
-  if (normalized === 'warning') return 'warning'
-  return 'info'
-}
-
-function mapValidationResultItem(item: ApiValidationResultItem): Finding {
-  return {
-    ruleId: item.rule_id,
-    ruleName: item.rule_name,
-    pillar: item.pillar,
-    severity: mapSeverity(item.severity),
-    ruleType: item.rule_type,
-    weight: parseNumber(item.weight),
-    passed: item.passed,
-    message: item.message,
-    actualValue: item.actual_value,
-    remediable: item.is_remediable,
-    remediationCategory: item.remediation_category,
-    evaluatedAt: item.evaluated_at,
-    remediationPending: item.remediation_pending ?? false,
-    remediationPrUrl: item.remediation_pr_url ?? null,
-  }
-}
-
-function mapActiveRemediation(item: ApiActiveRemediation): ActiveRemediation {
-  return {
-    status: item.status,
-    prUrl: item.pr_url,
-    prNumber: item.pr_number,
-    pendingRuleIds: item.pending_rule_ids ?? [],
-  }
-}
-
-function mapRemediationItem(item: ApiRemediationItem): RemediationDetail {
-  return {
-    status: item.status,
-    version: item.version,
-    githubPrUrl: item.github_pr_url,
-    githubPrNumber: item.github_pr_number,
-    triggeredAt: item.triggered_at,
-  }
-}
 
 function mapSloItem(namespace: string, name: string, item: ApiSloItem): SloLookupResult {
   return {
@@ -608,100 +471,6 @@ export interface RemediationTimelineResponse {
   }
   items: RemediationTimelineItem[]
 }
-
-export interface ClusterItem {
-  id: number
-  name: string
-  environment: string
-}
-
-export interface NamespaceItem {
-  id: number
-  name: string
-  clusterId: number
-  clusterName: string
-}
-
-export interface WorkloadItem {
-  id: number
-  name: string
-  namespaceId: number
-  namespaceName: string
-  clusterName: string
-}
-
-export interface ResourceTagItem {
-  resourceId: number
-  tags: string[]
-}
-
-export interface TagPolicy {
-  id: number
-  tenant_id: number
-  tag: string
-  rule_id?: string
-  severity?: string
-  action: string
-  created_by?: string
-  created_at: string
-}
-
-export interface CreateTagPolicyPayload {
-  tag: string
-  rule_id?: string
-  severity?: string
-  action?: string
-  created_by?: string
-}
-
-export interface ScoreConfigRule {
-  engine_id: number
-  rule_id: string
-  pillar: string
-  name: string
-  severity: string
-  enabled_by_default: boolean
-}
-
-export interface ScoreConfigOverride {
-  id: number
-  tenant_id: number
-  engine_id: number
-  rule_id: string
-  scope: 'tenant' | 'cluster' | 'namespace' | 'workload'
-  cluster_name: string | null
-  namespace: string | null
-  workload_uid: string | null
-  enabled: boolean
-  reason: string | null
-  created_by: string | null
-  created_at: string
-}
-
-export interface CreateOverridePayload {
-  engine_id: number
-  rule_id: string
-  scope: 'tenant' | 'cluster' | 'namespace' | 'workload'
-  cluster_name?: string
-  namespace?: string
-  workload_uid?: string
-  enabled: boolean
-  reason?: string
-  created_by: string
-}
-
-export interface PillarWeight {
-  engine_id: number
-  pillar: string
-  weight: number
-}
-
-export interface SetWeightsPayload {
-  engine_id: number
-  weights: Record<string, number>
-  updated_by?: string
-}
-
 
 export interface ServiceDefinitionMapping {
   workloadName: string
@@ -1406,18 +1175,6 @@ export const api = {
     },
   },
   workloads: {
-    scorecard: async (id: string) => {
-      const response = await request<ApiScorecardItem>(`/workloads/${id}/scorecard`, {
-        optional: true,
-      })
-      return response ? mapScorecardItem(response) : null
-    },
-    remediation: async (id: string) => {
-      const response = await request<ApiRemediationItem>(`/workloads/${id}/remediation`, {
-        optional: true,
-      })
-      return response ? mapRemediationItem(response) : null
-    },
     githubLink: async (id: string): Promise<{ linked: boolean; repoUrl?: string; serviceYamlPath?: string } | null> =>
       request<{ linked: boolean; repo_url?: string; service_yaml_path?: string }>(
         `/workloads/${id}/github-link`,
@@ -1552,119 +1309,6 @@ export const api = {
       return res ?? { configured: false, probeStatus: 'not_configured' }
     },
   },
-  scoreConfig: {
-    getRules: async (engine = 'kubernetes'): Promise<ScoreConfigRule[]> => {
-      const res = await request<ScoreConfigRule[]>(`/settings/score-config/rules?engine=${engine}`, { optional: true })
-      return res ?? []
-    },
-    getOverrides: async (engine = 'kubernetes'): Promise<ScoreConfigOverride[]> => {
-      const res = await request<ScoreConfigOverride[]>(`/settings/score-config/overrides?engine=${engine}`, { optional: true })
-      return res ?? []
-    },
-    createOverride: async (body: CreateOverridePayload): Promise<ScoreConfigOverride> => {
-      const res = await request<ScoreConfigOverride>('/settings/score-config/overrides', {
-        method: 'POST' as const,
-        body,
-      })
-      if (!res) throw new Error('Não foi possível salvar a configuração.')
-      return res
-    },
-    deleteOverride: async (id: number): Promise<void> => {
-      await request(`/settings/score-config/overrides/${id}`, { method: 'DELETE' as const })
-    },
-    getWeights: async (engine = 'kubernetes'): Promise<PillarWeight[]> => {
-      const res = await request<PillarWeight[]>(`/settings/score-config/weights?engine=${engine}`, { optional: true })
-      return res ?? []
-    },
-    setWeights: async (body: SetWeightsPayload): Promise<PillarWeight[]> => {
-      const res = await request<PillarWeight[]>('/settings/score-config/weights', {
-        method: 'PUT' as const,
-        body,
-      })
-      if (!res) throw new Error('Não foi possível salvar os pesos.')
-      return res
-    },
-    syncCatalog: async (): Promise<{ synced: number }> => {
-      const res = await request<{ synced: number }>('/settings/score-config/sync-catalog', {
-        method: 'POST' as const,
-      })
-      if (!res) throw new Error('Não foi possível sincronizar o catálogo.')
-      return res
-    },
-  },
-  clusters: {
-    list: async (): Promise<ClusterItem[]> => {
-      const res = await request<ClusterItem[]>('/settings/tags/resource-list/clusters', { optional: true })
-      return res ?? []
-    },
-  },
-  namespaces: {
-    list: async (clusterId?: number): Promise<NamespaceItem[]> => {
-      const path = clusterId
-        ? `/settings/tags/resource-list/namespaces?clusterId=${clusterId}`
-        : '/settings/tags/resource-list/namespaces'
-      const res = await request<NamespaceItem[]>(path, { optional: true })
-      return res ?? []
-    },
-  },
-  workloadItems: {
-    list: async (clusterId?: number, namespaceId?: number): Promise<WorkloadItem[]> => {
-      const params = new URLSearchParams()
-      if (namespaceId) params.set('namespaceId', String(namespaceId))
-      else if (clusterId) params.set('clusterId', String(clusterId))
-      const qs = params.toString()
-      const res = await request<WorkloadItem[]>(
-        `/settings/tags/resource-list/workloads${qs ? `?${qs}` : ''}`,
-        { optional: true },
-      )
-      return res ?? []
-    },
-  },
-  tags: {
-    available: async (resourceType = 'workload'): Promise<string[]> => {
-      const res = await request<string[]>(`/tags/available?resourceType=${encodeURIComponent(resourceType)}`, { optional: true })
-      return res ?? []
-    },
-    list: async (resourceType: string): Promise<ResourceTagItem[]> => {
-      const res = await request<ResourceTagItem[]>(`/settings/tags/${resourceType}`, { optional: true })
-      return res ?? []
-    },
-    add: async (resourceType: string, resourceId: number, tag: string): Promise<void> => {
-      await request(`/settings/tags/${resourceType}/${resourceId}`, {
-        method: 'POST' as const,
-        body: { tag },
-      })
-    },
-    remove: async (resourceType: string, resourceId: number, tag: string): Promise<void> => {
-      await request(`/settings/tags/${resourceType}/${resourceId}/${encodeURIComponent(tag)}`, {
-        method: 'DELETE' as const,
-      })
-    },
-  },
-  tagPolicies: {
-    list: async (): Promise<TagPolicy[]> => {
-      const res = await request<TagPolicy[]>('/settings/scoring/tag-policies', { optional: true })
-      return res ?? []
-    },
-    create: async (body: CreateTagPolicyPayload): Promise<TagPolicy> => {
-      const res = await request<TagPolicy>('/settings/scoring/tag-policies', {
-        method: 'POST' as const,
-        body,
-      })
-      if (!res) throw new Error('Não foi possível criar a política.')
-      return res
-    },
-    delete: async (id: number): Promise<void> => {
-      await request(`/settings/scoring/tag-policies/${id}`, { method: 'DELETE' as const })
-    },
-  },
-  remediation: {
-    history: async (days = 30): Promise<RemediationTimelineResponse> => {
-      const res = await request<RemediationTimelineResponse>(`/remediation/history?days=${days}`)
-      return res ?? { period_days: days, summary: { total_prs: 0, merged: 0, failed: 0, in_progress: 0, success_rate: null }, items: [] }
-    },
-  },
-
   queues: {
     list: async (filters?: { compliance?: string; lifecycle?: string; type?: string; search?: string }): Promise<QueueSummary[]> => {
       const res = await request<ApiQueueSummaryItem[]>('/queues', {
@@ -1848,7 +1492,7 @@ export const api = {
       return res ?? []
     },
     feedback: async (id: number, verdict: 'util' | 'ruido'): Promise<void> => {
-      await request(`/lookout/briefings/${id}/feedback`, { method: 'POST', body: JSON.stringify({ verdict }) })
+      await request(`/lookout/briefings/${id}/feedback`, { method: 'POST', body: { verdict } })
     },
     playbooks: async (): Promise<LookoutPlaybook[]> => {
       const res = await request<LookoutPlaybook[]>('/lookout/playbooks', { optional: true })
@@ -1861,13 +1505,19 @@ export const api = {
       const res = await request<LookoutServiceContext>(`/lookout/service/${encodeURIComponent(uid)}/context`, { optional: true })
       return res ?? { investigations: [], memory: [] }
     },
+    seals: async (): Promise<LookoutSeals> => {
+      const res = await request<LookoutSeals>('/lookout/seals', { optional: true })
+      return res ?? {}
+    },
     investigate: async (workloadUid: string): Promise<{ investigation_id?: number; message?: string }> => {
       const res = await request<{ investigation_id?: number; message?: string }>('/lookout/investigate', {
         method: 'POST',
-        body: JSON.stringify({ workloadUid }),
+        body: { workloadUid },
       })
       return res ?? {}
     },
+    aiUsage: async (days = 30): Promise<AiUsageSummary | null> =>
+      request<AiUsageSummary>('/lookout/ai-usage', { params: { days: String(days) }, optional: true }),
   },
 
   hub: {

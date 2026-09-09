@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, Check, CheckCircle, Cloud, Database, Eye, EyeOff, Github, Info, ShieldCheck, XCircle } from 'lucide-react'
+import { AlertTriangle, Bot, Check, CheckCircle, Cloud, Database, Eye, EyeOff, Github, Info, ShieldCheck, XCircle } from 'lucide-react'
 import { ButtonDefault } from '@/components/jeitto/ButtonDefault'
 import { Card } from '@/components/jeitto/Card'
 import { PageError, PageLoading } from '@/components/jeitto/PageState'
 import { Header } from '@/components/layout/Header'
 import { useAiConfig } from '@/hooks/useApi'
+import { WhenFeature } from '@/components/atoms/FeatureFlag'
 import { api } from '@/lib/api'
 
 type GithubAuthMode = 'pat' | 'github_app'
@@ -30,6 +31,16 @@ export function SettingsIntegrations() {
   })
   const [costToggling, setCostToggling] = useState(false)
   const [costError, setCostError] = useState<string | null>(null)
+
+  // Modelo de IA (provedor LLM + chave) — usado pelo assistente de confiabilidade (ConfiaAI).
+  const [llmProvider, setLlmProvider] = useState('')
+  const [llmModel, setLlmModel] = useState('')
+  const [llmApiKey, setLlmApiKey] = useState('')
+  const [showLlmApiKey, setShowLlmApiKey] = useState(false)
+  const [llmBudget, setLlmBudget] = useState('')
+  const [llmSaving, setLlmSaving] = useState(false)
+  const [llmError, setLlmError] = useState<string | null>(null)
+  const [llmSaved, setLlmSaved] = useState(false)
 
   async function handleToggleCost() {
     setCostError(null)
@@ -96,6 +107,9 @@ export function SettingsIntegrations() {
     if (config) {
       setGithubBranch(config.githubBaseBranch ?? 'main')
       setGithubAuthMode((config.githubAuthMode as GithubAuthMode) ?? 'pat')
+      setLlmProvider(config.provider ?? '')
+      setLlmModel(config.model ?? '')
+      setLlmBudget(config.monthlyTokenBudget != null ? String(config.monthlyTokenBudget) : '')
     }
   }, [config])
 
@@ -116,6 +130,33 @@ export function SettingsIntegrations() {
   // a valer depois de Salvar — divergência aqui é a causa do "token salvo mas never used".
   const activeMode = config?.githubAuthMode ?? 'pat'
   const modeDiverges = githubConfigured && githubAuthMode !== activeMode
+
+  const LLM_PROVIDERS = ['openai', 'anthropic', 'google', 'gemini', 'mistral', 'cohere', 'azure', 'ollama']
+  const llmConfigured = config?.hasApiKey ?? false
+  const llmValid =
+    llmProvider.trim() !== '' && llmModel.trim() !== '' && (llmApiKey.trim() !== '' || llmConfigured)
+
+  const handleLlmSave = async () => {
+    if (!llmValid) return
+    setLlmSaving(true)
+    setLlmError(null)
+    setLlmSaved(false)
+    try {
+      await api.aiConfig.upsert({
+        provider: llmProvider.trim(),
+        model: llmModel.trim(),
+        ...(llmApiKey.trim() ? { apiKey: llmApiKey.trim() } : {}),
+        monthlyTokenBudget: llmBudget.trim() ? parseInt(llmBudget.trim(), 10) : null,
+      })
+      await queryClient.invalidateQueries({ queryKey: ['ai-config'] })
+      setLlmApiKey('')
+      setLlmSaved(true)
+    } catch (err) {
+      setLlmError(err instanceof Error ? err.message : 'Erro ao salvar.')
+    } finally {
+      setLlmSaving(false)
+    }
+  }
 
   const handleGithubTest = async () => {
     setGithubTesting(true)
@@ -241,10 +282,117 @@ export function SettingsIntegrations() {
     <div className="flex min-h-screen flex-col">
       <Header
         title="Integrações"
-        subtitle="Credenciais de GitHub, Datadog e Veracode usadas pela descoberta de serviços e pelo scoring de segurança."
+        subtitle="Modelo de IA, GitHub, Datadog e Veracode usados pelo assistente, pela descoberta de serviços e pelo scoring."
       />
 
       <div className="flex-1 space-y-5 px-4 py-6 lg:px-8">
+
+        {/* Modelo de IA */}
+        <WhenFeature feature="ai">
+        <Card>
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl" style={{ backgroundColor: 'var(--color-primary-soft)' }}>
+              <Bot size={15} style={{ color: 'var(--color-primary)' }} />
+            </div>
+            <div>
+              <p className="text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>Modelo de IA</p>
+              <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
+                {config?.isActive && llmConfigured
+                  ? `${config.provider} / ${config.model} — chave configurada`
+                  : 'Provedor e chave não configurados'}
+              </p>
+            </div>
+            {config?.isActive && llmConfigured && (
+              <span className="ml-auto rounded-[8px] px-2.5 py-1 text-xs font-semibold" style={{ backgroundColor: 'rgba(16,185,129,0.1)', color: '#0e8a44' }}>
+                Ativo
+              </span>
+            )}
+          </div>
+
+          <p className="mb-5 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
+            Provedor e modelo de linguagem que o assistente de confiabilidade (ConfiaAI) usa para narrar
+            relatórios, explicar findings e investigar regressões. A chave é armazenada criptografada e
+            nunca é exibida de volta.
+          </p>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>
+                Provedor *
+              </label>
+              <select value={llmProvider} onChange={e => setLlmProvider(e.target.value)} className={inputCls} style={inputStyle}>
+                <option value="">Selecione…</option>
+                {LLM_PROVIDERS.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>
+                Modelo *
+              </label>
+              <input
+                type="text"
+                value={llmModel}
+                onChange={e => setLlmModel(e.target.value)}
+                placeholder="ex: gemini-2.5-flash, gpt-4o, claude-sonnet-4"
+                className={inputCls}
+                style={inputStyle}
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>
+                API Key {llmConfigured ? '' : '*'}
+              </label>
+              <div className="relative mt-2">
+                <input
+                  type={showLlmApiKey ? 'text' : 'password'}
+                  value={llmApiKey}
+                  onChange={e => setLlmApiKey(e.target.value)}
+                  placeholder={llmConfigured ? '••••••••• (deixe vazio para manter a atual)' : 'Cole sua API key'}
+                  className="w-full rounded-2xl px-4 py-3 pr-12 text-sm outline-none"
+                  style={inputStyle}
+                />
+                <button type="button" onClick={() => setShowLlmApiKey(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 opacity-60 hover:opacity-100">
+                  {showLlmApiKey ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>
+                Limite mensal de tokens
+              </label>
+              <input
+                type="number"
+                value={llmBudget}
+                onChange={e => setLlmBudget(e.target.value)}
+                placeholder="Vazio = ilimitado"
+                className={inputCls}
+                style={inputStyle}
+              />
+            </div>
+          </div>
+
+          {config?.monthlyTokenBudget != null && (
+            <p className="mt-3 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
+              Uso este mês: {config.tokensUsedMonth.toLocaleString('pt-BR')} / {config.monthlyTokenBudget.toLocaleString('pt-BR')} tokens
+            </p>
+          )}
+          {llmError && <p className="mt-3 text-sm" style={{ color: '#d8341a' }}>{llmError}</p>}
+
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <ButtonDefault
+              label={llmSaving ? 'Salvando...' : 'Salvar modelo de IA'}
+              onClick={() => void handleLlmSave()}
+              disabled={!llmValid || llmSaving}
+            />
+            {llmSaved && (
+              <div className="flex items-center gap-1.5 text-sm" style={{ color: '#12a150' }}>
+                <Check size={14} />
+                Salvo com sucesso
+              </div>
+            )}
+          </div>
+        </Card>
+        </WhenFeature>
 
         {/* GitHub */}
         <Card>
@@ -253,7 +401,7 @@ export function SettingsIntegrations() {
               <Github size={15} style={{ color: 'var(--color-foreground)' }} />
             </div>
             <div>
-              <p className="text-sm font-black" style={{ color: 'var(--color-foreground)' }}>GitHub</p>
+              <p className="text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>GitHub</p>
               <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
                 {githubConfigured
                   ? config?.githubAuthMode === 'github_app' ? 'GitHub App configurado' : 'Token configurado'
@@ -457,7 +605,7 @@ export function SettingsIntegrations() {
               <Database size={15} style={{ color: '#9c1f8c' }} />
             </div>
             <div>
-              <p className="text-sm font-black" style={{ color: 'var(--color-foreground)' }}>Datadog</p>
+              <p className="text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>Datadog</p>
               <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
                 {ddSettings?.configured ? 'Credenciais configuradas' : 'Credenciais não configuradas'}
               </p>
@@ -601,7 +749,7 @@ export function SettingsIntegrations() {
                   { label: 'Monitorando', value: queuesByState!.monitoring, color: 'rgba(16,185,129,0.12)', text: '#0e8a44' },
                 ].map(({ label, value, color, text }) => (
                   <div key={label} className="rounded-2xl px-3 py-2.5 text-center" style={{ backgroundColor: color }}>
-                    <p className="text-lg font-black" style={{ color: text }}>{value}</p>
+                    <p className="text-lg font-bold" style={{ color: text }}>{value}</p>
                     <p className="text-[11px]" style={{ color: 'var(--color-muted-foreground)' }}>{label}</p>
                   </div>
                 ))}
@@ -652,7 +800,7 @@ export function SettingsIntegrations() {
               <ShieldCheck size={15} style={{ color: '#0784b0' }} />
             </div>
             <div>
-              <p className="text-sm font-black" style={{ color: 'var(--color-foreground)' }}>Veracode</p>
+              <p className="text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>Veracode</p>
               <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
                 {veracodeSettings?.hasApiId && veracodeSettings?.hasApiKey ? 'Credenciais configuradas' : 'Credenciais não configuradas'}
               </p>
@@ -666,7 +814,7 @@ export function SettingsIntegrations() {
 
           <p className="mb-5 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
             Amplia o pilar de Segurança com achados de SAST, SCA e DAST do Veracode (regras SEC-007 a
-            SEC-010). O operator descobre suas aplicações Veracode e correlaciona com os workloads por
+            SEC-010). O titlis-servicemap descobre suas aplicações Veracode e correlaciona com os serviços por
             nome ou repositório — a cobertura se adapta automaticamente aos produtos que sua conta
             Veracode tem habilitados (só SAST, só SCA, os três, etc.).
           </p>
@@ -723,7 +871,7 @@ export function SettingsIntegrations() {
         </Card>
 
         {/* Estimativa de custo — opt-in explícito: quando ativo, estima via preço público de
-            cloud × uso de CPU/mem já observado pelo operator (estilo CastAI, sem billing
+            cloud × uso de CPU/mem observado pelas métricas do Datadog (estilo CastAI, sem billing
             export). Hoje só clusters GCP são precificados (detecção por Node.Spec.ProviderID);
             AWS/Azure ficam de fora do total até termos tabela de preço pra eles. Nunca liga
             sozinho: pode gerar cobrança adicional na fatura Titlis. */}
@@ -733,7 +881,7 @@ export function SettingsIntegrations() {
               <Cloud size={15} style={{ color: 'var(--color-primary)' }} />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-black" style={{ color: 'var(--color-foreground)' }}>Estimativa de Custo</p>
+              <p className="text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>Estimativa de Custo</p>
               <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
                 {costSettings?.enabled
                   ? `Estimado via preço público × uso observado${costSettings.enabledByEmail ? ` — ativado por ${costSettings.enabledByEmail}` : ''}. Hoje cobre clusters GCP; AWS e Azure em breve.`

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Activity, AlertOctagon, AlertTriangle, BarChart3, CheckCircle2, ChevronLeft, ChevronRight, Download, GitMerge, ShieldAlert, Users } from 'lucide-react'
+import { Activity, AlertOctagon, AlertTriangle, BarChart3, CheckCircle2, ChevronLeft, ChevronRight, Download, ShieldAlert, Users } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle } from '@/components/jeitto/Card'
 import { MetricCard } from '@/components/jeitto/MetricCard'
@@ -72,7 +72,7 @@ function Th({ children }: { children: React.ReactNode }) {
 function StatMini({ label, value, colorClass }: { label: string; value: string; colorClass?: string }) {
   return (
     <div className="text-center">
-      <p className={cn('text-2xl font-black', colorClass ?? 'text-[var(--color-foreground)]')}>
+      <p className={cn('text-2xl font-bold', colorClass ?? 'text-[var(--color-foreground)]')}>
         {value}
       </p>
       <p className="mt-0.5 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>{label}</p>
@@ -87,7 +87,7 @@ function SectionRow({ icon, iconClass, label, value }: { icon: React.ReactNode; 
         <span className={iconClass}>{icon}</span>
         <span className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>{label}</span>
       </div>
-      <span className="font-black text-lg" style={{ color: 'var(--color-foreground)' }}>{value}</span>
+      <span className="font-bold text-lg" style={{ color: 'var(--color-foreground)' }}>{value}</span>
     </div>
   )
 }
@@ -113,7 +113,7 @@ export function AdminOverview({ standalone = true }: { standalone?: boolean }) {
   }
   if (!overview) return null
 
-  const { compliance, remediations, pillars, users } = overview
+  const { compliance, pillars, users } = overview
   const userList = usersData?.users ?? []
   const totalPages = Math.ceil(userList.length / PAGE_SIZE)
   const pagedUsers = userList.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
@@ -123,44 +123,36 @@ export function AdminOverview({ standalone = true }: { standalone?: boolean }) {
       {standalone && (
         <Header
           title="Visão Executiva"
-          subtitle="Panorama de compliance, automação e adoção da plataforma."
+          subtitle="Panorama da postura de confiabilidade e da adoção da plataforma."
         />
       )}
 
       <div className="space-y-6 px-4 py-6 lg:px-8">
 
-        {/* Bloco 1 — 4 big numbers */}
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {/* Bloco 1 — big numbers (postura RPM, do coverage_scorecard) */}
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <MetricCard
-            label="Score médio de compliance"
+            label="Trust Score médio"
             value={`${compliance.averageScore.toFixed(0)} / 100`}
             icon={BarChart3}
             iconColor={scoreTextColor(compliance.averageScore)}
             delay={0}
           />
           <MetricCard
-            label="Em conformidade"
+            label="Serviços saudáveis"
             value={`${compliance.compliancePercent.toFixed(0)}%`}
-            sub={`${fmt(compliance.compliantWorkloads)} de ${fmt(compliance.totalWorkloads)} workloads`}
+            sub={`${fmt(compliance.compliantWorkloads)} de ${fmt(compliance.totalWorkloads)} serviços`}
             icon={CheckCircle2}
             iconColor="text-[var(--color-success)]"
             delay={0.05}
           />
           <MetricCard
-            label="Workloads monitorados"
+            label="Serviços com scorecard"
             value={fmt(compliance.totalWorkloads)}
             sub=" "
             icon={Activity}
             iconColor="text-[var(--color-info)]"
             delay={0.10}
-          />
-          <MetricCard
-            label="Remediações automatizadas"
-            value={fmt(remediations.totalAutomated)}
-            sub={`${fmt(remediations.merged)} PRs mesclados`}
-            icon={GitMerge}
-            iconColor="text-[var(--color-accent)]"
-            delay={0.15}
           />
         </div>
 
@@ -317,58 +309,37 @@ export function AdminOverview({ standalone = true }: { standalone?: boolean }) {
           )}
         </Card>
 
-        {/* Bloco 3 — Automação & Risco */}
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Automação</CardTitle>
-            </CardHeader>
-            <div className="space-y-3">
-              <SectionRow icon="✓" iconClass="text-[var(--color-success)] text-base" label="PRs mesclados" value={fmt(remediations.merged)} />
-              <SectionRow icon="◷" iconClass="text-[var(--color-info)] text-base" label="Em andamento" value={fmt(remediations.inProgress)} />
-              <SectionRow icon="✗" iconClass="text-[var(--color-danger)] text-base" label="Com falha" value={fmt(remediations.failed)} />
-              <div className="mt-4 border-t pt-4" style={{ borderColor: 'var(--color-border)' }}>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>Taxa de sucesso</span>
-                  <span className={cn('font-black text-2xl', scoreTextColor(remediations.successRate))}>
-                    {remediations.successRate.toFixed(0)}%
-                  </span>
-                </div>
-              </div>
-            </div>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Risco Operacional</CardTitle>
-            </CardHeader>
-            <div className="space-y-3">
-              <SectionRow
-                icon={<ShieldAlert size={15} />}
-                iconClass="text-[var(--color-danger)]"
-                label="Workloads críticos (score < 50)"
-                value={fmt(compliance.criticalWorkloads)}
-              />
-              <SectionRow
-                icon={<AlertTriangle size={15} />}
-                iconClass="text-[var(--color-warning)]"
-                label="Falhas críticas acumuladas"
-                value={fmt(compliance.totalCriticalFailures)}
-              />
-              <SectionRow
-                icon={<AlertOctagon size={15} />}
-                iconClass="text-slate-400"
-                label="Sem avaliação"
-                value={fmt(compliance.workloadsWithoutEvaluation)}
-              />
-            </div>
-          </Card>
-        </div>
-
-        {/* Bloco 4 — Pillar bars */}
+        {/* Bloco 3 — Risco */}
         <Card>
           <CardHeader>
-            <CardTitle>Compliance por Pilar</CardTitle>
+            <CardTitle>Risco de Confiabilidade</CardTitle>
+          </CardHeader>
+          <div className="space-y-3">
+            <SectionRow
+              icon={<ShieldAlert size={15} />}
+              iconClass="text-[var(--color-danger)]"
+              label="Serviços críticos (Trust < 35)"
+              value={fmt(compliance.criticalWorkloads)}
+            />
+            <SectionRow
+              icon={<AlertTriangle size={15} />}
+              iconClass="text-[var(--color-warning)]"
+              label="Serviços saudáveis (Trust ≥ 55)"
+              value={fmt(compliance.compliantWorkloads)}
+            />
+            <SectionRow
+              icon={<AlertOctagon size={15} />}
+              iconClass="text-slate-400"
+              label="Total de serviços com scorecard"
+              value={fmt(compliance.totalWorkloads)}
+            />
+          </div>
+        </Card>
+
+        {/* Bloco 4 — Dimensão bars */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Cobertura por dimensão</CardTitle>
           </CardHeader>
           {pillars.length === 0 ? (
             <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
@@ -419,7 +390,7 @@ export function AdminOverview({ standalone = true }: { standalone?: boolean }) {
                     className={cn('inline-flex items-center gap-1.5 rounded-[8px] px-3 py-1 text-xs font-semibold', ROLE_COLORS[role] ?? 'bg-slate-500/15 text-slate-400')}
                   >
                     {ROLE_LABELS[role] ?? role}
-                    <span className="font-black">{count}</span>
+                    <span className="font-bold">{count}</span>
                   </span>
                 ))}
               </div>

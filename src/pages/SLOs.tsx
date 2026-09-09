@@ -129,7 +129,7 @@ function ProposeChangeForm({
       <div className="flex items-center gap-2 rounded-2xl border px-4 py-3 text-sm"
         style={{ borderColor: 'rgba(34,197,94,0.3)', color: '#12a150', background: 'rgba(240,253,244,0.8)' }}>
         <CheckCircle2 size={14} />
-        Proposta enviada! O operator aplicará a alteração no próximo ciclo.
+        Sugestão registrada. Aplique a mudança no SLO declarativo do repositório (SLO-as-code) ou direto no Datadog.
       </div>
     )
   }
@@ -209,7 +209,7 @@ function ProposeChangeForm({
       </div>
 
       <p className="text-[10px] leading-4" style={{ color: 'var(--color-muted-foreground)' }}>
-        A proposta é salva em fila e o <code>titlis-operator-go</code> aplica no próximo ciclo de reconciliação.
+        A sugestão fica registrada para o time aplicar no SLO-as-code do repositório ou no Datadog.
         Não há rollback automático — verifique o CRD SLOConfig no cluster após a aplicação.
       </p>
     </div>
@@ -435,7 +435,7 @@ function CoverageCard({ item }: { item: WorkloadSLOCoverage }) {
             style={{ borderColor: 'rgba(245,158,11,0.2)', background: 'rgba(255,251,235,0.6)', color: '#7a5400' }}>
             <strong>Candidato a SLO</strong> — workload registrado no Datadog mas sem{' '}
             <code className="font-mono text-[11px]">SLOConfig</code> CRD no cluster. Aplique o manifesto
-            para que o operator crie e reconcilie o SLO automaticamente.
+            declare o SLO no repositório (SLO-as-code) ou crie direto no Datadog.
           </div>
         )}
         {item.sloStatus === 'NO_DATADOG' && (
@@ -510,7 +510,7 @@ function CoverageView({ onRefresh }: { onRefresh: () => void }) {
           <div key={label} className="rounded-2xl border px-4 py-3"
             style={{ borderColor: 'var(--color-border)', background: 'var(--color-card)' }}>
             <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>{label}</p>
-            <p className="mt-0.5 text-2xl font-black" style={{ color: color ?? 'var(--color-foreground)' }}>{value}</p>
+            <p className="mt-0.5 text-2xl font-bold" style={{ color: color ?? 'var(--color-foreground)' }}>{value}</p>
           </div>
         ))}
       </div>
@@ -570,7 +570,7 @@ function CoverageView({ onRefresh }: { onRefresh: () => void }) {
           <EmptyState
             icon={Target}
             title="Nenhum workload ativo"
-            description="Os workloads aparecem aqui quando o operator começa a enviar snapshots."
+            description="Os serviços aparecem aqui conforme o titlis-servicemap os descobre no Datadog."
           />
         </Card>
       ) : filtered.length === 0 ? (
@@ -804,7 +804,7 @@ export function SLOs() {
   if (error && view === 'slos') {
     return (
       <>
-        <Header title="SLOs" subtitle="Gestão de SLOs declarativos sincronizados via operator." />
+        <Header title="SLOs" subtitle="SLOs descobertos do Datadog e do SLO-as-code dos repositórios." />
         <PageError message={error instanceof Error ? error.message : undefined} onRetry={() => void refetch()} />
       </>
     )
@@ -880,7 +880,7 @@ export function SLOs() {
               <div key={label} className="rounded-2xl border px-4 py-3"
                 style={{ borderColor: 'var(--color-border)', background: 'var(--color-card)' }}>
                 <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>{label}</p>
-                <p className="mt-0.5 text-2xl font-black" style={{ color: color ?? 'var(--color-foreground)' }}>{value}</p>
+                <p className="mt-0.5 text-2xl font-bold" style={{ color: color ?? 'var(--color-foreground)' }}>{value}</p>
               </div>
             ))}
           </div>

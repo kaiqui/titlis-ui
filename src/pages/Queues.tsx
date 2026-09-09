@@ -210,18 +210,18 @@ function ThresholdsPanel({ queueId, observationCount }: { queueId: string; obser
           ].map(([label, value]) => (
             <Card key={label}>
               <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>{label}</p>
-              <p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{value}</p>
+              <p className="mt-1 text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>{value}</p>
             </Card>
           ))}
         </div>
         <div className="mt-3 grid gap-3 md:grid-cols-2">
           <Card>
             <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Warning (P75 × 1.2)</p>
-            <p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{fmtNum(thresholds.backlogWarning)} msg</p>
+            <p className="mt-1 text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>{fmtNum(thresholds.backlogWarning)} msg</p>
           </Card>
           <Card>
             <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Critical (P95 × 1.5)</p>
-            <p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{fmtNum(thresholds.backlogCritical)} msg</p>
+            <p className="mt-1 text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>{fmtNum(thresholds.backlogCritical)} msg</p>
           </Card>
         </div>
       </InlineAccordion>
@@ -235,18 +235,18 @@ function ThresholdsPanel({ queueId, observationCount }: { queueId: string; obser
           ].map(([label, value]) => (
             <Card key={label}>
               <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>{label}</p>
-              <p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{value}</p>
+              <p className="mt-1 text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>{value}</p>
             </Card>
           ))}
         </div>
         <div className="mt-3 grid gap-3 md:grid-cols-2">
           <Card>
             <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Warning</p>
-            <p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{fmtSec(thresholds.ageWarningSec)}</p>
+            <p className="mt-1 text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>{fmtSec(thresholds.ageWarningSec)}</p>
           </Card>
           <Card>
             <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Critical</p>
-            <p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{fmtSec(thresholds.ageCriticalSec)}</p>
+            <p className="mt-1 text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>{fmtSec(thresholds.ageCriticalSec)}</p>
           </Card>
         </div>
       </InlineAccordion>
@@ -464,7 +464,7 @@ export function Queues() {
                       <LifecycleBadge queue={selectedQueue} />
                       <div className="space-y-1.5">
                         <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-lg font-black tracking-tight" style={{ color: 'var(--color-foreground)' }}>
+                          <p className="text-lg font-bold tracking-tight" style={{ color: 'var(--color-foreground)' }}>
                             {selectedQueue.displayName || selectedQueue.externalId.split('/').pop()}
                           </p>
                           {selectedQueue.isDlq && (
@@ -556,7 +556,7 @@ export function Queues() {
                               ].map(([label, value]) => (
                                 <Card key={label}>
                                   <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>{label}</p>
-                                  <p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{value}</p>
+                                  <p className="mt-1 text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>{value}</p>
                                 </Card>
                               ))}
                             </div>
@@ -570,7 +570,7 @@ export function Queues() {
                                 ].map(([label, value]) => (
                                   <Card key={label}>
                                     <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>{label}</p>
-                                    <p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{value}</p>
+                                    <p className="mt-1 text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>{value}</p>
                                   </Card>
                                 ))}
                               </div>

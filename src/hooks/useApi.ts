@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
+import { isFeatureEnabled } from '@/lib/featureFlags'
 import type { WorkloadSummary } from '@/types'
 
 export interface QueueFilters {
@@ -16,13 +17,6 @@ export function useDashboardWorkloads(cluster?: string, tags?: string[]) {
   })
 }
 
-export function useAvailableTags(resourceType = 'workload') {
-  return useQuery({
-    queryKey: ['tags-available', resourceType],
-    queryFn: () => api.tags.available(resourceType),
-    staleTime: 60_000,
-  })
-}
 
 export function useToggleFavorite() {
   const queryClient = useQueryClient()
@@ -44,22 +38,6 @@ export function useToggleFavorite() {
         }
       }
     },
-  })
-}
-
-export function useWorkloadScorecard(id: string) {
-  return useQuery({
-    queryKey: ['workload', id, 'scorecard'],
-    queryFn: () => api.workloads.scorecard(id),
-    enabled: Boolean(id),
-  })
-}
-
-export function useWorkloadRemediation(id: string) {
-  return useQuery({
-    queryKey: ['workload', id, 'remediation'],
-    queryFn: () => api.workloads.remediation(id),
-    enabled: Boolean(id),
   })
 }
 
@@ -96,67 +74,30 @@ export function useAiConfig() {
   })
 }
 
-export function useScoreConfigRules(engine = 'kubernetes') {
+export function useLookoutSeals() {
   return useQuery({
-    queryKey: ['score-config', 'rules', engine],
-    queryFn: () => api.scoreConfig.getRules(engine),
+    queryKey: ['lookout-seals'],
+    queryFn: () => api.lookout.seals(),
+    enabled: isFeatureEnabled('ai'),
     staleTime: 60_000,
   })
 }
 
-export function useScoreConfigOverrides(engine = 'kubernetes') {
+export function useLookoutServiceContext(uid: string) {
   return useQuery({
-    queryKey: ['score-config', 'overrides', engine],
-    queryFn: () => api.scoreConfig.getOverrides(engine),
+    queryKey: ['lookout-service-context', uid],
+    queryFn: () => api.lookout.serviceContext(uid),
+    enabled: uid.length > 0 && isFeatureEnabled('ai'),
     staleTime: 30_000,
   })
 }
 
-export function useScoreConfigWeights(engine = 'kubernetes') {
+export function useAiUsage(days: number) {
   return useQuery({
-    queryKey: ['score-config', 'weights', engine],
-    queryFn: () => api.scoreConfig.getWeights(engine),
+    queryKey: ['ai-usage', days],
+    queryFn: () => api.lookout.aiUsage(days),
+    enabled: isFeatureEnabled('ai'),
     staleTime: 60_000,
-  })
-}
-
-export function useClusters() {
-  return useQuery({
-    queryKey: ['clusters'],
-    queryFn: () => api.clusters.list(),
-    staleTime: 60_000,
-  })
-}
-
-export function useNamespaces(clusterId?: number) {
-  return useQuery({
-    queryKey: ['namespaces', clusterId ?? null],
-    queryFn: () => api.namespaces.list(clusterId),
-    staleTime: 60_000,
-  })
-}
-
-export function useWorkloadItems(clusterId?: number, namespaceId?: number) {
-  return useQuery({
-    queryKey: ['workload-items', clusterId ?? null, namespaceId ?? null],
-    queryFn: () => api.workloadItems.list(clusterId, namespaceId),
-    staleTime: 30_000,
-  })
-}
-
-export function useResourceTags(resourceType: string) {
-  return useQuery({
-    queryKey: ['tags', resourceType],
-    queryFn: () => api.tags.list(resourceType),
-    staleTime: 30_000,
-  })
-}
-
-export function useTagPolicies() {
-  return useQuery({
-    queryKey: ['tag-policies'],
-    queryFn: () => api.tagPolicies.list(),
-    staleTime: 30_000,
   })
 }
 

@@ -22,7 +22,7 @@ export function Header({ title, subtitle, timeRange }: HeaderProps) {
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div className="min-w-0">
           <div>
-            <h1 className="family-neighbor text-xl font-black tracking-tight lg:text-2xl" style={{ color: 'var(--color-foreground)' }}>
+            <h1 className="family-neighbor text-xl font-bold tracking-tight lg:text-2xl" style={{ color: 'var(--color-foreground)' }}>
               {title}
             </h1>
             {subtitle && (
@@ -66,7 +66,7 @@ export function Header({ title, subtitle, timeRange }: HeaderProps) {
           <motion.button
             onClick={toggleTheme}
             whileTap={{ scale: 0.94 }}
-            className="button-nav inline-flex items-center gap-2 rounded-[8px] border px-4 py-2.5 text-sm transition-transform hover:-translate-y-0.5"
+            className="button-nav inline-flex items-center gap-2 rounded-[8px] border px-4 py-2.5 text-sm"
             style={{
               borderColor: 'var(--color-border)',
               backgroundColor: 'var(--color-card)',

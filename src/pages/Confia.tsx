@@ -34,7 +34,7 @@ export function Confia() {
 
   const feedback = useMutation({
     mutationFn: ({ id, verdict }: { id: number; verdict: 'util' | 'ruido' }) => api.lookout.feedback(id, verdict),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['lookout-briefings'] }),
+    onSettled: () => qc.invalidateQueries({ queryKey: ['lookout-briefings'] }),
   })
 
   if (briefings.isLoading) return <><Header title="ConfiaAI" subtitle="Análise de confiabilidade" /><PageLoading /></>
@@ -88,6 +88,8 @@ export function Confia() {
                     key={b.briefingId}
                     b={b}
                     index={i}
+                    pending={feedback.isPending && feedback.variables?.id === b.briefingId}
+                    failed={feedback.isError && feedback.variables?.id === b.briefingId}
                     onFeedback={(verdict) => feedback.mutate({ id: b.briefingId, verdict })}
                   />
                 ))}
@@ -109,7 +111,7 @@ export function Confia() {
             <div className="space-y-3">
               {(playbooks.data ?? []).map((p) => (
                 <Card key={p.playbookId} className="p-5">
-                  <p className="text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{p.title}</p>
+                  <p className="text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>{p.title}</p>
                   {p.appliesWhen && (
                     <p className="mt-0.5 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>quando: {p.appliesWhen}</p>
                   )}
@@ -132,10 +134,14 @@ export function Confia() {
 function BriefingCard({
   b,
   index,
+  pending,
+  failed,
   onFeedback,
 }: {
   b: LookoutBriefing
   index: number
+  pending?: boolean
+  failed?: boolean
   onFeedback: (verdict: 'util' | 'ruido') => void
 }) {
   return (
@@ -148,7 +154,7 @@ function BriefingCard({
           >
             {KIND_LABEL[b.kind] ?? b.kind}
           </span>
-          <p className="text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{b.title}</p>
+          <p className="text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>{b.title}</p>
           <span className="ml-auto text-[10px]" style={{ color: 'var(--color-muted-foreground)' }}>{formatDate(b.createdAt)}</span>
         </div>
         <div className="mt-2 space-y-2 text-sm leading-relaxed" style={{ color: 'var(--color-muted-foreground)' }}>
@@ -163,20 +169,25 @@ function BriefingCard({
             <>
               <button
                 type="button"
+                disabled={pending}
                 onClick={() => onFeedback('util')}
-                className="inline-flex items-center gap-1 rounded-[8px] border px-2 py-1 text-[11px] font-medium hover:opacity-80"
+                className="inline-flex items-center gap-1 rounded-[8px] border px-2 py-1 text-[11px] font-medium hover:opacity-80 disabled:opacity-50"
                 style={{ borderColor: 'var(--color-border)' }}
               >
                 <ThumbsUp size={11} />útil
               </button>
               <button
                 type="button"
+                disabled={pending}
                 onClick={() => onFeedback('ruido')}
-                className="inline-flex items-center gap-1 rounded-[8px] border px-2 py-1 text-[11px] font-medium hover:opacity-80"
+                className="inline-flex items-center gap-1 rounded-[8px] border px-2 py-1 text-[11px] font-medium hover:opacity-80 disabled:opacity-50"
                 style={{ borderColor: 'var(--color-border)' }}
               >
                 <ThumbsDown size={11} />ruído
               </button>
+              {failed && (
+                <span className="text-[11px]" style={{ color: '#d8341a' }}>falha ao enviar — tente de novo</span>
+              )}
             </>
           )}
         </div>

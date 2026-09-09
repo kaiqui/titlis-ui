@@ -28,7 +28,7 @@ function VariationBadge({ pct }: { pct: number | null }) {
   const Icon = stable ? Minus : pct > 0 ? ArrowUpRight : ArrowDownRight
   const color = stable ? 'var(--color-muted-foreground)' : pct > 0 ? '#d8341a' : '#12a150'
   return (
-    <span className="flex items-center gap-1 text-sm font-black tabular-nums" style={{ color }}>
+    <span className="flex items-center gap-1 text-sm font-bold tabular-nums" style={{ color }}>
       <Icon size={14} />
       {stable ? 'estável' : `${pct > 0 ? '+' : ''}${pct.toFixed(1)}%`}
     </span>
@@ -113,7 +113,7 @@ export function Costs() {
                 <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--color-muted-foreground)' }}>
                   <Wallet size={14} /> Total no período
                 </div>
-                <p className="mt-2 text-2xl font-black tabular-nums" style={{ color: 'var(--color-foreground)' }}>
+                <p className="mt-2 text-2xl font-bold tabular-nums" style={{ color: 'var(--color-foreground)' }}>
                   {currencyFmt.format(summary.totalCost)}
                 </p>
                 <p className="mt-1 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>últimos {days} dias</p>
@@ -129,7 +129,7 @@ export function Costs() {
                 <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--color-muted-foreground)' }}>
                   <Users size={14} /> Média diária
                 </div>
-                <p className="mt-2 text-2xl font-black tabular-nums" style={{ color: 'var(--color-foreground)' }}>
+                <p className="mt-2 text-2xl font-bold tabular-nums" style={{ color: 'var(--color-foreground)' }}>
                   {currencyFmt.format(avgDaily)}
                 </p>
                 <p className="mt-1 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>{workloads.workloads.length} workloads com custo</p>
@@ -138,7 +138,7 @@ export function Costs() {
                 <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--color-muted-foreground)' }}>
                   <Clock size={14} /> Última coleta
                 </div>
-                <p className="mt-2 text-2xl font-black tabular-nums" style={{ color: 'var(--color-foreground)' }}>
+                <p className="mt-2 text-2xl font-bold tabular-nums" style={{ color: 'var(--color-foreground)' }}>
                   {formatDate(summary.lastCollectionAt)}
                 </p>
                 <p className="mt-1 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>coleta diária automática</p>
@@ -149,7 +149,7 @@ export function Costs() {
               <Card className="p-5">
                 <div className="mb-5 flex flex-wrap items-center gap-2">
                   <TrendingUp size={16} style={{ color: 'var(--color-primary)' }} />
-                  <p className="text-sm font-black" style={{ color: 'var(--color-foreground)' }}>Custo diário</p>
+                  <p className="text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>Custo diário</p>
                   <span className="ml-auto text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
                     dias sem coleta aparecem como zero
                   </span>
@@ -179,7 +179,7 @@ export function Costs() {
               <Card className="p-5">
                 <div className="mb-4 flex items-center gap-2">
                   <Users size={16} style={{ color: 'var(--color-primary)' }} />
-                  <p className="text-sm font-black" style={{ color: 'var(--color-foreground)' }}>Custo por time</p>
+                  <p className="text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>Custo por time</p>
                 </div>
                 <div className="flex flex-col gap-3">
                   {teams.teams.map(t => (
@@ -210,7 +210,7 @@ export function Costs() {
 
             <Card className="p-5">
               <div className="mb-4 flex flex-wrap items-center gap-3">
-                <p className="text-sm font-black" style={{ color: 'var(--color-foreground)' }}>Workloads</p>
+                <p className="text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>Workloads</p>
                 <div className="ml-auto flex flex-wrap items-center gap-2">
                   <div className="relative">
                     <Search size={13} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-muted-foreground)' }} />

@@ -9,7 +9,9 @@ import { EmptyState } from '@/components/jeitto/EmptyState'
 import { PageError, PageLoading } from '@/components/jeitto/PageState'
 import { ScoreRing } from '@/components/jeitto/ScoreRing'
 import { Header } from '@/components/layout/Header'
-import { useHubRollup } from '@/hooks/useApi'
+import { useHubRollup, useLookoutSeals } from '@/hooks/useApi'
+import { isFeatureEnabled } from '@/lib/featureFlags'
+import type { LookoutSeal } from '@/types'
 import { api } from '@/lib/api'
 import { formatNumber } from '@/lib/utils'
 import { overallBand, postureBand, stripIcon } from '@/lib/posture'
@@ -55,6 +57,7 @@ function Sparkline({ points }: { points: PostureTrendPoint[] }) {
 
 export function Reliability() {
   const { data: root, isLoading, isError, refetch } = useHubRollup()
+  const { data: seals = {} } = useLookoutSeals()
   const { days } = useTimeRange()
   const { data: trend = [] } = useQuery({ queryKey: ['hub-trend', days], queryFn: () => api.hub.trend('', days), staleTime: 60_000 })
   const [dimFilter, setDimFilter] = useState<string | null>(null)
@@ -121,7 +124,7 @@ export function Reliability() {
                 style={{ borderColor: active ? dband.color : 'var(--color-border)', backgroundColor: active ? 'var(--color-muted)' : 'transparent' }}
               >
                 <p className="truncate text-xs font-semibold">{d.label}</p>
-                <p className="mt-1 text-lg font-black" style={{ color: dband.color }}>{d.strength === null ? 'n/a' : Math.round(d.strength)}</p>
+                <p className="mt-1 text-lg font-bold" style={{ color: dband.color }}>{d.strength === null ? 'n/a' : Math.round(d.strength)}</p>
                 <p className="text-[11px]" style={{ color: 'var(--color-muted-foreground)' }}>
                   {d.fragileCount} frágei{d.fragileCount === 1 ? 's' : 's'}
                 </p>
@@ -152,7 +155,7 @@ export function Reliability() {
 
         <Card className="p-5">
           <div className="mb-3 flex items-center justify-between">
-            <p className="text-sm font-black tracking-tight">Serviços por risco ponderado</p>
+            <p className="text-sm font-bold tracking-tight">Serviços por risco ponderado</p>
             {dimFilter && (
               <button type="button" onClick={() => setDimFilter(null)} className="text-xs" style={{ color: 'var(--color-primary)' }}>
                 limpar filtro
@@ -167,7 +170,7 @@ export function Reliability() {
                   <th className="pb-2 pr-4 font-semibold">Postura</th>
                   <th className="pb-2 pr-4 font-semibold">Dimensão frágil</th>
                   <th className="pb-2 pr-4 font-semibold">Lift</th>
-                  <th className="pb-2 font-semibold" />
+                  {isFeatureEnabled('ai') && <th className="pb-2 font-semibold" />}
                 </tr>
               </thead>
               <tbody>
@@ -188,7 +191,7 @@ export function Reliability() {
                       </td>
                       <td className="py-2 pr-4" style={{ color: 'var(--color-muted-foreground)' }}>{weak ? weak.label : 'sinal insuficiente'}</td>
                       <td className="py-2 pr-4 font-mono text-xs" style={{ color: '#12a150' }}>{lift > 0 ? `+${Math.round(lift)}` : '—'}</td>
-                      <td className="py-2" />
+                      {isFeatureEnabled('ai') && <td className="py-2">{leaf.workloadUid && <MemorySeal seal={seals[leaf.workloadUid]} />}</td>}
                     </motion.tr>
                   )
                 })}
@@ -199,6 +202,37 @@ export function Reliability() {
         </Card>
       </div>
     </div>
+  )
+}
+
+const VERDICT_LABEL: Record<string, string> = {
+  regressao_real: 'regressão',
+  postura_fraca: 'postura fraca',
+  ruido: 'ruído',
+  postura_saudavel: 'ok',
+  sinal_insuficiente: 'sem sinal',
+}
+
+// Selo da memória do ConfiaAI numa linha de serviço (LKT §8): "visto Nx", "ruído histórico".
+function MemorySeal({ seal }: { seal?: LookoutSeal }) {
+  if (!seal || (seal.investigations === 0 && seal.memory === 0)) return null
+  const noise = seal.noise
+  const label = noise
+    ? 'ruído histórico'
+    : seal.investigations > 1
+      ? `visto ${seal.investigations}×`
+      : VERDICT_LABEL[seal.lastVerdict ?? ''] ?? 'analisado'
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-[8px] px-1.5 py-0.5 text-[10px] font-medium"
+      style={{
+        color: noise ? 'var(--color-muted-foreground)' : 'var(--color-primary)',
+        backgroundColor: 'var(--color-muted)',
+      }}
+      title={`ConfiaAI: ${seal.investigations} investigação(ões), ${seal.memory} fato(s) na memória`}
+    >
+      🔍 {label}
+    </span>
   )
 }
 

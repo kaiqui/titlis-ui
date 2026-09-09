@@ -34,10 +34,10 @@ export function MetricCard({
       <Card className="jeitto-stat-band h-full">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
-            <p className="family-neighbor text-[11px] font-extrabold uppercase tracking-[0.18em]" style={{ color: 'var(--color-muted-foreground)' }}>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.1em]" style={{ color: 'var(--color-muted-foreground)' }}>
               {label}
             </p>
-            <p className="family-neighbor mt-3 text-[1.8rem] font-black tracking-tight lg:text-[1.95rem]" style={{ color: 'var(--color-foreground)' }}>
+            <p className="family-neighbor mt-2.5 text-[1.7rem] font-bold tracking-tight lg:text-[1.85rem]" style={{ color: 'var(--color-foreground)' }}>
               {value}
             </p>
             {sub && (
