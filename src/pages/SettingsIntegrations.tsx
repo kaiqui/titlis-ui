@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, Bot, Check, CheckCircle, Cloud, Database, Eye, EyeOff, Github, Info, ShieldCheck, XCircle } from 'lucide-react'
+import { AlertTriangle, Bot, Check, CheckCircle, Cloud, Database, Eye, EyeOff, Github, Info, LineChart, ShieldCheck, XCircle } from 'lucide-react'
 import { ButtonDefault } from '@/components/jeitto/ButtonDefault'
 import { Card } from '@/components/jeitto/Card'
 import { PageError, PageLoading } from '@/components/jeitto/PageState'
@@ -27,6 +27,11 @@ export function SettingsIntegrations() {
   const { data: veracodeSettings } = useQuery({
     queryKey: ['veracode-settings'],
     queryFn: api.veracodeSettings.get,
+    staleTime: 30_000,
+  })
+  const { data: grafanaSettings } = useQuery({
+    queryKey: ['grafana-settings'],
+    queryFn: api.grafanaSettings.get,
     staleTime: 30_000,
   })
   const [costToggling, setCostToggling] = useState(false)
@@ -102,6 +107,15 @@ export function SettingsIntegrations() {
   const [veracodeSaving, setVeracodeSaving] = useState(false)
   const [veracodeError, setVeracodeError] = useState<string | null>(null)
   const [veracodeSaved, setVeracodeSaved] = useState(false)
+
+  // Grafana MCP (docs/todo/lookout-chat-plan.md §2.4) — o ConfiaAI/Argus consulta via sessão MCP
+  // quando configurado, mesmo padrão do Datadog.
+  const [grafanaMcpUrl, setGrafanaMcpUrl] = useState('')
+  const [grafanaApiKey, setGrafanaApiKey] = useState('')
+  const [showGrafanaApiKey, setShowGrafanaApiKey] = useState(false)
+  const [grafanaSaving, setGrafanaSaving] = useState(false)
+  const [grafanaError, setGrafanaError] = useState<string | null>(null)
+  const [grafanaSaved, setGrafanaSaved] = useState(false)
 
   useEffect(() => {
     if (config) {
@@ -241,6 +255,26 @@ export function SettingsIntegrations() {
       setVeracodeError(err instanceof Error ? err.message : 'Erro ao salvar.')
     } finally {
       setVeracodeSaving(false)
+    }
+  }
+
+  const handleGrafanaSave = async () => {
+    setGrafanaSaving(true)
+    setGrafanaError(null)
+    setGrafanaSaved(false)
+    try {
+      await api.grafanaSettings.save({
+        ...(grafanaMcpUrl.trim() ? { grafanaMcpUrl: grafanaMcpUrl.trim() } : {}),
+        ...(grafanaApiKey.trim() ? { grafanaApiKey: grafanaApiKey.trim() } : {}),
+      })
+      await queryClient.invalidateQueries({ queryKey: ['grafana-settings'] })
+      setGrafanaMcpUrl('')
+      setGrafanaApiKey('')
+      setGrafanaSaved(true)
+    } catch (err) {
+      setGrafanaError(err instanceof Error ? err.message : 'Erro ao salvar.')
+    } finally {
+      setGrafanaSaving(false)
     }
   }
 
@@ -862,6 +896,82 @@ export function SettingsIntegrations() {
               disabled={veracodeSaving || (!veracodeApiId.trim() && !veracodeApiKey.trim())}
             />
             {veracodeSaved && (
+              <div className="flex items-center gap-1.5 text-sm" style={{ color: '#12a150' }}>
+                <Check size={14} />
+                Salvo com sucesso
+              </div>
+            )}
+          </div>
+        </Card>
+
+        {/* Grafana MCP */}
+        <Card>
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl" style={{ backgroundColor: 'rgba(37,99,235,0.08)' }}>
+              <LineChart size={15} style={{ color: '#0784b0' }} />
+            </div>
+            <div>
+              <p className="text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>Grafana (MCP)</p>
+              <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
+                {grafanaSettings?.hasMcpUrl && grafanaSettings?.hasApiKey ? 'Credenciais configuradas' : 'Opcional — credenciais não configuradas'}
+              </p>
+            </div>
+            {grafanaSettings?.hasMcpUrl && grafanaSettings?.hasApiKey && (
+              <span className="ml-auto rounded-[8px] px-2.5 py-1 text-xs font-semibold" style={{ backgroundColor: 'rgba(16,185,129,0.1)', color: '#0e8a44' }}>
+                Ativo
+              </span>
+            )}
+          </div>
+
+          <p className="mb-5 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
+            Dá ao ConfiaAI acesso de leitura ao seu Grafana via MCP (self-hosted mcp-grafana em modo HTTP, ou
+            equivalente hospedado) — informe a URL completa do seu servidor MCP, não a URL do Grafana em si.
+            Sem isso, o ConfiaAI segue respondendo normalmente só sem essa fonte.
+          </p>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>
+                URL do servidor MCP *
+              </label>
+              <input
+                type="text"
+                value={grafanaMcpUrl}
+                onChange={e => setGrafanaMcpUrl(e.target.value)}
+                placeholder={grafanaSettings?.hasMcpUrl ? '••••••••• (deixe vazio para manter)' : 'https://grafana.suaempresa.com/mcp'}
+                className={inputCls}
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-widest" style={{ color: 'var(--color-muted-foreground)' }}>
+                API Key *
+              </label>
+              <div className="relative mt-2">
+                <input
+                  type={showGrafanaApiKey ? 'text' : 'password'}
+                  value={grafanaApiKey}
+                  onChange={e => setGrafanaApiKey(e.target.value)}
+                  placeholder={grafanaSettings?.hasApiKey ? '••••••••• (deixe vazio para manter)' : 'Cole sua Grafana API Key'}
+                  className="w-full rounded-2xl px-4 py-3 pr-12 text-sm outline-none"
+                  style={inputStyle}
+                />
+                <button type="button" onClick={() => setShowGrafanaApiKey(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 opacity-60 hover:opacity-100">
+                  {showGrafanaApiKey ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {grafanaError && <p className="mt-3 text-sm" style={{ color: '#d8341a' }}>{grafanaError}</p>}
+
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <ButtonDefault
+              label={grafanaSaving ? 'Salvando...' : 'Salvar Grafana'}
+              onClick={() => void handleGrafanaSave()}
+              disabled={grafanaSaving || (!grafanaMcpUrl.trim() && !grafanaApiKey.trim())}
+            />
+            {grafanaSaved && (
               <div className="flex items-center gap-1.5 text-sm" style={{ color: '#12a150' }}>
                 <Check size={14} />
                 Salvo com sucesso

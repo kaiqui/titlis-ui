@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { Header } from '@/components/layout/Header'
 import { AdminOverview } from './AdminOverview'
@@ -15,13 +16,15 @@ export function Governance() {
   const isAdmin = user?.role === 'admin'
   const aiEnabled = isFeatureEnabled('ai')
 
-  const [activeTab, setActiveTab] = useState<GovernanceTab>('evolution')
+  // Abas viram subitens na sidebar (ver Sidebar.tsx) — a URL é a fonte da verdade.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tabParam = searchParams.get('tab')
+  const activeTab: GovernanceTab =
+    tabParam === 'ai-costs' && aiEnabled ? 'ai-costs' : tabParam === 'overview' && isAdmin ? 'overview' : 'evolution'
 
-  const tabs: { id: GovernanceTab; label: string }[] = [
-    { id: 'evolution', label: 'Evolução' },
-    ...(aiEnabled ? [{ id: 'ai-costs' as GovernanceTab, label: 'Custos de IA' }] : []),
-    ...(isAdmin ? [{ id: 'overview' as GovernanceTab, label: 'Visão Executiva' }] : []),
-  ]
+  useEffect(() => {
+    if (tabParam === null) setSearchParams({ tab: 'evolution' }, { replace: true })
+  }, [tabParam, setSearchParams])
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -30,33 +33,15 @@ export function Governance() {
         subtitle="Evolução da postura de confiabilidade e panorama executivo — do hub ao serviço."
       />
 
-      <div className="px-4 pt-2 pb-0 lg:px-8">
-        <div className="flex flex-wrap gap-2">
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className="rounded-[8px] border px-4 py-1.5 text-sm font-semibold transition-all"
-              style={
-                activeTab === tab.id
-                  ? { backgroundColor: 'var(--color-primary)', color: '#fff', borderColor: 'var(--color-primary)' }
-                  : { backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)', borderColor: 'var(--color-border)' }
-              }
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+      <div className="flex-1 px-4 pt-4 pb-6 lg:px-8">
+        <AnimatePresence mode="wait">
+          <motion.div key={activeTab} {...fadeInUp}>
+            {activeTab === 'evolution' && <EvolutionHistory standalone={false} />}
+            {activeTab === 'ai-costs' && aiEnabled && <AiUsage />}
+            {activeTab === 'overview' && isAdmin && <AdminOverview standalone={false} />}
+          </motion.div>
+        </AnimatePresence>
       </div>
-
-      <AnimatePresence mode="wait">
-        <motion.div key={activeTab} {...fadeInUp}>
-          {activeTab === 'evolution' && <EvolutionHistory standalone={false} />}
-          {activeTab === 'ai-costs' && aiEnabled && <AiUsage />}
-          {activeTab === 'overview' && isAdmin && <AdminOverview standalone={false} />}
-        </motion.div>
-      </AnimatePresence>
     </div>
   )
 }

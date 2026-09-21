@@ -6,6 +6,7 @@ import {
   Check,
   ChevronDown,
   Copy,
+  ExternalLink,
   FileQuestion,
   Network,
   Sparkles,
@@ -126,6 +127,19 @@ export function CoverageDetail() {
             {copied ? <Check className="h-3 w-3 text-[var(--color-success)]" /> : <Copy className="h-3 w-3" />}
             {copied ? 'Copiado!' : sc.workloadUid}
           </button>
+          {sc.links?.map((link) => (
+            <a
+              key={link.url}
+              href={link.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-[8px] border px-3 py-1.5 text-[11px] font-medium transition-colors hover:opacity-80"
+              style={{ borderColor: 'var(--color-border)', color: 'var(--color-primary)' }}
+            >
+              <ExternalLink className="h-3 w-3" />
+              {link.label}
+            </a>
+          ))}
         </div>
 
         {pending ? (
@@ -412,6 +426,19 @@ function DimensionCard({
                       {f.severity && (
                         <span className={`rounded-[6px] border px-1.5 py-px font-semibold uppercase ${severityColor(f.severity)}`}>{f.severity}</span>
                       )}
+                      {f.links?.map((link) => (
+                        <a
+                          key={link.url}
+                          href={link.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 font-medium hover:underline"
+                          style={{ color: 'var(--color-primary)' }}
+                        >
+                          <ExternalLink className="h-2.5 w-2.5" />
+                          {link.label}
+                        </a>
+                      ))}
                     </p>
                   </div>
                 ))}

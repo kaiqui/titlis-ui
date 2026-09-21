@@ -489,6 +489,14 @@ export interface CoverageMove {
   isRemediable: boolean
 }
 
+// Link de evidência pra Datadog/GitHub, computado pela titlis-api-ts a partir de dados já
+// existentes (Service Catalog do Datadog, tenant_ai_configs) — nunca de uma chamada ao vivo.
+export interface EvidenceLink {
+  type: string
+  label: string
+  url: string
+}
+
 export interface CoverageFinding {
   code: string
   pillar: string
@@ -497,6 +505,7 @@ export interface CoverageFinding {
   outcome: string
   message: string
   source?: string
+  links?: EvidenceLink[]
 }
 
 export interface CoverageScorecard {
@@ -511,6 +520,7 @@ export interface CoverageScorecard {
   findings: CoverageFinding[]
   moves?: CoverageMove[]
   evaluatedAt: string
+  links?: EvidenceLink[]
 }
 
 // Service-map do hub (H1/H2): produto → squad → serviço → workload (+ bucket de órfãos).
@@ -643,6 +653,56 @@ export interface LookoutSeal {
 }
 
 export type LookoutSeals = Record<string, LookoutSeal>
+
+// RPM Fase I — chat do ConfiaAI (titlis-lookout, banco próprio, drizzle camelCase).
+export interface LookoutChatSession {
+  chatSessionId: number
+  channel: string
+  externalKey: string | null
+  title: string | null
+  createdAt: string
+  lastMessageAt: string
+}
+
+export interface LookoutChatMessage {
+  chatMessageId: number
+  chatSessionId: number
+  role: 'user' | 'assistant' | 'tool'
+  contentMd: string
+  toolCallsJson: Array<{ tool: string; args: Record<string, unknown>; ok: boolean; citations?: Array<{ label: string; url: string }> }> | null
+  createdAt: string
+}
+
+export interface LookoutChatReply {
+  messageMd: string
+  toolTrace: Array<{ tool: string; args: Record<string, unknown>; ok: boolean }>
+  outOfScope: boolean
+}
+
+// RPM Fase N — proposta de escrita via MCP aguardando aprovação humana (drizzle camelCase).
+export interface LookoutPendingMcpAction {
+  pendingMcpActionId: number
+  provider: string
+  toolName: string
+  argumentsJson: Record<string, unknown>
+  rationaleMd: string | null
+  status: 'pending' | 'approved' | 'rejected' | 'applied' | 'failed'
+  approvedBy: string | null
+  resultSummary: string | null
+  createdAt: string
+}
+
+// RPM Fase K — playbook com invocation_name preenchido vira skill invocável.
+export interface LookoutSkill {
+  playbookId: number
+  title: string
+  appliesWhen: string | null
+  bodyMd: string
+  invocationName: string
+  createdBy: string
+  isPublished: boolean
+  createdAt: string
+}
 
 export interface CoverageGraphNeighbor {
   provider: string

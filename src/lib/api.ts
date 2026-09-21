@@ -28,7 +28,12 @@ import type {
   ServiceMap,
   EstateNode,
   LookoutBriefing,
+  LookoutChatMessage,
+  LookoutChatReply,
+  LookoutChatSession,
+  LookoutPendingMcpAction,
   LookoutPlaybook,
+  LookoutSkill,
   LookoutServiceContext,
   LookoutSeals,
   PostureTrendPoint,
@@ -182,6 +187,28 @@ function mapAuthErrorMessage(code: string): string {
     }
 }
 
+function buildAuthHeaders(hasBody: boolean): Record<string, string> {
+  const token = getStoredAccessToken()
+  const authMode = getAuthMode()
+  const devAuth = getDevAuthConfig()
+  const oktaTenantSlug = readStoredSession()?.provider === 'okta'
+    ? (readStoredSession()?.user.tenantSlug || getPendingOktaTenantSlug())
+    : null
+  return {
+    ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
+    ...(authMode === 'mock'
+      ? {
+          'X-Dev-Auth': 'true',
+          'X-Dev-Tenant-Id': String(devAuth.tenantId),
+          'X-Dev-User': devAuth.email,
+          'X-Dev-Roles': devAuth.roles.join(','),
+        }
+      : {}),
+    ...(authMode !== 'mock' && oktaTenantSlug ? { 'X-Titlis-Tenant-Slug': oktaTenantSlug } : {}),
+    ...(authMode !== 'mock' && token ? { Authorization: `Bearer ${token}` } : {}),
+  }
+}
+
 async function request<T>(
   path: string,
   options?: {
@@ -197,27 +224,9 @@ async function request<T>(
     if (value) url.searchParams.set(key, value)
   })
 
-  const token = getStoredAccessToken()
-  const authMode = getAuthMode()
-  const devAuth = getDevAuthConfig()
-  const oktaTenantSlug = readStoredSession()?.provider === 'okta'
-    ? (readStoredSession()?.user.tenantSlug || getPendingOktaTenantSlug())
-    : null
   const response = await fetch(url.toString(), {
     method: options?.method ?? 'GET',
-    headers: {
-      ...(options?.body ? { 'Content-Type': 'application/json' } : {}),
-      ...(authMode === 'mock'
-        ? {
-            'X-Dev-Auth': 'true',
-            'X-Dev-Tenant-Id': String(devAuth.tenantId),
-            'X-Dev-User': devAuth.email,
-            'X-Dev-Roles': devAuth.roles.join(','),
-          }
-        : {}),
-      ...(authMode !== 'mock' && oktaTenantSlug ? { 'X-Titlis-Tenant-Slug': oktaTenantSlug } : {}),
-      ...(authMode !== 'mock' && token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+    headers: buildAuthHeaders(Boolean(options?.body)),
     ...(options?.body ? { body: JSON.stringify(options.body) } : {}),
   })
   if (options?.optional && response.status === 404) return null
@@ -246,6 +255,40 @@ async function request<T>(
       `Resposta não-JSON de ${options?.method ?? 'GET'} ${url.toString()} (HTTP ${response.status}, content-type "${response.headers.get('content-type') ?? 'desconhecido'}"): ${snippet}`,
     )
   }
+}
+
+// Leitura de SSE via fetch() + ReadableStream (não EventSource — precisamos de POST + headers de
+// auth custom, que EventSource não suporta). Chama `onDelta` a cada evento `delta` e resolve com
+// o payload do evento `done`.
+async function streamSse<TDone>(path: string, body: unknown, onDelta: (data: string) => void): Promise<TDone> {
+  const url = buildUrl(path)
+  const response = await fetch(url.toString(), { method: 'POST', headers: buildAuthHeaders(true), body: JSON.stringify(body) })
+  if (!response.ok || !response.body) {
+    const text = await response.text().catch(() => '')
+    throw new Error(text || `API error ${response.status}`)
+  }
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let event = 'message'
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() ?? ''
+    for (const line of lines) {
+      if (line.startsWith('event:')) {
+        event = line.slice(6).trim()
+      } else if (line.startsWith('data:')) {
+        const data = line.slice(5).trim()
+        if (event === 'delta') onDelta(data)
+        else if (event === 'done') return JSON.parse(data) as TDone
+        else if (event === 'error') throw new Error(data)
+      }
+    }
+  }
+  throw new Error('stream encerrou sem evento "done"')
 }
 
 function mapDashboardItem(item: ApiDashboardItem): WorkloadSummary {
@@ -1411,6 +1454,18 @@ export const api = {
     },
   },
 
+  // docs/todo/lookout-chat-plan.md §2.4 — credencial do servidor MCP do Grafana do tenant
+  // (ConfiaAI/Argus consulta via sessão MCP, mesmo padrão do Datadog).
+  grafanaSettings: {
+    get: async (): Promise<{ hasMcpUrl: boolean; hasApiKey: boolean }> => {
+      const res = await request<{ hasMcpUrl: boolean; hasApiKey: boolean }>('/settings/grafana', { optional: true })
+      return res ?? { hasMcpUrl: false, hasApiKey: false }
+    },
+    save: async (payload: { grafanaMcpUrl?: string; grafanaApiKey?: string }): Promise<void> => {
+      await request('/settings/grafana', { method: 'PUT' as const, body: payload })
+    },
+  },
+
   costs: {
     summary: async (days = 30): Promise<CostSummary> => {
       const res = await request<CostSummary>('/costs/summary', {
@@ -1518,6 +1573,66 @@ export const api = {
     },
     aiUsage: async (days = 30): Promise<AiUsageSummary | null> =>
       request<AiUsageSummary>('/lookout/ai-usage', { params: { days: String(days) }, optional: true }),
+    chat: {
+      sessions: async (): Promise<LookoutChatSession[]> => {
+        const res = await request<LookoutChatSession[]>('/lookout/chat/sessions', { optional: true })
+        return res ?? []
+      },
+      createSession: async (): Promise<number> => {
+        const res = await request<{ chatSessionId: number }>('/lookout/chat/sessions', { method: 'POST' })
+        if (!res) throw new Error('Não foi possível iniciar a conversa.')
+        return res.chatSessionId
+      },
+      messages: async (chatSessionId: number): Promise<LookoutChatMessage[]> => {
+        const res = await request<LookoutChatMessage[]>(`/lookout/chat/sessions/${chatSessionId}`, { optional: true })
+        return res ?? []
+      },
+      send: async (chatSessionId: number, message: string, activeSkills?: string[]): Promise<LookoutChatReply> => {
+        const res = await request<LookoutChatReply>(`/lookout/chat/sessions/${chatSessionId}/messages`, {
+          method: 'POST',
+          body: { message, activeSkills },
+        })
+        if (!res) throw new Error('O ConfiaAI não respondeu.')
+        return res
+      },
+      // Fase J — mesmo resultado de `send`, só que `onDelta` é chamado token a token conforme
+      // a resposta chega (SSE via fetch()+ReadableStream, não EventSource — precisamos de POST).
+      stream: async (
+        chatSessionId: number,
+        message: string,
+        onDelta: (delta: string) => void,
+        activeSkills?: string[],
+      ): Promise<LookoutChatReply> => {
+        type DoneEvent = { message_md: string; tool_trace: LookoutChatReply['toolTrace']; out_of_scope: boolean }
+        const done = await streamSse<DoneEvent>(`/lookout/chat/sessions/${chatSessionId}/stream`, { message, activeSkills }, onDelta)
+        return { messageMd: done.message_md, toolTrace: done.tool_trace, outOfScope: done.out_of_scope }
+      },
+    },
+    skills: {
+      list: async (): Promise<LookoutSkill[]> => {
+        const res = await request<LookoutSkill[]>('/lookout/skills', { optional: true })
+        return res ?? []
+      },
+      create: async (input: { title: string; appliesWhen?: string; bodyMd: string; invocationName: string }): Promise<number> => {
+        const res = await request<{ playbookId: number }>('/lookout/skills', { method: 'POST', body: input })
+        if (!res) throw new Error('Não foi possível criar a skill.')
+        return res.playbookId
+      },
+    },
+    mcpActions: {
+      list: async (): Promise<LookoutPendingMcpAction[]> => {
+        const res = await request<LookoutPendingMcpAction[]>('/lookout/mcp-actions', { optional: true })
+        return res ?? []
+      },
+      approve: async (id: number): Promise<{ ok: boolean; message: string }> => {
+        const res = await request<{ ok: boolean; message: string }>(`/lookout/mcp-actions/${id}/approve`, { method: 'POST' })
+        return res ?? { ok: false, message: 'sem resposta' }
+      },
+      reject: async (id: number): Promise<{ ok: boolean; message: string }> => {
+        const res = await request<{ ok: boolean; message: string }>(`/lookout/mcp-actions/${id}/reject`, { method: 'POST' })
+        return res ?? { ok: false, message: 'sem resposta' }
+      },
+    },
   },
 
   hub: {
