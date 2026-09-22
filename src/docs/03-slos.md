@@ -18,7 +18,7 @@ vez cria ou atualiza o SLO correspondente no seu provedor de observabilidade.
 **Vantagens:**
 - O SLO vive no mesmo repositório que o serviço — é versionado, revisado em PR, rastreável
 - Não há configuração manual duplicada (Kubernetes + observabilidade)
-- Mudanças propostas pelo ConfiaAI passam por aprovação humana antes de ser aplicadas
+- Mudanças propostas pelo ConfAI passam por aprovação humana antes de ser aplicadas
 
 ---
 
@@ -73,14 +73,14 @@ e quando foi a última sincronização.
 
 ---
 
-## Propor mudanças via ConfiaAI
+## Propor mudanças via ConfAI
 
-Você pode pedir ao ConfiaAI para propor alterações em um SLO — por exemplo, ajustar o target
+Você pode pedir ao ConfAI para propor alterações em um SLO — por exemplo, ajustar o target
 ou a janela de avaliação:
 
 > *"Proponha aumentar o target do SLO checkout-availability de 99.9 para 99.95"*
 
-O ConfiaAI cria uma proposta de mudança que:
+O ConfAI cria uma proposta de mudança que:
 1. Aparece como pendente na tela de SLOs
 2. Aguarda aprovação de um Admin
 3. Após aprovação, o operator atualiza o CRD no cluster
@@ -105,7 +105,7 @@ remova o `SLOConfig` do cluster e delete manualmente no Datadog.
 
 **Posso criar SLOs direto na interface sem editar YAML?**
 Não no momento. O modelo do Titlis é "SLO como código" — a fonte de verdade é o repositório.
-O ConfiaAI pode ajudá-lo a gerar o YAML correto via chat.
+O ConfAI pode ajudá-lo a gerar o YAML correto via chat.
 
 **O que acontece se eu alterar o target diretamente no Datadog?**
 O Titlis vai sobrescrever com o valor do `SLOConfig` no próximo ciclo de sincronização.

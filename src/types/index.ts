@@ -506,6 +506,8 @@ export interface CoverageFinding {
   message: string
   source?: string
   links?: EvidenceLink[]
+  // Só presente no COST-001 quando falha — US$/mês estimado recuperável (docs/todo/cost-pillar-plan.md).
+  cost_impact_usd_month?: number
 }
 
 export interface CoverageScorecard {
@@ -598,6 +600,9 @@ export interface EstateNode {
   confidence?: string | null
   tier?: string | null
   repoUrl?: string | null
+  // docs/todo/cost-real-billing-plan.md §3-4 — só presente quando o rollup foi pedido com
+  // includeCost=true E há dado de custo pro subtree; ausente ≠ 0 (nunca inventa "custo zero").
+  costTotal?: number
 }
 
 export interface PostureTrendPoint {
@@ -606,7 +611,7 @@ export interface PostureTrendPoint {
   confidencePct: number
 }
 
-// RPM Fase C — ConfiaAI (titlis-lookout). Formato cru das rotas /v1/lookout/* (drizzle camelCase).
+// RPM Fase C — ConfAI (titlis-lookout). Formato cru das rotas /v1/lookout/* (drizzle camelCase).
 export interface LookoutBriefing {
   briefingId: number
   scope: string
@@ -654,7 +659,7 @@ export interface LookoutSeal {
 
 export type LookoutSeals = Record<string, LookoutSeal>
 
-// RPM Fase I — chat do ConfiaAI (titlis-lookout, banco próprio, drizzle camelCase).
+// RPM Fase I — chat do ConfAI (titlis-lookout, banco próprio, drizzle camelCase).
 export interface LookoutChatSession {
   chatSessionId: number
   channel: string

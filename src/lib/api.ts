@@ -750,6 +750,9 @@ export interface WorkloadCost {
   totalCost: number
   avgDailyCost: number
   daysWithData: number
+  // docs/todo/cost-pillar-plan.md §2 — proveniência da coleta (k8s hoje; provider "gcp-*" hoje).
+  infraKind: string
+  provider: string
 }
 
 export interface WorkloadCostsResponse {
@@ -980,6 +983,7 @@ interface ApiCoverageFinding {
   outcome?: string
   message?: string
   source?: string
+  cost_impact_usd_month?: number
 }
 
 interface ApiCoverageScorecard {
@@ -1040,6 +1044,7 @@ function mapCoverageScorecard(item: ApiCoverageScorecard): CoverageScorecard {
       outcome: (f.outcome ?? '').toLowerCase(),
       message: f.message ?? '',
       source: f.source,
+      cost_impact_usd_month: f.cost_impact_usd_month,
     })),
     moves: (item.moves ?? []).map((m) => ({
       rank: m.rank ?? 0,
@@ -1455,7 +1460,7 @@ export const api = {
   },
 
   // docs/todo/lookout-chat-plan.md §2.4 — credencial do servidor MCP do Grafana do tenant
-  // (ConfiaAI/Argus consulta via sessão MCP, mesmo padrão do Datadog).
+  // (ConfAI/Argus consulta via sessão MCP, mesmo padrão do Datadog).
   grafanaSettings: {
     get: async (): Promise<{ hasMcpUrl: boolean; hasApiKey: boolean }> => {
       const res = await request<{ hasMcpUrl: boolean; hasApiKey: boolean }>('/settings/grafana', { optional: true })
@@ -1540,7 +1545,7 @@ export const api = {
     },
   },
 
-  // RPM Fase C — ConfiaAI: mural do analista de confiabilidade (briefings + playbooks + contexto).
+  // RPM Fase C — ConfAI: mural do analista de confiabilidade (briefings + playbooks + contexto).
   lookout: {
     briefings: async (days = 14): Promise<LookoutBriefing[]> => {
       const res = await request<LookoutBriefing[]>('/lookout/briefings', { params: { days: String(days) }, optional: true })
@@ -1592,7 +1597,7 @@ export const api = {
           method: 'POST',
           body: { message, activeSkills },
         })
-        if (!res) throw new Error('O ConfiaAI não respondeu.')
+        if (!res) throw new Error('O ConfAI não respondeu.')
         return res
       },
       // Fase J — mesmo resultado de `send`, só que `onDelta` é chamado token a token conforme
@@ -1637,8 +1642,13 @@ export const api = {
 
   hub: {
     // RPM Fase A: rollup do estate sobre a postura. titlis-ui puxa a árvore inteira (depth=all).
-    rollup: async (): Promise<EstateNode | null> => {
-      return await request<EstateNode>('/hub/rollup', { params: { depth: 'all' }, optional: true })
+    // includeCost (Fase 4 do cost-real-billing-plan.md §3-4) é opt-in — nunca ligado por padrão,
+    // pra não pagar a leitura extra de custo em quem não pediu.
+    rollup: async (includeCost = false): Promise<EstateNode | null> => {
+      return await request<EstateNode>('/hub/rollup', {
+        params: { depth: 'all', ...(includeCost ? { includeCost: 'true' } : {}) },
+        optional: true,
+      })
     },
     trend: async (node = '', days = 30): Promise<PostureTrendPoint[]> => {
       const res = await request<PostureTrendPoint[]>('/hub/trend', { params: { node: node || undefined, days: String(days) }, optional: true })

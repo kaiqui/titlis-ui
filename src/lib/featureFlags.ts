@@ -6,7 +6,7 @@
 // 2) Flags booleanas por domínio — ligam/desligam páginas + botões + itens de sidebar
 //    de uma área inteira. Quando desligada, o item da sidebar continua visível como
 //    "em breve" (sem clique) e as rotas redirecionam para o Hub.
-//      VITE_FEATURE_AI=false      → ConfiaAI, memória/investigação, Custos de IA, Modelo de IA
+//      VITE_FEATURE_AI=false      → ConfAI, memória/investigação, Custos de IA, Modelo de IA
 //      VITE_FEATURE_SLOS=false    → página SLOs
 //      VITE_FEATURE_QUEUES=false  → página Filas
 //    Ausente/qualquer valor = ligada; só desliga com false/0/off/no.

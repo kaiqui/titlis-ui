@@ -5,7 +5,7 @@ Confiabilidade". Em vez de uma lista única de regras igual para todos, cada ser
 **scorecard personalizado pela sua natureza** (linguagem, se é HTTP-facing, criticidade,
 sinais disponíveis).
 
-> Determinístico: os findings são gerados por **regras**, nunca por IA. A ConfiaAI apenas **narra** e
+> Determinístico: os findings são gerados por **regras**, nunca por IA. A ConfAI apenas **narra** e
 > ajuda a corrigir — ela não inventa achados.
 
 ---
@@ -46,7 +46,7 @@ grafo, o titlis-scoreops aplica os templates por natureza e devolve o scorecard.
 - **Top-10 riscos** — serviços com menor Trust Score primeiro.
 - **Tabela de serviços** — Trust, maturidade e nº de lacunas (inclui serviços sem dono).
 - **Detalhe do serviço** — pilares + itens pass/fail/N/A, **Correlações** (vizinhança no grafo),
-  e os botões **Explicar com ConfiaAI** / **Corrigir com ConfiaAI** nos itens remediáveis.
+  e os botões **Explicar com ConfAI** / **Corrigir com ConfAI** nos itens remediáveis.
 
 A Cobertura é a fonte do score exibido no **[Hub](/docs/hub)** e na
 **[Confiabilidade](/docs/confiabilidade)**.

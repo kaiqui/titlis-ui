@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { motion, useReducedMotion } from 'motion/react'
 import {
+  ChevronDown,
   ChevronLeft,
   Gauge,
   Inbox,
@@ -48,7 +50,7 @@ const confiaChildren: NavChild[] = [
 const primaryNavItems: NavItemDef[] = [
   { to: '/', icon: LayoutDashboard, label: 'Hub', exact: true },
   { to: '/reliability', icon: Gauge, label: 'Confiabilidade', featureId: 'nav_reliability' },
-  { to: '/confia', icon: Sparkles, label: 'ConfiaAI', featureId: 'nav_confia', feature: 'ai' as Feature, children: confiaChildren },
+  { to: '/confia', icon: Sparkles, label: 'ConfAI', featureId: 'nav_confia', feature: 'ai' as Feature, children: confiaChildren },
   { to: '/queues', icon: Inbox, label: 'Filas', featureId: 'nav_queues', feature: 'queues' as Feature },
 ]
 
@@ -89,7 +91,6 @@ function NavItems({
   collapsed?: boolean
 }) {
   const reduceMotion = useReducedMotion()
-  const location = useLocation()
 
   return items.map(({ to, icon: Icon, label, exact, featureId, feature, children }) => (
     feature && !isFeatureEnabled(feature) ? (
@@ -113,6 +114,11 @@ function NavItems({
           </span>
         )}
       </div>
+    ) : !mobile && !collapsed && children && children.length > 0 ? (
+      // Item com subitens, sidebar expandida — recolhível (mesmo padrão do NavParentItem do
+      // titlis-ui-saas): o chevron é um botão irmão do NavLink, não aninhado dentro dele, pra
+      // clicar nele não disparar navegação.
+      <NavItemWithChildren key={to} to={to} icon={Icon} label={label} exact={exact} featureId={featureId} children_={children} />
     ) : (
     <div key={to}>
       <FeatureGuard id={featureId ?? ''}>
@@ -154,33 +160,104 @@ function NavItems({
           )}
         </NavLink>
       </FeatureGuard>
-      {!mobile && !collapsed && children && children.length > 0 && (
+    </div>
+    )
+  ))
+}
+
+// Subitens de aba (ex.: ConfAI → Mural/Playbooks/..., Governança → Evolução/...) usam querystring
+// (`?tab=chat`) no mesmo path — NavLink do React Router só compara pathname (ignora search), então
+// o isActive automático marcaria todos como ativos ao mesmo tempo. Comparação manual resolve.
+function isChildActive(childTo: string, location: ReturnType<typeof useLocation>): boolean {
+  const [childPath, childQuery] = childTo.split('?')
+  return location.pathname === childPath && (!childQuery || location.search === `?${childQuery}`)
+}
+
+// Item com subitens na sidebar expandida — recolhível, chevron como botão irmão do NavLink
+// (mesmo padrão do NavParentItem em titlis-ui-saas). Componente à parte porque precisa de
+// useState próprio por item (não dá pra chamar hook dentro do .map() de NavItems).
+function NavItemWithChildren({
+  to,
+  icon: Icon,
+  label,
+  exact,
+  featureId,
+  children_: children,
+}: {
+  to: string
+  icon: React.ElementType
+  label: string
+  exact?: boolean
+  featureId?: string
+  children_: NavChild[]
+}) {
+  const [open, setOpen] = useState(true)
+  const location = useLocation()
+  const reduceMotion = useReducedMotion()
+
+  return (
+    <div>
+      <div className="flex items-center gap-1">
+        <FeatureGuard id={featureId ?? ''}>
+          <NavLink
+            to={to}
+            end={exact}
+            className={({ isActive }) => cn(
+              'group flex flex-1 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-150',
+              !isActive && 'hover:bg-white/[0.06]',
+            )}
+            style={({ isActive }) => ({ position: 'relative', color: isActive ? '#17161a' : 'rgba(255,255,255,0.62)' })}
+          >
+            {({ isActive }) => (
+              <>
+                {isActive && (
+                  <motion.span
+                    layoutId="sidebar-nav-active"
+                    className="absolute inset-0 rounded-xl"
+                    style={{ backgroundColor: 'var(--color-primary)', boxShadow: '0 2px 8px rgba(0,0,0,0.25)' }}
+                    transition={{ type: 'spring', stiffness: 500, damping: 40 }}
+                  />
+                )}
+                <motion.span
+                  className="relative flex shrink-0"
+                  whileHover={reduceMotion ? undefined : { scale: 1.05 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+                >
+                  <Icon size={17} strokeWidth={isActive ? 2.25 : 1.75} />
+                </motion.span>
+                <span className="relative truncate transition-transform duration-150 group-hover:translate-x-0.5">{label}</span>
+              </>
+            )}
+          </NavLink>
+        </FeatureGuard>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-label={open ? `Recolher ${label}` : `Expandir ${label}`}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white/50 transition-colors hover:bg-white/[0.06] hover:text-white/80"
+        >
+          <ChevronDown size={14} className={cn('transition-transform duration-200', !open && '-rotate-90')} />
+        </button>
+      </div>
+      {open && (
         <div className="ml-[1.15rem] mt-0.5 space-y-0.5 border-l pl-3" style={{ borderColor: 'rgba(255,255,255,0.12)' }}>
-          {children.map((child) => {
-            // NavLink do React Router só compara pathname (ignora search) — subitens de aba
-            // usam querystring (`?tab=chat`) no mesmo path, então o isActive automático marcaria
-            // todos como ativos ao mesmo tempo. Comparação manual de pathname+search resolve.
-            const [childPath, childQuery] = child.to.split('?')
-            const isChildActive = location.pathname === childPath && (!childQuery || location.search === `?${childQuery}`)
-            return (
+          {children.map((child) => (
             <FeatureGuard key={child.to} id={child.featureId ?? ''}>
               <Link
                 to={child.to}
                 className={cn(
                   'block rounded-lg px-2.5 py-1.5 text-[13px] font-medium truncate transition-colors duration-150',
-                  isChildActive ? 'text-white' : 'text-white/50 hover:bg-white/[0.06] hover:text-white/80',
+                  isChildActive(child.to, location) ? 'text-white' : 'text-white/50 hover:bg-white/[0.06] hover:text-white/80',
                 )}
               >
                 {child.label}
               </Link>
             </FeatureGuard>
-            )
-          })}
+          ))}
         </div>
       )}
     </div>
-    )
-  ))
+  )
 }
 
 function NavSection({

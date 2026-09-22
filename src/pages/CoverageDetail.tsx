@@ -220,7 +220,7 @@ export function CoverageDetail() {
           <MemoryCard
             ctx={memory.data}
             investigating={investigate.isPending}
-            investigateMsg={investigate.data?.message ?? (investigate.isError ? 'ConfiaAI indisponível para este tenant.' : null)}
+            investigateMsg={investigate.data?.message ?? (investigate.isError ? 'ConfAI indisponível para este tenant.' : null)}
             onInvestigate={() => investigate.mutate()}
           />
         )}
@@ -273,7 +273,7 @@ const VERDICT_LABEL: Record<string, string> = {
   quota_exceeded: 'orçamento de tokens esgotado',
 }
 
-// Memória do ConfiaAI para este serviço (LKT §8): fatos aprendidos + investigações + botão de
+// Memória do ConfAI para este serviço (LKT §8): fatos aprendidos + investigações + botão de
 // investigação sob demanda. Sempre visível — quando vazio, convida a investigar.
 function MemoryCard({
   ctx,
@@ -292,9 +292,9 @@ function MemoryCard({
     <Card className="p-5">
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <Sparkles className="h-5 w-5" style={{ color: 'var(--color-primary)' }} />
-        <h3 className="text-lg font-semibold">Memória do ConfiaAI</h3>
+        <h3 className="text-lg font-semibold">Memória do ConfAI</h3>
         <ButtonDefault
-          label={investigating ? 'Investigando…' : 'Investigar com o ConfiaAI'}
+          label={investigating ? 'Investigando…' : 'Investigar com o ConfAI'}
           visual="secondary"
           icon={Sparkles}
           onClick={onInvestigate}
@@ -305,7 +305,7 @@ function MemoryCard({
 
       {facts.length === 0 && investigations.length === 0 ? (
         <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
-          O ConfiaAI ainda não investigou este serviço. A investigação lê a postura, correlaciona com
+          O ConfAI ainda não investigou este serviço. A investigação lê a postura, correlaciona com
           Datadog/GitHub e registra a causa provável aqui.
         </p>
       ) : (
@@ -421,6 +421,11 @@ function DimensionCard({
                 {fails.map((f) => (
                   <div key={f.code} className="rounded-lg border px-3 py-2" style={{ borderColor: 'var(--color-border)' }}>
                     <p className="text-sm">{stripIcon(f.message)}</p>
+                    {f.cost_impact_usd_month != null && (
+                      <p className="mt-1 text-xs font-semibold" style={{ color: '#12a150' }}>
+                        ≈ US$ {f.cost_impact_usd_month.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}/mês recuperável
+                      </p>
+                    )}
                     <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[10px]" style={{ color: 'var(--color-muted-foreground)' }}>
                       {f.source && <span>{f.source}</span>}
                       {f.severity && (

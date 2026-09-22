@@ -9,6 +9,7 @@ export const DIMENSION_LABELS: Record<string, string> = {
   velocidade: 'Velocidade segura',
   exposicao: 'Exposição',
   observabilidade: 'Observabilidade',
+  custo: 'Custo',
 }
 
 const PILLAR_LABELS: Record<string, string> = {
@@ -17,6 +18,7 @@ const PILLAR_LABELS: Record<string, string> = {
   performance: 'Performance',
   operational: 'Operacional',
   observability: 'Observabilidade',
+  cost: 'Custo',
 }
 
 export function dimensionLabel(p: string): string {
@@ -125,5 +127,5 @@ export function distinctNaSources(sc: CoverageScorecard): number {
 }
 
 export function isFindingRemediable(f: CoverageFinding): boolean {
-  return f.outcome === 'fail' && /^(RES|SEC|PERF|OPS)-/.test(f.code)
+  return f.outcome === 'fail' && /^(RES|SEC|PERF|OPS|COST)-/.test(f.code)
 }

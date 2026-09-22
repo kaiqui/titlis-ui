@@ -20,6 +20,27 @@ function formatDayLabel(isoDate: string): string {
   return `${isoDate.slice(8, 10)}/${isoDate.slice(5, 7)}`
 }
 
+// docs/todo/cost-pillar-plan.md §2 — badge de proveniência: hoje só "k8s · gcp", mas o campo já
+// existe pra quando ECS/Cloud Run/OCI/Azure entrarem como bridges novas (Fase 5).
+function cloudFromProvider(provider: string): string {
+  if (provider.startsWith('gcp')) return 'gcp'
+  if (provider.startsWith('aws')) return 'aws'
+  if (provider.startsWith('azure')) return 'azure'
+  if (provider.startsWith('oci')) return 'oci'
+  return provider
+}
+
+function SourceBadge({ infraKind, provider }: { infraKind: string; provider: string }) {
+  return (
+    <span
+      className="rounded-[6px] border px-1.5 py-0.5 font-mono text-[10px] uppercase"
+      style={{ borderColor: 'var(--color-border)', color: 'var(--color-muted-foreground)' }}
+    >
+      {infraKind} · {cloudFromProvider(provider)}
+    </span>
+  )
+}
+
 function VariationBadge({ pct }: { pct: number | null }) {
   if (pct == null) {
     return <span className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>sem período anterior</span>
@@ -87,7 +108,7 @@ export function Costs() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Header timeRange title="Custos" subtitle="Estimativa multi-cloud (GCP / AWS / Azure) — preço público × uso observado no Datadog. Sem billing export, sem configuração." />
+      <Header timeRange title="Custos" subtitle="Estimativa por Kubernetes/GCP — preço público × uso observado no Datadog. Sem billing export, sem configuração. ECS, Cloud Run, OCI e Azure entram como próximas pontes." />
 
       <div className="flex-1 space-y-5 px-4 py-6 lg:px-8">
         {!hasData ? (
@@ -244,6 +265,7 @@ export function Costs() {
                         <th className="pb-2 pr-4">Namespace</th>
                         <th className="pb-2 pr-4">Cluster</th>
                         <th className="pb-2 pr-4">Time</th>
+                        <th className="pb-2 pr-4">Fonte</th>
                         <th className="pb-2 pr-4 text-right">Total no período</th>
                         <th className="pb-2 text-right">Média/dia</th>
                       </tr>
@@ -255,6 +277,7 @@ export function Costs() {
                           <td className="py-2.5 pr-4" style={{ color: 'var(--color-muted-foreground)' }}>{w.namespace}</td>
                           <td className="py-2.5 pr-4" style={{ color: 'var(--color-muted-foreground)' }}>{w.clusterName}</td>
                           <td className="py-2.5 pr-4" style={{ color: 'var(--color-muted-foreground)' }}>{w.team ?? NO_TEAM_LABEL}</td>
+                          <td className="py-2.5 pr-4"><SourceBadge infraKind={w.infraKind} provider={w.provider} /></td>
                           <td className="py-2.5 pr-4 text-right font-bold tabular-nums" style={{ color: 'var(--color-foreground)' }}>
                             {currencyFmt.format(w.totalCost)}
                           </td>

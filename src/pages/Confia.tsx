@@ -40,7 +40,7 @@ export function Confia() {
   const tabParam = searchParams.get('tab')
   const tab: ConfiaTab = CONFIA_TABS.includes(tabParam as ConfiaTab) ? (tabParam as ConfiaTab) : 'mural'
 
-  // Sem tab na URL (ex.: veio do link "ConfiaAI" da sidebar, não de um subitem) — grava o default
+  // Sem tab na URL (ex.: veio do link "ConfAI" da sidebar, não de um subitem) — grava o default
   // pra sidebar destacar o subitem "Mural" corretamente, em vez de nenhum.
   useEffect(() => {
     if (tabParam === null) setSearchParams({ tab: 'mural' }, { replace: true })
@@ -54,11 +54,11 @@ export function Confia() {
     onSettled: () => qc.invalidateQueries({ queryKey: ['lookout-briefings'] }),
   })
 
-  if (briefings.isLoading) return <><Header title="ConfiaAI" subtitle="Análise de confiabilidade" /><PageLoading /></>
+  if (briefings.isLoading) return <><Header title="ConfAI" subtitle="Análise de confiabilidade" /><PageLoading /></>
   if (briefings.isError)
     return (
       <>
-        <Header title="ConfiaAI" subtitle="Análise de confiabilidade" />
+        <Header title="ConfAI" subtitle="Análise de confiabilidade" />
         <PageError message="Falha ao carregar o mural." onRetry={() => void briefings.refetch()} />
       </>
     )
@@ -68,7 +68,7 @@ export function Confia() {
   return (
     <div className="flex min-h-screen flex-col">
       <Header
-        title="ConfiaAI"
+        title="ConfAI"
         subtitle="O analista vigia a trajetória da postura, explica cada regressão e registra o que aprendeu."
       />
 
@@ -79,7 +79,7 @@ export function Confia() {
               <EmptyState
                 icon={MessageSquareText}
                 title="Nenhum briefing ainda"
-                description="Quando um serviço regride de banda de postura, o ConfiaAI investiga e publica o porquê aqui."
+                description="Quando um serviço regride de banda de postura, o ConfAI investiga e publica o porquê aqui."
               />
             ) : (
               <div className="space-y-3">
@@ -105,7 +105,7 @@ export function Confia() {
               <EmptyState
                 icon={BookOpen}
                 title="Nenhum playbook ainda"
-                description="Depois de uma investigação inédita, o ConfiaAI rascunha um runbook reusável e ele aparece aqui."
+                description="Depois de uma investigação inédita, o ConfAI rascunha um runbook reusável e ele aparece aqui."
               />
             )}
             <div className="space-y-3">
@@ -150,14 +150,14 @@ function PendingActionsPanel() {
   return (
     <div className="space-y-3">
       <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
-        Ações que o ConfiaAI propôs em provedores externos (ex.: Datadog) e que ainda não foram aplicadas — toda tool que não é
+        Ações que o ConfAI propôs em provedores externos (ex.: Datadog) e que ainda não foram aplicadas — toda tool que não é
         comprovadamente de leitura para aqui até você aprovar.
       </p>
       {rows.length === 0 ? (
         <EmptyState
           icon={ShieldAlert}
           title="Nenhuma pendência"
-          description="Quando o ConfiaAI propuser uma ação de escrita (ex.: criar um monitor), ela aparece aqui antes de ser aplicada."
+          description="Quando o ConfAI propuser uma ação de escrita (ex.: criar um monitor), ela aparece aqui antes de ser aplicada."
         />
       ) : (
         <div className="space-y-3">
@@ -237,7 +237,7 @@ function SkillsPanel() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
-          Procedimentos que o ConfiaAI segue quando você chama <code>/nome-da-skill</code> no chat.
+          Procedimentos que o ConfAI segue quando você chama <code>/nome-da-skill</code> no chat.
         </p>
         <button
           type="button"
@@ -276,7 +276,7 @@ function SkillsPanel() {
           <textarea
             value={form.bodyMd}
             onChange={(e) => setForm((f) => ({ ...f, bodyMd: e.target.value }))}
-            placeholder="Procedimento em markdown — passo a passo que o ConfiaAI vai seguir"
+            placeholder="Procedimento em markdown — passo a passo que o ConfAI vai seguir"
             rows={6}
             className="w-full rounded-[8px] border px-3 py-2 text-sm outline-none"
             style={{ borderColor: 'var(--color-border)' }}
@@ -297,7 +297,7 @@ function SkillsPanel() {
         <EmptyState
           icon={Wand2}
           title="Nenhuma skill ainda"
-          description="Crie um procedimento reusável, ou peça pro ConfiaAI virar uma investigação repetida em skill."
+          description="Crie um procedimento reusável, ou peça pro ConfAI virar uma investigação repetida em skill."
         />
       ) : (
         <div className="space-y-3">
@@ -473,7 +473,7 @@ function ChatPanel() {
       {/* Conversa ativa */}
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-center justify-between border-b px-4 py-3" style={{ borderColor: 'var(--color-border)' }}>
-          <p className="text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>Converse com o ConfiaAI</p>
+          <p className="text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>Converse com o ConfAI</p>
         </div>
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4">

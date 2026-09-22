@@ -141,10 +141,10 @@ export function useServiceMap() {
   })
 }
 
-export function useHubRollup() {
+export function useHubRollup(includeCost = false) {
   return useQuery({
-    queryKey: ['hub-rollup'],
-    queryFn: () => api.hub.rollup(),
+    queryKey: ['hub-rollup', includeCost],
+    queryFn: () => api.hub.rollup(includeCost),
     staleTime: 30_000,
   })
 }

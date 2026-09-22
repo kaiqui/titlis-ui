@@ -53,7 +53,7 @@ export function AiUsage() {
     <div className="flex flex-col">
       <div className="flex-1 space-y-6 px-4 py-6 lg:px-8">
         <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
-          Consumo de tokens do assistente de confiabilidade (ConfiaAI) — investigações, varreduras de regressão e
+          Consumo de tokens do assistente de confiabilidade (ConfAI) — investigações, varreduras de regressão e
           relatórios executivos. O valor em dólar é uma <strong>estimativa</strong> pelo preço público
           aproximado de {providerModel} ({fmtUsd(data.pricePer1MTokensUsd)} / 1M tokens, blended) — não é fatura.
         </p>

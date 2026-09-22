@@ -9,7 +9,7 @@ import { PageError, PageLoading } from '@/components/jeitto/PageState'
 import { Header } from '@/components/layout/Header'
 import { ScoreRing } from '@/components/jeitto/ScoreRing'
 import { useHubRollup } from '@/hooks/useApi'
-import { formatNumber } from '@/lib/utils'
+import { formatCurrency, formatNumber } from '@/lib/utils'
 import { overallBand, postureBand, stripIcon } from '@/lib/posture'
 import type { EstateNode } from '@/types'
 
@@ -104,6 +104,11 @@ function NodeCard({ node, onOpen, index }: { node: EstateNode; onOpen: (path: st
           <AlertTriangle size={11} />{node.ownerGap} sem dono no Datadog
         </p>
       )}
+      {node.costTotal !== undefined && (
+        <p className="mt-1.5 text-[11px]" style={{ color: 'var(--color-muted-foreground)' }}>
+          {formatCurrency(node.costTotal)}<span className="opacity-70">/30d</span>
+        </p>
+      )}
     </Card>
   )
 
@@ -119,7 +124,7 @@ function NodeCard({ node, onOpen, index }: { node: EstateNode; onOpen: (path: st
 }
 
 export function ServiceHub() {
-  const { data: root, isLoading, isError, refetch } = useHubRollup()
+  const { data: root, isLoading, isError, refetch } = useHubRollup(true)
   const [path, setPath] = useState('')
 
   const current = useMemo(() => (root ? findByPath(root, path) ?? root : null), [root, path])
@@ -173,6 +178,7 @@ export function ServiceHub() {
                 </span>
                 <span className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
                   pior {formatNumber(current.postureWorst)} · confiança {current.confidencePct}% · {current.serviceCount} serviços
+                  {current.costTotal !== undefined && <> · {formatCurrency(current.costTotal)}/30d</>}
                 </span>
               </div>
               <div className="mt-3"><BandBar mix={current.bandMix} total={current.serviceCount} /></div>

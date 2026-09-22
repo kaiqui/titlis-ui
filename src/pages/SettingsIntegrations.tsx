@@ -37,7 +37,7 @@ export function SettingsIntegrations() {
   const [costToggling, setCostToggling] = useState(false)
   const [costError, setCostError] = useState<string | null>(null)
 
-  // Modelo de IA (provedor LLM + chave) — usado pelo assistente de confiabilidade (ConfiaAI).
+  // Modelo de IA (provedor LLM + chave) — usado pelo assistente de confiabilidade (ConfAI).
   const [llmProvider, setLlmProvider] = useState('')
   const [llmModel, setLlmModel] = useState('')
   const [llmApiKey, setLlmApiKey] = useState('')
@@ -108,7 +108,7 @@ export function SettingsIntegrations() {
   const [veracodeError, setVeracodeError] = useState<string | null>(null)
   const [veracodeSaved, setVeracodeSaved] = useState(false)
 
-  // Grafana MCP (docs/todo/lookout-chat-plan.md §2.4) — o ConfiaAI/Argus consulta via sessão MCP
+  // Grafana MCP (docs/todo/lookout-chat-plan.md §2.4) — o ConfAI/Argus consulta via sessão MCP
   // quando configurado, mesmo padrão do Datadog.
   const [grafanaMcpUrl, setGrafanaMcpUrl] = useState('')
   const [grafanaApiKey, setGrafanaApiKey] = useState('')
@@ -344,7 +344,7 @@ export function SettingsIntegrations() {
           </div>
 
           <p className="mb-5 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
-            Provedor e modelo de linguagem que o assistente de confiabilidade (ConfiaAI) usa para narrar
+            Provedor e modelo de linguagem que o assistente de confiabilidade (ConfAI) usa para narrar
             relatórios, explicar findings e investigar regressões. A chave é armazenada criptografada e
             nunca é exibida de volta.
           </p>
@@ -924,9 +924,9 @@ export function SettingsIntegrations() {
           </div>
 
           <p className="mb-5 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
-            Dá ao ConfiaAI acesso de leitura ao seu Grafana via MCP (self-hosted mcp-grafana em modo HTTP, ou
+            Dá ao ConfAI acesso de leitura ao seu Grafana via MCP (self-hosted mcp-grafana em modo HTTP, ou
             equivalente hospedado) — informe a URL completa do seu servidor MCP, não a URL do Grafana em si.
-            Sem isso, o ConfiaAI segue respondendo normalmente só sem essa fonte.
+            Sem isso, o ConfAI segue respondendo normalmente só sem essa fonte.
           </p>
 
           <div className="grid gap-4 md:grid-cols-2">

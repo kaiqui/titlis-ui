@@ -51,6 +51,13 @@ export function formatNumber(value: number | null, digits = 1): string {
   return value.toFixed(digits)
 }
 
+const currencyFormatter = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'USD' })
+
+export function formatCurrency(value: number | null | undefined): string {
+  if (value === null || value === undefined) return '—'
+  return currencyFormatter.format(value)
+}
+
 export function formatEnum(value?: string | null): string {
   if (!value) return 'Não informado'
 

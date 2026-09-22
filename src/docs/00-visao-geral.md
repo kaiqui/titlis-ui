@@ -14,7 +14,7 @@ Segurança, Performance, Operacional). O resultado é um score de 0 a 100 que vo
 tempo real no dashboard.
 
 **Abre PRs de correção** quando detecta problemas. O fluxo pode ser unitário (um serviço
-de cada vez, via ConfiaAI) ou em frota (dezenas de serviços de uma vez, via Campanhas).
+de cada vez, via ConfAI) ou em frota (dezenas de serviços de uma vez, via Campanhas).
 
 **Sincroniza SLOs** definidos como código no seu repositório com o seu provedor de
 observabilidade — sem precisar configurar manualmente em dois lugares.
@@ -22,7 +22,7 @@ observabilidade — sem precisar configurar manualmente em dois lugares.
 **Sugere ajustes de HPA** com base em métricas reais de uso de CPU e memória dos seus
 workloads, não em valores genéricos.
 
-**Responde perguntas sobre sua infra** via ConfiaAI, o assistente conversacional que conhece
+**Responde perguntas sobre sua infra** via ConfAI, o assistente conversacional que conhece
 o estado atual de todos os seus workloads e pode propor e executar ações com sua aprovação.
 
 ---
@@ -40,7 +40,7 @@ o estado atual de todos os seus workloads e pode propor e executar ações com s
 | **SLO** | Service Level Objective — meta de disponibilidade ou latência de um serviço |
 | **HPA** | Horizontal Pod Autoscaler — controla a escala automática de réplicas |
 | **Operator** | Componente instalado no seu cluster Kubernetes que envia dados para a plataforma |
-| **ConfiaAI** | Assistente de IA conversacional integrado à plataforma |
+| **ConfAI** | Assistente de IA conversacional integrado à plataforma |
 
 ---
 
@@ -61,7 +61,7 @@ Plataforma Titlis
       │
       ├── SLOs sincronizados automaticamente
       │
-      └── ConfiaAI disponível para perguntas e remediações
+      └── ConfAI disponível para perguntas e remediações
                 └── Abre PR no seu repositório
                         └── Você revisa e faz merge
 ```
@@ -76,7 +76,7 @@ normal de revisão.
 | Papel | O que pode fazer |
 |---|---|
 | **Admin** | Acesso total: configurações, integrações, recomendações, score config |
-| **Engineer** | Leitura de scorecards, acesso ao ConfiaAI, pode solicitar remediações |
+| **Engineer** | Leitura de scorecards, acesso ao ConfAI, pode solicitar remediações |
 | **PM** | Dashboard e métricas gerais |
 | **Viewer** | Leitura de todos os dados, sem ações |
 
@@ -86,4 +86,4 @@ normal de revisão.
 
 - [Primeiros Passos](/docs/primeiros-passos) — instale o operator e conecte seu cluster
 - [Scorecards](/docs/scorecards) — entenda como ler o termômetro de confiabilidade
-- ConfiaAI — use o assistente para explorar e corrigir sua infra
+- ConfAI — use o assistente para explorar e corrigir sua infra

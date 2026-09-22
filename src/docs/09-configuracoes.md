@@ -41,17 +41,17 @@ Sempre crie a nova chave **antes** de revogar a antiga:
 
 ---
 
-## Configurar ConfiaAI
+## Configurar ConfAI
 
 **Onde:** Configurações → Integrações
 **Acesso:** Admin
 
-Para que o ConfiaAI funcione como assistente e crie PRs de remediação, é necessário
+Para que o ConfAI funcione como assistente e crie PRs de remediação, é necessário
 configurar:
 
 ### Provider de IA
 
-Selecione qual provider de LLM o ConfiaAI vai usar e informe a API key correspondente.
+Selecione qual provider de LLM o ConfAI vai usar e informe a API key correspondente.
 
 > A API key é **write-only** — após salva, não é exibida novamente na interface por
 > questões de segurança. Para atualizar, informe uma nova chave e salve.
@@ -59,17 +59,17 @@ Selecione qual provider de LLM o ConfiaAI vai usar e informe a API key correspon
 ### Token do GitHub
 
 Informe um Personal Access Token (PAT) ou token de GitHub App com permissão de
-escrita nos repositórios onde o ConfiaAI deve criar PRs.
+escrita nos repositórios onde o ConfAI deve criar PRs.
 
 **Permissões mínimas necessárias no token:**
 - `repo` (full) — para criar branches, commits e PRs em repositórios privados
-- `workflow` — se seus repositórios usam GitHub Actions e o ConfiaAI precisa disparar workflows
+- `workflow` — se seus repositórios usam GitHub Actions e o ConfAI precisa disparar workflows
 
 > O token é **write-only** — igual à API key, não é exibido após ser salvo.
 
 ### Verificando a configuração
 
-Após salvar, use o botão **Testar conexão** para verificar se o ConfiaAI consegue se comunicar
+Após salvar, use o botão **Testar conexão** para verificar se o ConfAI consegue se comunicar
 com o provider de IA. O status aparece na tela com o resultado do teste.
 
 ---
@@ -113,7 +113,7 @@ todos os workloads com a nova configuração.
 **Onde:** Configurações → Auto-Remediação
 **Acesso:** Admin
 
-Configura o comportamento padrão de PRs criados pelo ConfiaAI e por campanhas.
+Configura o comportamento padrão de PRs criados pelo ConfAI e por campanhas.
 
 ### Branch padrão
 
@@ -131,7 +131,7 @@ do Titlis no seu fluxo de trabalho (ex: `titlis`, `automated`, `sre`).
 
 ### Remediação automática (sem aprovação manual)
 
-Quando habilitada, o ConfiaAI pode criar PRs para correções de **baixo risco** sem exigir
+Quando habilitada, o ConfAI pode criar PRs para correções de **baixo risco** sem exigir
 que você confirme na interface. Apenas regras de severidade Low e algumas de Medium
 se qualificam.
 

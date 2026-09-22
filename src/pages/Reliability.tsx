@@ -111,7 +111,7 @@ export function Reliability() {
           </div>
         </Card>
 
-        <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-7">
           {root.dimensions.map((d) => {
             const dband = postureBand(d.band)
             const active = dimFilter === d.dimension
@@ -213,7 +213,7 @@ const VERDICT_LABEL: Record<string, string> = {
   sinal_insuficiente: 'sem sinal',
 }
 
-// Selo da memória do ConfiaAI numa linha de serviço (LKT §8): "visto Nx", "ruído histórico".
+// Selo da memória do ConfAI numa linha de serviço (LKT §8): "visto Nx", "ruído histórico".
 function MemorySeal({ seal }: { seal?: LookoutSeal }) {
   if (!seal || (seal.investigations === 0 && seal.memory === 0)) return null
   const noise = seal.noise
@@ -229,7 +229,7 @@ function MemorySeal({ seal }: { seal?: LookoutSeal }) {
         color: noise ? 'var(--color-muted-foreground)' : 'var(--color-primary)',
         backgroundColor: 'var(--color-muted)',
       }}
-      title={`ConfiaAI: ${seal.investigations} investigação(ões), ${seal.memory} fato(s) na memória`}
+      title={`ConfAI: ${seal.investigations} investigação(ões), ${seal.memory} fato(s) na memória`}
     >
       🔍 {label}
     </span>

@@ -7,7 +7,7 @@ enviar notificações e criar PRs de correção.
 
 ## GitHub
 
-A integração com GitHub é necessária para que o ConfiaAI e as campanhas possam criar
+A integração com GitHub é necessária para que o ConfAI e as campanhas possam criar
 branches, commits e Pull Requests nos repositórios dos seus workloads.
 
 ### Configurar
@@ -86,7 +86,7 @@ relevantes acontecem na plataforma.
 | Nova degradação crítica | Um workload entra em estado Critical |
 | Breach de SLO | Um SLO viola a meta na janela atual |
 | Campanha iniciada | Uma nova campanha de remediação começa |
-| PR criado | ConfiaAI ou campanha abre um PR no GitHub |
+| PR criado | ConfAI ou campanha abre um PR no GitHub |
 | Aprovação necessária | Campanha aguardando aprovação para promoção em prd |
 
 ### Configurar
@@ -135,7 +135,7 @@ A sincronização acontece automaticamente a cada ciclo do operator após a conf
 **Preciso de todas as integrações para usar a plataforma?**
 Não. Cada integração habilita uma feature específica:
 - Sem GitHub: scorecard e SLOs funcionam, mas sem remediação automática
-- Sem Datadog: scorecard e ConfiaAI funcionam, mas sem recomendações de HPA e sem sincronização de SLO
+- Sem Datadog: scorecard e ConfAI funcionam, mas sem recomendações de HPA e sem sincronização de SLO
 - Sem Slack: tudo funciona, sem notificações
 - Sem Backstage: tudo funciona, metadados de owner precisam ser configurados manualmente
 

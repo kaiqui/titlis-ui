@@ -150,7 +150,7 @@ recriados) e as filas existentes são religadas. Filas que não casam com nenhum
 
 ## `spec.gitops.paths` — onde a remediação abre PR
 
-Diz à ConfiaAI **qual arquivo e branch** alterar quando for corrigir um finding via PR. É um mapa
+Diz à ConfAI **qual arquivo e branch** alterar quando for corrigir um finding via PR. É um mapa
 `ambiente → { path, base_branch }`:
 ```yaml
 spec:
