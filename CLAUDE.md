@@ -135,8 +135,8 @@ src/
 | `/settings/auth` | SettingsAuth | sim | **sim** | Config de providers OIDC |
 | `/settings/ai` | SettingsAi | sim | **sim** | Provedor LLM + modelo + API key do tenant |
 | `/settings/integrations` | SettingsIntegrations | sim | **sim** | GitHub token (PRs) + credenciais Datadog (análise de incidente) |
-| `/settings/score-config` | SettingsScoreConfig | sim | **sim** | Regras + overrides + pesos de scoring |
-| `/settings/tags` | SettingsTags | sim | **sim** | Tags de recursos |
+| `/settings/score-config` | — | — | — | **Removido** (RPM) → redireciona para `/settings/integrations` |
+| `/settings/tags` | — | — | — | **Removido** (RPM) → redireciona para `/settings/integrations` |
 | `/settings/api-keys` | SettingsApiKeys | sim | **sim** | Chaves de API para agentes de IA (ARIA, Claude, outros clientes MCP) — não há mais operator na stack RPM |
 | `/settings/auto-remediation` | — | — | — | **Removido** → redireciona para `/settings/integrations` |
 

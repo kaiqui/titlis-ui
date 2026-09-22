@@ -46,7 +46,7 @@ function OwnershipPanel({ queue }: { queue: QueueSummary }) {
               {queue.serviceName}
               {queue.team && <span style={{ color: 'var(--color-muted-foreground)' }}> · {queue.team}</span>}
               {queue.linkSource && (
-                <span className="ml-2 rounded-full px-2 py-0.5 text-[11px] font-medium" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
+                <span className="ml-2 rounded-[8px] px-2 py-0.5 text-[11px] font-medium" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
                   {LINK_SOURCE_LABEL[queue.linkSource] ?? queue.linkSource}
                 </span>
               )}
@@ -134,9 +134,9 @@ function LifecycleBadge({ queue }: { queue: QueueSummary }) {
       : 0
     return (
       <div className="flex flex-col items-center gap-1">
-        <div className="relative h-1.5 w-10 overflow-hidden rounded-full" style={{ backgroundColor: 'var(--color-muted)' }}>
+        <div className="relative h-1.5 w-10 overflow-hidden rounded-[4px]" style={{ backgroundColor: 'var(--color-muted)' }}>
           <div
-            className="absolute inset-y-0 left-0 rounded-full transition-all"
+            className="absolute inset-y-0 left-0 rounded-[4px] transition-all"
             style={{ width: `${pct}%`, backgroundColor: 'var(--color-primary)' }}
           />
         </div>
@@ -147,7 +147,7 @@ function LifecycleBadge({ queue }: { queue: QueueSummary }) {
     )
   }
   return (
-    <div className="flex h-10 w-10 items-center justify-center rounded-full" style={{ backgroundColor: 'var(--color-muted)' }}>
+    <div className="flex h-10 w-10 items-center justify-center rounded-[10px]" style={{ backgroundColor: 'var(--color-muted)' }}>
       <Radar size={18} style={{ color: 'var(--color-muted-foreground)' }} />
     </div>
   )
@@ -156,13 +156,13 @@ function LifecycleBadge({ queue }: { queue: QueueSummary }) {
 function LifecycleLabel({ queue }: { queue: QueueSummary }) {
   if (queue.lifecycleState === 'MONITORING') {
     return (
-      <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${statusTone(queue.complianceStatus)}`}>
+      <span className={`rounded-[8px] px-2.5 py-1 text-[11px] font-semibold ${statusTone(queue.complianceStatus)}`}>
         {formatEnum(queue.complianceStatus ?? 'UNKNOWN')}
       </span>
     )
   }
   return (
-    <span className="rounded-full px-2.5 py-1 text-[11px] font-semibold" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
+    <span className="rounded-[8px] px-2.5 py-1 text-[11px] font-semibold" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
       {queueConfidence(queue.lifecycleState, queue.observationCount) === 'baixa' ? 'confiança baixa' : 'sinal insuficiente'}
     </span>
   )
@@ -210,18 +210,18 @@ function ThresholdsPanel({ queueId, observationCount }: { queueId: string; obser
           ].map(([label, value]) => (
             <Card key={label}>
               <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>{label}</p>
-              <p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{value}</p>
+              <p className="mt-1 text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>{value}</p>
             </Card>
           ))}
         </div>
         <div className="mt-3 grid gap-3 md:grid-cols-2">
           <Card>
             <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Warning (P75 × 1.2)</p>
-            <p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{fmtNum(thresholds.backlogWarning)} msg</p>
+            <p className="mt-1 text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>{fmtNum(thresholds.backlogWarning)} msg</p>
           </Card>
           <Card>
             <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Critical (P95 × 1.5)</p>
-            <p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{fmtNum(thresholds.backlogCritical)} msg</p>
+            <p className="mt-1 text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>{fmtNum(thresholds.backlogCritical)} msg</p>
           </Card>
         </div>
       </InlineAccordion>
@@ -235,18 +235,18 @@ function ThresholdsPanel({ queueId, observationCount }: { queueId: string; obser
           ].map(([label, value]) => (
             <Card key={label}>
               <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>{label}</p>
-              <p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{value}</p>
+              <p className="mt-1 text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>{value}</p>
             </Card>
           ))}
         </div>
         <div className="mt-3 grid gap-3 md:grid-cols-2">
           <Card>
             <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Warning</p>
-            <p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{fmtSec(thresholds.ageWarningSec)}</p>
+            <p className="mt-1 text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>{fmtSec(thresholds.ageWarningSec)}</p>
           </Card>
           <Card>
             <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Critical</p>
-            <p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{fmtSec(thresholds.ageCriticalSec)}</p>
+            <p className="mt-1 text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>{fmtSec(thresholds.ageCriticalSec)}</p>
           </Card>
         </div>
       </InlineAccordion>
@@ -426,19 +426,19 @@ export function Queues() {
                     badges: (
                       <>
                         {q.isDlq && (
-                          <span className="rounded-full px-2.5 py-1 text-[11px] font-semibold bg-red-900/30 text-red-400">
+                          <span className="rounded-[8px] px-2.5 py-1 text-[11px] font-semibold bg-[var(--color-danger-soft)] text-[var(--color-danger)]">
                             DLQ
                           </span>
                         )}
                         {q.serviceName ? (
                           <span
-                            className="rounded-full px-2.5 py-1 text-[11px] font-semibold"
+                            className="rounded-[8px] px-2.5 py-1 text-[11px] font-semibold"
                             style={{ backgroundColor: 'var(--color-primary-soft)', color: 'var(--color-primary)' }}
                           >
                             → {q.serviceName}
                           </span>
                         ) : (
-                          <span className="jc-badge-warning rounded-full px-2.5 py-1 text-[11px] font-semibold">
+                          <span className="jc-badge-warning rounded-[8px] px-2.5 py-1 text-[11px] font-semibold">
                             sem dono{q.suggestionCount > 0 ? ` · ${q.suggestionCount} sugestão${q.suggestionCount > 1 ? 'ões' : ''}` : ''}
                           </span>
                         )}
@@ -464,11 +464,11 @@ export function Queues() {
                       <LifecycleBadge queue={selectedQueue} />
                       <div className="space-y-1.5">
                         <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-lg font-black tracking-tight" style={{ color: 'var(--color-foreground)' }}>
+                          <p className="text-lg font-bold tracking-tight" style={{ color: 'var(--color-foreground)' }}>
                             {selectedQueue.displayName || selectedQueue.externalId.split('/').pop()}
                           </p>
                           {selectedQueue.isDlq && (
-                            <span className="rounded-full px-3 py-1 text-xs font-semibold bg-red-900/30 text-red-400">
+                            <span className="rounded-[8px] px-3 py-1 text-xs font-semibold bg-[var(--color-danger-soft)] text-[var(--color-danger)]">
                               DLQ
                             </span>
                           )}
@@ -515,9 +515,9 @@ export function Queues() {
                               <span>Aprendendo</span>
                               <span>{selectedQueue.observationCount}/{selectedQueue.learningTarget} ciclos</span>
                             </div>
-                            <div className="h-2 overflow-hidden rounded-full" style={{ backgroundColor: 'var(--color-muted)' }}>
+                            <div className="h-2 overflow-hidden rounded-[4px]" style={{ backgroundColor: 'var(--color-muted)' }}>
                               <div
-                                className="h-full rounded-full transition-all"
+                                className="h-full rounded-[4px] transition-all"
                                 style={{
                                   width: `${Math.round((selectedQueue.observationCount / selectedQueue.learningTarget) * 100)}%`,
                                   backgroundColor: 'var(--color-primary)',
@@ -556,7 +556,7 @@ export function Queues() {
                               ].map(([label, value]) => (
                                 <Card key={label}>
                                   <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>{label}</p>
-                                  <p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{value}</p>
+                                  <p className="mt-1 text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>{value}</p>
                                 </Card>
                               ))}
                             </div>
@@ -570,7 +570,7 @@ export function Queues() {
                                 ].map(([label, value]) => (
                                   <Card key={label}>
                                     <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>{label}</p>
-                                    <p className="mt-1 text-sm font-black" style={{ color: 'var(--color-foreground)' }}>{value}</p>
+                                    <p className="mt-1 text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>{value}</p>
                                   </Card>
                                 ))}
                               </div>
@@ -610,8 +610,8 @@ export function Queues() {
                                 >
                                   <p className="mb-2 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>{d.question}</p>
                                   {d.strength !== null && (
-                                    <div className="mb-3 h-1.5 overflow-hidden rounded-full" style={{ backgroundColor: 'var(--color-border)' }}>
-                                      <div className="h-full rounded-full" style={{ width: `${Math.max(0, Math.min(100, d.strength))}%`, backgroundColor: band.color }} />
+                                    <div className="mb-3 h-1.5 overflow-hidden rounded-[4px]" style={{ backgroundColor: 'var(--color-border)' }}>
+                                      <div className="h-full rounded-[4px]" style={{ width: `${Math.max(0, Math.min(100, d.strength))}%`, backgroundColor: band.color }} />
                                     </div>
                                   )}
                                   {d.fails.length === 0 ? (
@@ -640,7 +640,7 @@ export function Queues() {
                       <DetailPanel title="Findings" subtitle="Regras que falharam nesta fila.">
                         {!detail || detail.findings.filter(f => !f.passed).length === 0 ? (
                           <div className="flex items-center gap-3 rounded-2xl border px-4 py-4" style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-muted)' }}>
-                            <ShieldCheck size={20} className="text-emerald-500 shrink-0" />
+                            <ShieldCheck size={20} className="text-[var(--color-success)] shrink-0" />
                             <p className="text-sm font-semibold" style={{ color: 'var(--color-foreground)' }}>
                               Nenhuma falha detectada. Excelente configuração de fila.
                             </p>
@@ -654,13 +654,13 @@ export function Queues() {
                                 style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-card)' }}
                               >
                                 <div className="flex items-start gap-3">
-                                  <ShieldAlert size={16} className="mt-0.5 shrink-0 text-red-500" />
+                                  <ShieldAlert size={16} className="mt-0.5 shrink-0 text-[var(--color-danger)]" />
                                   <div className="min-w-0 flex-1">
                                     <div className="flex flex-wrap items-center gap-2">
                                       <p className="text-[13px] font-semibold" style={{ color: 'var(--color-foreground)' }}>
                                         {finding.ruleName || finding.ruleId}
                                       </p>
-                                      <span className="rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
+                                      <span className="rounded-[8px] px-2 py-0.5 text-[11px] font-semibold" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
                                         {finding.ruleId}
                                       </span>
                                       <span className="text-[11px] font-medium" style={{ color: 'var(--color-muted-foreground)' }}>

@@ -8,7 +8,7 @@ import { api } from '@/lib/api'
 import { Reliability } from '@/pages/Reliability'
 import type { EstateNode } from '@/types'
 
-vi.mock('@/hooks/useApi', () => ({ useHubRollup: vi.fn() }))
+vi.mock('@/hooks/useApi', () => ({ useHubRollup: vi.fn(), useLookoutSeals: () => ({ data: {} }) }))
 vi.mock('@/lib/api', () => ({ api: { hub: { trend: vi.fn() } } }))
 
 const mockedRollup = vi.mocked(useHubRollup)

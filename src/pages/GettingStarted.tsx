@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { CheckCircle2, Circle, Loader2, Server, ShieldCheck, Zap } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { CheckCircle2, Circle, Loader2, Plug2, ShieldCheck, Zap } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'motion/react'
 import gsap from 'gsap'
@@ -68,22 +68,21 @@ export function GettingStarted() {
       ),
     },
     {
-      icon: Server,
+      icon: Plug2,
       done: isConnected,
-      title: 'Instalar e configurar o operator',
+      title: 'Conectar GitHub e Datadog',
       body: (
         <div className="space-y-3">
           <p className="text-sm leading-6" style={{ color: 'var(--color-muted-foreground)' }}>
-            No cluster Kubernetes de destino, configure as variáveis de ambiente abaixo e aplique o Helm chart.
+            O Titlis lê seus repositórios e monitores diretamente do GitHub e do Datadog — não é
+            preciso instalar nada em cluster nenhum. Configure as credenciais em Integrações.
           </p>
-          <div className="rounded-xl border px-4 py-3 font-mono text-xs leading-6" style={{ borderColor: 'var(--color-border)', background: 'var(--app-background)', color: 'var(--color-foreground)' }}>
-            <p>TITLIS_API_ENABLED=<span style={{ color: 'var(--color-primary-strong)' }}>true</span></p>
-            <p>TITLIS_API_HOST=<span style={{ color: 'var(--color-primary-strong)' }}>titlis-api.titlis-system.svc.cluster.local</span></p>
-            <p>TITLIS_API_API_KEY=<span style={{ color: 'var(--color-primary-strong)' }}>&lt;chave copiada na etapa anterior&gt;</span></p>
-          </div>
-          <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
-            Consulte as instruções completas em <code>titlis-operator/charts/titlis-operator/README.md</code>.
-          </p>
+          <Link
+            to="/settings/integrations"
+            className="jc-secondary-button inline-flex items-center gap-2 px-4 py-2 text-sm"
+          >
+            Ir para Integrações
+          </Link>
         </div>
       ),
     },
@@ -101,7 +100,7 @@ export function GettingStarted() {
             <Loader2 size={14} className="animate-spin shrink-0" style={{ color: 'var(--color-muted-foreground)' }} />
           )}
           <p className="text-sm leading-6" style={{ color: 'var(--color-muted-foreground)' }}>
-            Verificando a cada 10 segundos. Assim que o operator enviar o primeiro scorecard, esta etapa será marcada como concluída.
+            Verificando a cada 10 segundos. Assim que o GitHub e o Datadog forem sincronizados, esta etapa será marcada como concluída.
           </p>
         </div>
       ),
@@ -110,14 +109,14 @@ export function GettingStarted() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-10">
-      <p className="text-sm font-extrabold uppercase tracking-[0.18em]" style={{ color: 'var(--color-primary-strong)' }}>
+      <p className="text-xs font-semibold uppercase tracking-[0.1em]" style={{ color: 'var(--color-primary-strong)' }}>
         Primeiros passos
       </p>
-      <h1 className="family-neighbor mt-3 text-3xl font-black tracking-tight" style={{ color: 'var(--color-foreground)' }}>
-        Configure o Titlis no seu cluster
+      <h1 className="family-neighbor mt-3 text-3xl font-bold tracking-tight" style={{ color: 'var(--color-foreground)' }}>
+        Configure suas integrações
       </h1>
       <p className="mt-3 text-sm leading-6" style={{ color: 'var(--color-muted-foreground)' }}>
-        Siga as etapas abaixo para conectar o operator ao painel. Você pode navegar pelo produto normalmente enquanto isso.
+        Siga as etapas abaixo para conectar o GitHub e o Datadog ao painel. Você pode navegar pelo produto normalmente enquanto isso.
       </p>
 
       <ol ref={listRef} className="mt-10 space-y-4">
@@ -126,10 +125,11 @@ export function GettingStarted() {
           return (
             <li
               key={step.title}
-              className="flex gap-4 rounded-[1.6rem] border p-5 transition-colors duration-300"
+              className="flex gap-4 rounded-[var(--radius-nb)] border p-5 transition-colors duration-300"
               style={{
-                borderColor: step.done ? 'var(--color-primary-soft)' : 'var(--color-border)',
+                borderColor: step.done ? 'var(--color-primary)' : 'var(--color-foreground)',
                 background: 'var(--color-card)',
+                boxShadow: step.done ? 'var(--shadow-brutal-sm)' : 'none',
               }}
             >
               <div className="flex flex-col items-center gap-2 pt-0.5">

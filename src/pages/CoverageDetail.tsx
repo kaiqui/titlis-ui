@@ -1,16 +1,20 @@
 import { useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
   Check,
   ChevronDown,
   Copy,
+  ExternalLink,
   FileQuestion,
   Network,
   Sparkles,
-  Wrench,
 } from 'lucide-react'
 import { motion } from 'motion/react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import { api } from '@/lib/api'
 import { Card } from '@/components/jeitto/Card'
 import { ButtonDefault } from '@/components/jeitto/ButtonDefault'
 import { fadeInUp } from '@/lib/motion/tokens'
@@ -19,21 +23,20 @@ import { PageError, PageLoading } from '@/components/jeitto/PageState'
 import { ScoreRing } from '@/components/jeitto/ScoreRing'
 import { Header } from '@/components/layout/Header'
 import { SummaryStrip } from '@/components/sre/SummaryStrip'
-import { CoverageExplainDrawer } from '@/components/ai/CoverageExplainDrawer'
-import { useCoverageDetail, useCoverageGraph } from '@/hooks/useApi'
+import { useCoverageDetail, useCoverageGraph, useLookoutServiceContext } from '@/hooks/useApi'
+import { isFeatureEnabled } from '@/lib/featureFlags'
 import { formatDate, formatNumber, severityColor } from '@/lib/utils'
 import {
   confidenceLabel,
   dimensionLabel,
   distinctNaSources,
   findingsForDimension,
-  isFindingRemediable,
   naGroupsForDimension,
   overallBand,
   postureBand,
   stripIcon,
 } from '@/lib/posture'
-import type { CoverageDimension, CoverageFinding, CoverageGraphNeighbor, CoverageScorecard } from '@/types'
+import type { CoverageDimension, CoverageGraphNeighbor, CoverageScorecard } from '@/types'
 
 function isPendingCoverage(trustScore: number | null, dimensionCount: number, findingCount: number): boolean {
   return trustScore === null && dimensionCount === 0 && findingCount === 0
@@ -50,8 +53,8 @@ function kindLabel(k: string): string {
 }
 
 function neighborLink(n: CoverageGraphNeighbor): string | null {
-  if (n.kind === 'dd_slo') return '/slos'
-  if (n.kind === 'queue') return '/queues'
+  if (n.kind === 'dd_slo') return isFeatureEnabled('slos') ? '/slos' : null
+  if (n.kind === 'queue') return isFeatureEnabled('queues') ? '/queues' : null
   return null
 }
 
@@ -60,7 +63,11 @@ export function CoverageDetail() {
   const navigate = useNavigate()
   const detail = useCoverageDetail(uid)
   const graph = useCoverageGraph(uid)
-  const [explain, setExplain] = useState<CoverageFinding | null>(null)
+  const memory = useLookoutServiceContext(uid)
+  const investigate = useMutation({
+    mutationFn: () => api.lookout.investigate(uid),
+    onSettled: () => void memory.refetch(),
+  })
   const [copied, setCopied] = useState(false)
 
   if (detail.isLoading) return <><Header title="Detalhe da postura" /><PageLoading /></>
@@ -100,8 +107,6 @@ export function CoverageDetail() {
     })
   }
 
-  const remediate = () => navigate(`/scorecards/${encodeURIComponent(sc.workloadUid)}/remediate`)
-
   return (
     <div className="flex min-h-screen flex-col">
       <Header
@@ -115,13 +120,26 @@ export function CoverageDetail() {
           <button
             type="button"
             onClick={handleCopyUid}
-            className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 font-mono text-[11px] transition-colors hover:opacity-80"
+            className="inline-flex items-center gap-1.5 rounded-[8px] border px-3 py-1.5 font-mono text-[11px] transition-colors hover:opacity-80"
             style={{ borderColor: 'var(--color-border)', color: 'var(--color-muted-foreground)' }}
             title="Copiar UID do workload"
           >
-            {copied ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
+            {copied ? <Check className="h-3 w-3 text-[var(--color-success)]" /> : <Copy className="h-3 w-3" />}
             {copied ? 'Copiado!' : sc.workloadUid}
           </button>
+          {sc.links?.map((link) => (
+            <a
+              key={link.url}
+              href={link.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-[8px] border px-3 py-1.5 text-[11px] font-medium transition-colors hover:opacity-80"
+              style={{ borderColor: 'var(--color-border)', color: 'var(--color-primary)' }}
+            >
+              <ExternalLink className="h-3 w-3" />
+              {link.label}
+            </a>
+          ))}
         </div>
 
         {pending ? (
@@ -148,7 +166,7 @@ export function CoverageDetail() {
                 <div className="min-w-0 flex-1 space-y-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <span
-                      className="rounded-full px-3 py-1 text-sm font-bold"
+                      className="rounded-[8px] px-3 py-1 text-sm font-bold"
                       style={{ color: band.color, backgroundColor: 'var(--color-muted)' }}
                     >
                       {formatNumber(sc.trustScore)} · {band.label}
@@ -178,16 +196,7 @@ export function CoverageDetail() {
                 <div key={m.code} className="flex items-baseline gap-3 py-2.5 text-sm">
                   <span className="font-mono text-xs" style={{ color: 'var(--color-primary)' }}>{String(m.rank).padStart(2, '0')}</span>
                   <span className="min-w-0">{stripIcon(m.description)}</span>
-                  {m.isRemediable && (
-                    <button
-                      onClick={remediate}
-                      className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium hover:opacity-80"
-                      style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }}
-                    >
-                      <Wrench className="h-3 w-3" />Corrigir com IA
-                    </button>
-                  )}
-                  <span className="ml-auto whitespace-nowrap font-mono text-xs" style={{ color: '#16a34a' }}>+{Math.round(m.lift)}</span>
+                  <span className="ml-auto whitespace-nowrap font-mono text-xs" style={{ color: '#12a150' }}>+{Math.round(m.lift)}</span>
                 </div>
               ))}
             </div>
@@ -202,11 +211,18 @@ export function CoverageDetail() {
                 sc={sc}
                 d={d}
                 index={index}
-                onExplain={setExplain}
-                onRemediate={remediate}
               />
             ))}
           </div>
+        )}
+
+        {isFeatureEnabled('ai') && (
+          <MemoryCard
+            ctx={memory.data}
+            investigating={investigate.isPending}
+            investigateMsg={investigate.data?.message ?? (investigate.isError ? 'ConfAI indisponível para este tenant.' : null)}
+            onInvestigate={() => investigate.mutate()}
+          />
         )}
 
         {(graph.data?.neighbors.length ?? 0) > 0 && (
@@ -242,17 +258,106 @@ export function CoverageDetail() {
           </Card>
         )}
 
-        {explain && (
-          <CoverageExplainDrawer
-            finding={explain}
-            workloadUid={sc.workloadUid}
-            serviceName={sc.serviceName ?? sc.workloadUid}
-            cluster={sc.cluster}
-            onClose={() => setExplain(null)}
-          />
-        )}
       </div>
     </div>
+  )
+}
+
+const VERDICT_LABEL: Record<string, string> = {
+  regressao_real: 'regressão real',
+  postura_fraca: 'postura fraca',
+  ruido: 'ruído',
+  postura_saudavel: 'postura saudável',
+  sinal_insuficiente: 'sinal insuficiente',
+  erro: 'erro',
+  quota_exceeded: 'orçamento de tokens esgotado',
+}
+
+// Memória do ConfAI para este serviço (LKT §8): fatos aprendidos + investigações + botão de
+// investigação sob demanda. Sempre visível — quando vazio, convida a investigar.
+function MemoryCard({
+  ctx,
+  investigating,
+  investigateMsg,
+  onInvestigate,
+}: {
+  ctx?: { investigations: Array<{ investigationId: number; hypothesis: string | null; verdict: string | null; createdAt: string }>; memory: Array<{ estateMemoryId: number; fact: string; lastConfirmedAt: string }> }
+  investigating: boolean
+  investigateMsg: string | null
+  onInvestigate: () => void
+}) {
+  const facts = ctx?.memory ?? []
+  const investigations = ctx?.investigations ?? []
+  return (
+    <Card className="p-5">
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <Sparkles className="h-5 w-5" style={{ color: 'var(--color-primary)' }} />
+        <h3 className="text-lg font-semibold">Memória do ConfAI</h3>
+        <ButtonDefault
+          label={investigating ? 'Investigando…' : 'Investigar com o ConfAI'}
+          visual="secondary"
+          icon={Sparkles}
+          onClick={onInvestigate}
+          disabled={investigating}
+          className="ml-auto"
+        />
+      </div>
+
+      {facts.length === 0 && investigations.length === 0 ? (
+        <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
+          O ConfAI ainda não investigou este serviço. A investigação lê a postura, correlaciona com
+          Datadog/GitHub e registra a causa provável aqui.
+        </p>
+      ) : (
+        <div className="space-y-4">
+          {facts.length > 0 && (
+            <div>
+              <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--color-muted-foreground)' }}>
+                O que aprendeu
+              </p>
+              <ul className="space-y-1.5 text-sm">
+                {facts.map((f) => (
+                  <li key={f.estateMemoryId} className="flex gap-2">
+                    <span style={{ color: 'var(--color-primary)' }}>•</span>
+                    <span className="min-w-0">
+                      {f.fact}{' '}
+                      <span className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>({formatDate(f.lastConfirmedAt)})</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {investigations.length > 0 && (
+            <div>
+              <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--color-muted-foreground)' }}>
+                Investigações
+              </p>
+              <div className="space-y-2">
+                {investigations.slice(0, 4).map((inv) => (
+                  <div key={inv.investigationId} className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: 'var(--color-border)' }}>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-semibold" style={{ color: 'var(--color-primary)' }}>
+                        {VERDICT_LABEL[inv.verdict ?? ''] ?? inv.verdict ?? '—'}
+                      </span>
+                      <span className="ml-auto text-[10px]" style={{ color: 'var(--color-muted-foreground)' }}>{formatDate(inv.createdAt)}</span>
+                    </div>
+                    {inv.hypothesis && (
+                      <div className="mt-1 text-[13px] leading-relaxed" style={{ color: 'var(--color-muted-foreground)' }}>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{inv.hypothesis}</ReactMarkdown>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      {investigateMsg && (
+        <p className="mt-3 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>{investigateMsg}</p>
+      )}
+    </Card>
   )
 }
 
@@ -260,14 +365,10 @@ function DimensionCard({
   sc,
   d,
   index,
-  onExplain,
-  onRemediate,
 }: {
   sc: CoverageScorecard
   d: CoverageDimension
   index: number
-  onExplain: (f: CoverageFinding) => void
-  onRemediate: () => void
 }) {
   const [open, setOpen] = useState(false)
   const [showPass, setShowPass] = useState(false)
@@ -285,16 +386,16 @@ function DimensionCard({
         <button type="button" onClick={() => setOpen((o) => !o)} className="w-full text-left">
           <div className="flex items-center justify-between gap-3">
             <p className="truncate font-semibold">{d.label ?? dimensionLabel(d.pillar)}</p>
-            <span className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold" style={{ color: band.color, backgroundColor: 'var(--color-muted)' }}>
+            <span className="shrink-0 rounded-[8px] px-2 py-0.5 text-[11px] font-semibold" style={{ color: band.color, backgroundColor: 'var(--color-muted)' }}>
               {band.label}
             </span>
           </div>
           {d.question && (
             <p className="mt-1 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>{d.question}</p>
           )}
-          <div className="mt-3 h-1.5 overflow-hidden rounded-full" style={{ backgroundColor: 'var(--color-border)' }}>
+          <div className="mt-3 h-1.5 overflow-hidden rounded-[4px]" style={{ backgroundColor: 'var(--color-border)' }}>
             <motion.div
-              className="h-full rounded-full"
+              className="h-full rounded-[4px]"
               style={{ backgroundColor: band.color }}
               initial={{ width: 0 }}
               animate={{ width: `${pct}%` }}
@@ -320,30 +421,30 @@ function DimensionCard({
                 {fails.map((f) => (
                   <div key={f.code} className="rounded-lg border px-3 py-2" style={{ borderColor: 'var(--color-border)' }}>
                     <p className="text-sm">{stripIcon(f.message)}</p>
+                    {f.cost_impact_usd_month != null && (
+                      <p className="mt-1 text-xs font-semibold" style={{ color: '#12a150' }}>
+                        ≈ US$ {f.cost_impact_usd_month.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}/mês recuperável
+                      </p>
+                    )}
                     <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[10px]" style={{ color: 'var(--color-muted-foreground)' }}>
-                      {f.source && <span className="font-mono">{f.source}</span>}
+                      {f.source && <span>{f.source}</span>}
                       {f.severity && (
-                        <span className={`rounded-full border px-1.5 py-px font-semibold uppercase ${severityColor(f.severity)}`}>{f.severity}</span>
+                        <span className={`rounded-[6px] border px-1.5 py-px font-semibold uppercase ${severityColor(f.severity)}`}>{f.severity}</span>
                       )}
-                      <span className="rounded bg-[var(--color-muted)] px-1 py-px font-mono">{f.code}</span>
-                    </p>
-                    <div className="mt-2 flex gap-2">
-                      <button
-                        onClick={() => onExplain(f)}
-                        className="inline-flex items-center gap-1 rounded-full border border-[var(--color-border)] px-2.5 py-1 text-[11px] font-medium hover:opacity-80"
-                      >
-                        <Sparkles className="h-3 w-3" />Explicar com IA
-                      </button>
-                      {isFindingRemediable(f) && (
-                        <button
-                          onClick={onRemediate}
-                          className="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium hover:opacity-80"
-                          style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }}
+                      {f.links?.map((link) => (
+                        <a
+                          key={link.url}
+                          href={link.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 font-medium hover:underline"
+                          style={{ color: 'var(--color-primary)' }}
                         >
-                          <Wrench className="h-3 w-3" />Corrigir com IA
-                        </button>
-                      )}
-                    </div>
+                          <ExternalLink className="h-2.5 w-2.5" />
+                          {link.label}
+                        </a>
+                      ))}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -368,7 +469,7 @@ function DimensionCard({
                 <button
                   type="button"
                   onClick={() => setShowPass((s) => !s)}
-                  className="text-[11px] font-semibold uppercase tracking-wide text-emerald-500"
+                  className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-success)]"
                 >
                   {passes.length} {passes.length === 1 ? 'check OK' : 'checks OK'} {showPass ? '▲' : '▼'}
                 </button>

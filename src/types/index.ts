@@ -211,6 +211,26 @@ export interface ActiveRemediation {
   pendingRuleIds: string[]
 }
 
+export interface AiUsageSummary {
+  month: {
+    tokensUsed: number
+    monthlyTokenBudget: number | null
+    usagePct: number | null
+    provider: string | null
+    model: string | null
+    estimatedUsd: number
+    budgetUsd: number | null
+  }
+  windowDays: number
+  windowTokens: number
+  windowRuns: number
+  windowEstimatedUsd: number
+  pricePer1MTokensUsd: number
+  daily: { date: string; tokens: number; runs: number; estimatedUsd: number }[]
+  byKind: { kind: string; label: string; tokens: number; runs: number; estimatedUsd: number }[]
+  recentRuns: { kind: string; label: string; status: string; tokens: number; estimatedUsd: number; startedAt: string; durationMs: number | null }[]
+}
+
 export interface AiConfig {
   provider: string
   model: string
@@ -469,6 +489,14 @@ export interface CoverageMove {
   isRemediable: boolean
 }
 
+// Link de evidência pra Datadog/GitHub, computado pela titlis-api-ts a partir de dados já
+// existentes (Service Catalog do Datadog, tenant_ai_configs) — nunca de uma chamada ao vivo.
+export interface EvidenceLink {
+  type: string
+  label: string
+  url: string
+}
+
 export interface CoverageFinding {
   code: string
   pillar: string
@@ -477,6 +505,9 @@ export interface CoverageFinding {
   outcome: string
   message: string
   source?: string
+  links?: EvidenceLink[]
+  // Só presente no COST-001 quando falha — US$/mês estimado recuperável (docs/todo/cost-pillar-plan.md).
+  cost_impact_usd_month?: number
 }
 
 export interface CoverageScorecard {
@@ -491,6 +522,7 @@ export interface CoverageScorecard {
   findings: CoverageFinding[]
   moves?: CoverageMove[]
   evaluatedAt: string
+  links?: EvidenceLink[]
 }
 
 // Service-map do hub (H1/H2): produto → squad → serviço → workload (+ bucket de órfãos).
@@ -568,12 +600,113 @@ export interface EstateNode {
   confidence?: string | null
   tier?: string | null
   repoUrl?: string | null
+  // docs/todo/cost-real-billing-plan.md §3-4 — só presente quando o rollup foi pedido com
+  // includeCost=true E há dado de custo pro subtree; ausente ≠ 0 (nunca inventa "custo zero").
+  costTotal?: number
 }
 
 export interface PostureTrendPoint {
   date: string
   trust: number | null
   confidencePct: number
+}
+
+// RPM Fase C — ConfAI (titlis-lookout). Formato cru das rotas /v1/lookout/* (drizzle camelCase).
+export interface LookoutBriefing {
+  briefingId: number
+  scope: string
+  scopeRef: string | null
+  kind: string
+  title: string
+  bodyMd: string
+  severity: string
+  feedback: 'util' | 'ruido' | null
+  investigationId: number | null
+  createdAt: string
+}
+
+export interface LookoutPlaybook {
+  playbookId: number
+  title: string
+  appliesWhen: string | null
+  bodyMd: string
+  retired: boolean
+  revalidatedAt: string | null
+  createdAt: string
+}
+
+export interface LookoutInvestigation {
+  investigationId: number
+  workloadUid: string | null
+  triggerKind: string
+  hypothesis: string | null
+  verdict: string | null
+  confidence: string | null
+  createdAt: string
+}
+
+export interface LookoutServiceContext {
+  investigations: LookoutInvestigation[]
+  memory: Array<{ estateMemoryId: number; fact: string; confidence: string | null; lastConfirmedAt: string }>
+}
+
+export interface LookoutSeal {
+  investigations: number
+  memory: number
+  lastVerdict: string | null
+  noise: boolean
+}
+
+export type LookoutSeals = Record<string, LookoutSeal>
+
+// RPM Fase I — chat do ConfAI (titlis-lookout, banco próprio, drizzle camelCase).
+export interface LookoutChatSession {
+  chatSessionId: number
+  channel: string
+  externalKey: string | null
+  title: string | null
+  createdAt: string
+  lastMessageAt: string
+}
+
+export interface LookoutChatMessage {
+  chatMessageId: number
+  chatSessionId: number
+  role: 'user' | 'assistant' | 'tool'
+  contentMd: string
+  toolCallsJson: Array<{ tool: string; args: Record<string, unknown>; ok: boolean; citations?: Array<{ label: string; url: string }> }> | null
+  createdAt: string
+}
+
+export interface LookoutChatReply {
+  messageMd: string
+  toolTrace: Array<{ tool: string; args: Record<string, unknown>; ok: boolean }>
+  outOfScope: boolean
+}
+
+// RPM Fase N — proposta de escrita via MCP aguardando aprovação humana (drizzle camelCase).
+export interface LookoutPendingMcpAction {
+  pendingMcpActionId: number
+  provider: string
+  toolName: string
+  argumentsJson: Record<string, unknown>
+  rationaleMd: string | null
+  status: 'pending' | 'approved' | 'rejected' | 'applied' | 'failed'
+  approvedBy: string | null
+  resultSummary: string | null
+  createdAt: string
+}
+
+// RPM Fase K — playbook com invocation_name preenchido vira skill invocável.
+export interface LookoutSkill {
+  playbookId: number
+  title: string
+  appliesWhen: string | null
+  bodyMd: string
+  invocationName: string
+  createdBy: string
+  isPublished: boolean
+  createdAt: string
 }
 
 export interface CoverageGraphNeighbor {

@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { KeyRound, Shield } from 'lucide-react'
+import { KeyRound } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useAuth } from '@/contexts/useAuth'
 import { MotionGate } from '@/components/motion/MotionGate'
@@ -63,21 +63,35 @@ export function Login() {
     <div className="flex min-h-screen items-center justify-center px-6 py-10" style={{ background: 'var(--app-background)' }}>
       <div className="grid w-full max-w-5xl gap-6 lg:grid-cols-[1.1fr_0.9fr]">
         <motion.section
-          className="relative overflow-hidden rounded-[2.4rem] border p-8 lg:p-10"
-          style={{ borderColor: 'var(--color-border)', background: 'var(--hero-background)' }}
+          className="relative overflow-hidden rounded-[var(--radius-nb-lg)] border p-8 lg:p-10"
+          style={{ borderColor: 'var(--color-hairline)', background: 'var(--hero-background)', boxShadow: 'var(--shadow-brutal-lg)' }}
           {...fadeInUp}
         >
           <MotionGate>
             <NetworkMeshScene className="pointer-events-none absolute inset-0 opacity-40" />
           </MotionGate>
           <div className="relative">
-            <div className="flex h-14 w-14 items-center justify-center rounded-[1.5rem]" style={{ background: 'var(--color-primary-soft)', color: 'var(--color-primary-strong)' }}>
-              <Shield size={26} />
+            <div className="flex h-14 w-14 items-center justify-center rounded-[1.5rem]" style={{ background: 'var(--color-primary)' }}>
+              <span
+                aria-label="Jeitto"
+                className="h-6 w-6"
+                style={{
+                  backgroundColor: '#fff',
+                  WebkitMaskImage: 'url(/jeitto-icon.svg)',
+                  maskImage: 'url(/jeitto-icon.svg)',
+                  WebkitMaskRepeat: 'no-repeat',
+                  maskRepeat: 'no-repeat',
+                  WebkitMaskSize: 'contain',
+                  maskSize: 'contain',
+                  WebkitMaskPosition: 'center',
+                  maskPosition: 'center',
+                }}
+              />
             </div>
-            <p className="mt-6 text-sm font-extrabold uppercase tracking-[0.18em]" style={{ color: 'var(--color-primary-strong)' }}>
+            <p className="mt-6 text-xs font-semibold uppercase tracking-[0.1em]" style={{ color: 'var(--color-primary-strong)' }}>
               Acesso {import.meta.env.VITE_APP_NAME ?? 'Titlis'}
             </p>
-            <h1 className="family-neighbor mt-3 text-3xl font-black tracking-tight lg:text-4xl" style={{ color: 'var(--color-foreground)' }}>
+            <h1 className="family-neighbor mt-3 text-3xl font-bold tracking-tight lg:text-4xl" style={{ color: 'var(--color-foreground)' }}>
               Entre com sua conta da plataforma.
             </h1>
             <p className="mt-4 max-w-xl text-sm leading-6" style={{ color: 'var(--color-muted-foreground)' }}>
@@ -97,14 +111,14 @@ export function Login() {
         </motion.section>
 
         <motion.section
-          className="rounded-[2.4rem] border p-8"
-          style={{ borderColor: 'var(--color-border)', background: 'var(--color-card)' }}
+          className="rounded-[var(--radius-nb-lg)] border p-8"
+          style={{ borderColor: 'var(--color-hairline)', background: 'var(--color-card)', boxShadow: 'var(--shadow-brutal)' }}
           {...fadeInUp}
           transition={{ ...fadeInUp.transition, delay: 0.1 }}
         >
           {hasOktaConfig && (
             <div className="mb-5 space-y-3 rounded-[1.8rem] border p-4" style={{ borderColor: 'var(--color-border)', background: 'var(--hero-background)' }}>
-              <p className="text-xs font-extrabold uppercase tracking-[0.18em]" style={{ color: 'var(--color-primary-strong)' }}>
+              <p className="text-xs font-semibold uppercase tracking-[0.1em]" style={{ color: 'var(--color-primary-strong)' }}>
                 Login Corporativo
               </p>
               <button
@@ -137,7 +151,7 @@ export function Login() {
             </div>
 
             {error && (
-              <div className="rounded-3xl border px-4 py-3 text-sm" style={{ borderColor: 'rgba(239, 68, 68, 0.22)', color: '#dc2626', background: 'rgba(254, 242, 242, 0.8)' }}>
+              <div className="jc-alert jc-alert-danger">
                 {error}
               </div>
             )}

@@ -41,6 +41,6 @@ Tudo é distinguido visualmente: ícone por tipo (workload × fila), e os nós *
 
 ## Corrigir
 
-Nos findings remediáveis, **Corrigir com ARIA** abre o fluxo de remediação (PR unitário, com
-aprovação humana). Veja [ARIA](/docs/assistente-ia). O destino do PR vem do `gitops.paths` do
+Nos findings remediáveis, **Corrigir com ConfAI** abre o fluxo de remediação (PR unitário, com
+aprovação humana). Veja ConfAI. O destino do PR vem do `gitops.paths` do
 `service.yaml`.

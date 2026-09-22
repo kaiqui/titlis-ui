@@ -9,6 +9,7 @@ export const DIMENSION_LABELS: Record<string, string> = {
   velocidade: 'Velocidade segura',
   exposicao: 'Exposição',
   observabilidade: 'Observabilidade',
+  custo: 'Custo',
 }
 
 const PILLAR_LABELS: Record<string, string> = {
@@ -17,6 +18,7 @@ const PILLAR_LABELS: Record<string, string> = {
   performance: 'Performance',
   operational: 'Operacional',
   observability: 'Observabilidade',
+  cost: 'Custo',
 }
 
 export function dimensionLabel(p: string): string {
@@ -24,10 +26,10 @@ export function dimensionLabel(p: string): string {
 }
 
 export const POSTURE_BAND: Record<string, { label: string; color: string }> = {
-  forte: { label: 'Forte', color: '#16a34a' },
-  adequado: { label: 'Adequado', color: '#d97706' },
-  fragil: { label: 'Frágil', color: '#ea580c' },
-  exposto: { label: 'Exposto', color: '#dc2626' },
+  forte: { label: 'Forte', color: '#12a150' },
+  adequado: { label: 'Adequado', color: '#a06e00' },
+  fragil: { label: 'Frágil', color: '#ff542b' },
+  exposto: { label: 'Exposto', color: '#d8341a' },
   sem_sinal: { label: 'Sem sinal', color: 'var(--color-muted-foreground)' },
 }
 
@@ -79,15 +81,16 @@ const K8S_CONFIG_CODES = new Set([
 
 function sourceOfNaFinding(f: CoverageFinding): string {
   if (f.source && f.source.trim().length > 0) return f.source
-  if (K8S_CONFIG_CODES.has(f.code)) return 'Discovery Kubernetes (operator)'
+  if (K8S_CONFIG_CODES.has(f.code)) return 'Manifesto Kubernetes (repositório)'
   if (/^SEC-00[789]|^SEC-010/.test(f.code)) return 'Veracode'
-  return 'Datadog'
+  return 'Observabilidade (Datadog / Grafana / Prometheus)'
 }
 
 function cleanNaLabel(msg: string): string {
   return msg
     .replace(/^[⏭❌✅]\s*/u, '')
     .replace(/\s*—\s*requer discovery Kubernetes \(operator\)\s*$/u, '')
+    .replace(/\s*—\s*requer .*$/u, '')
     .replace(/^não avaliável.*$/i, '')
     .trim()
 }
@@ -124,5 +127,5 @@ export function distinctNaSources(sc: CoverageScorecard): number {
 }
 
 export function isFindingRemediable(f: CoverageFinding): boolean {
-  return f.outcome === 'fail' && /^(RES|SEC|PERF|OPS)-/.test(f.code)
+  return f.outcome === 'fail' && /^(RES|SEC|PERF|OPS|COST)-/.test(f.code)
 }

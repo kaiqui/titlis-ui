@@ -1,8 +1,8 @@
 import type {
-  ActiveRemediation,
   AdminOverview,
   AdminUsersResponse,
   AiConfig,
+  AiUsageSummary,
   DatadogQueueSettings,
   Finding,
   LifecycleState,
@@ -20,7 +20,6 @@ import type {
   ReliabilityProjection,
   ReliabilityTrendPoint,
   ServiceOption,
-  RemediationDetail,
   Severity,
   SloListItem,
   DiscoveredSlo,
@@ -28,9 +27,17 @@ import type {
   CoverageScorecard,
   ServiceMap,
   EstateNode,
+  LookoutBriefing,
+  LookoutChatMessage,
+  LookoutChatReply,
+  LookoutChatSession,
+  LookoutPendingMcpAction,
+  LookoutPlaybook,
+  LookoutSkill,
+  LookoutServiceContext,
+  LookoutSeals,
   PostureTrendPoint,
   SloLookupResult,
-  WorkloadDetail,
   WorkloadSLOCoverage,
   WorkloadSummary,
 } from '@/types'
@@ -69,66 +76,12 @@ interface ApiDashboardItem {
   is_favorite: boolean
 }
 
-interface ApiScorecardItem {
-  workload_id: string
-  workload: string
-  workload_kind: string | null
-  namespace: string
-  cluster: string
-  environment: string
-  overall_score: number | string | null
-  compliance_status: string | null
-  version: number | null
-  evaluated_at: string | null
-  total_rules: number | null
-  passed_rules: number | null
-  failed_rules: number | null
-  critical_failures: number | null
-  error_count: number | null
-  warning_count: number | null
-  pillar_scores: ApiPillarScoreItem[]
-  validation_results: ApiValidationResultItem[]
-  active_remediation?: ApiActiveRemediation | null
-}
-
-interface ApiPillarScoreItem {
-  pillar: string
-  score: number | string | null
-  passed_checks: number | null
-  failed_checks: number | null
-  weighted_score: number | string | null
-}
-
-interface ApiValidationResultItem {
-  rule_id: string
-  rule_name: string
-  pillar: string
-  severity: string
-  rule_type: string
-  weight: number | string | null
-  passed: boolean
-  message: string | null
-  actual_value: string | null
-  is_remediable: boolean
-  remediation_category: string | null
-  evaluated_at: string | null
-  remediation_pending?: boolean
-  remediation_pr_url?: string | null
-}
-
-interface ApiActiveRemediation {
-  status: string
-  pr_url: string | null
-  pr_number: number | null
-  pending_rule_ids: string[]
-}
-
-interface ApiRemediationItem {
-  status: string
-  version: number
-  github_pr_url: string | null
-  github_pr_number: number | null
-  triggered_at: string | null
+function mapSeverity(value: string): Finding['severity'] {
+  const normalized = value.toLowerCase()
+  if (normalized === 'critical') return 'critical'
+  if (normalized === 'error') return 'error'
+  if (normalized === 'warning') return 'warning'
+  return 'info'
 }
 
 interface ApiSloItem {
@@ -234,6 +187,28 @@ function mapAuthErrorMessage(code: string): string {
     }
 }
 
+function buildAuthHeaders(hasBody: boolean): Record<string, string> {
+  const token = getStoredAccessToken()
+  const authMode = getAuthMode()
+  const devAuth = getDevAuthConfig()
+  const oktaTenantSlug = readStoredSession()?.provider === 'okta'
+    ? (readStoredSession()?.user.tenantSlug || getPendingOktaTenantSlug())
+    : null
+  return {
+    ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
+    ...(authMode === 'mock'
+      ? {
+          'X-Dev-Auth': 'true',
+          'X-Dev-Tenant-Id': String(devAuth.tenantId),
+          'X-Dev-User': devAuth.email,
+          'X-Dev-Roles': devAuth.roles.join(','),
+        }
+      : {}),
+    ...(authMode !== 'mock' && oktaTenantSlug ? { 'X-Titlis-Tenant-Slug': oktaTenantSlug } : {}),
+    ...(authMode !== 'mock' && token ? { Authorization: `Bearer ${token}` } : {}),
+  }
+}
+
 async function request<T>(
   path: string,
   options?: {
@@ -249,27 +224,9 @@ async function request<T>(
     if (value) url.searchParams.set(key, value)
   })
 
-  const token = getStoredAccessToken()
-  const authMode = getAuthMode()
-  const devAuth = getDevAuthConfig()
-  const oktaTenantSlug = readStoredSession()?.provider === 'okta'
-    ? (readStoredSession()?.user.tenantSlug || getPendingOktaTenantSlug())
-    : null
   const response = await fetch(url.toString(), {
     method: options?.method ?? 'GET',
-    headers: {
-      ...(options?.body ? { 'Content-Type': 'application/json' } : {}),
-      ...(authMode === 'mock'
-        ? {
-            'X-Dev-Auth': 'true',
-            'X-Dev-Tenant-Id': String(devAuth.tenantId),
-            'X-Dev-User': devAuth.email,
-            'X-Dev-Roles': devAuth.roles.join(','),
-          }
-        : {}),
-      ...(authMode !== 'mock' && oktaTenantSlug ? { 'X-Titlis-Tenant-Slug': oktaTenantSlug } : {}),
-      ...(authMode !== 'mock' && token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+    headers: buildAuthHeaders(Boolean(options?.body)),
     ...(options?.body ? { body: JSON.stringify(options.body) } : {}),
   })
   if (options?.optional && response.status === 404) return null
@@ -298,6 +255,40 @@ async function request<T>(
       `Resposta não-JSON de ${options?.method ?? 'GET'} ${url.toString()} (HTTP ${response.status}, content-type "${response.headers.get('content-type') ?? 'desconhecido'}"): ${snippet}`,
     )
   }
+}
+
+// Leitura de SSE via fetch() + ReadableStream (não EventSource — precisamos de POST + headers de
+// auth custom, que EventSource não suporta). Chama `onDelta` a cada evento `delta` e resolve com
+// o payload do evento `done`.
+async function streamSse<TDone>(path: string, body: unknown, onDelta: (data: string) => void): Promise<TDone> {
+  const url = buildUrl(path)
+  const response = await fetch(url.toString(), { method: 'POST', headers: buildAuthHeaders(true), body: JSON.stringify(body) })
+  if (!response.ok || !response.body) {
+    const text = await response.text().catch(() => '')
+    throw new Error(text || `API error ${response.status}`)
+  }
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let event = 'message'
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() ?? ''
+    for (const line of lines) {
+      if (line.startsWith('event:')) {
+        event = line.slice(6).trim()
+      } else if (line.startsWith('data:')) {
+        const data = line.slice(5).trim()
+        if (event === 'delta') onDelta(data)
+        else if (event === 'done') return JSON.parse(data) as TDone
+        else if (event === 'error') throw new Error(data)
+      }
+    }
+  }
+  throw new Error('stream encerrou sem evento "done"')
 }
 
 function mapDashboardItem(item: ApiDashboardItem): WorkloadSummary {
@@ -362,88 +353,6 @@ function mapAuthSettingsError(code: string): string {
   }
 }
 
-function mapScorecardItem(item: ApiScorecardItem): WorkloadDetail {
-  return {
-    id: item.workload_id,
-    name: item.workload,
-    namespace: item.namespace,
-    cluster: item.cluster,
-    environment: item.environment,
-    kind: item.workload_kind,
-    overallScore: parseNumber(item.overall_score),
-    complianceStatus: item.compliance_status,
-    remediationStatus: null,
-    githubPrUrl: null,
-    isFavorite: false,
-    version: item.version,
-    evaluatedAt: item.evaluated_at,
-    totalRules: item.total_rules ?? 0,
-    passedRules: item.passed_rules ?? 0,
-    failedRules: item.failed_rules ?? 0,
-    criticalFailures: item.critical_failures ?? 0,
-    errorCount: item.error_count ?? 0,
-    warningCount: item.warning_count ?? 0,
-    pillarScores: (item.pillar_scores ?? []).map(mapPillarScoreItem),
-    validationResults: (item.validation_results ?? []).map(mapValidationResultItem),
-    activeRemediation: item.active_remediation ? mapActiveRemediation(item.active_remediation) : null,
-  }
-}
-
-function mapPillarScoreItem(item: ApiPillarScoreItem): PillarScore {
-  return {
-    pillar: item.pillar.toLowerCase(),
-    score: parseNumber(item.score),
-    passedChecks: item.passed_checks ?? 0,
-    failedChecks: item.failed_checks ?? 0,
-    weightedScore: parseNumber(item.weighted_score),
-  }
-}
-
-function mapSeverity(value: string): Finding['severity'] {
-  const normalized = value.toLowerCase()
-  if (normalized === 'critical') return 'critical'
-  if (normalized === 'error') return 'error'
-  if (normalized === 'warning') return 'warning'
-  return 'info'
-}
-
-function mapValidationResultItem(item: ApiValidationResultItem): Finding {
-  return {
-    ruleId: item.rule_id,
-    ruleName: item.rule_name,
-    pillar: item.pillar,
-    severity: mapSeverity(item.severity),
-    ruleType: item.rule_type,
-    weight: parseNumber(item.weight),
-    passed: item.passed,
-    message: item.message,
-    actualValue: item.actual_value,
-    remediable: item.is_remediable,
-    remediationCategory: item.remediation_category,
-    evaluatedAt: item.evaluated_at,
-    remediationPending: item.remediation_pending ?? false,
-    remediationPrUrl: item.remediation_pr_url ?? null,
-  }
-}
-
-function mapActiveRemediation(item: ApiActiveRemediation): ActiveRemediation {
-  return {
-    status: item.status,
-    prUrl: item.pr_url,
-    prNumber: item.pr_number,
-    pendingRuleIds: item.pending_rule_ids ?? [],
-  }
-}
-
-function mapRemediationItem(item: ApiRemediationItem): RemediationDetail {
-  return {
-    status: item.status,
-    version: item.version,
-    githubPrUrl: item.github_pr_url,
-    githubPrNumber: item.github_pr_number,
-    triggeredAt: item.triggered_at,
-  }
-}
 
 function mapSloItem(namespace: string, name: string, item: ApiSloItem): SloLookupResult {
   return {
@@ -606,100 +515,6 @@ export interface RemediationTimelineResponse {
   items: RemediationTimelineItem[]
 }
 
-export interface ClusterItem {
-  id: number
-  name: string
-  environment: string
-}
-
-export interface NamespaceItem {
-  id: number
-  name: string
-  clusterId: number
-  clusterName: string
-}
-
-export interface WorkloadItem {
-  id: number
-  name: string
-  namespaceId: number
-  namespaceName: string
-  clusterName: string
-}
-
-export interface ResourceTagItem {
-  resourceId: number
-  tags: string[]
-}
-
-export interface TagPolicy {
-  id: number
-  tenant_id: number
-  tag: string
-  rule_id?: string
-  severity?: string
-  action: string
-  created_by?: string
-  created_at: string
-}
-
-export interface CreateTagPolicyPayload {
-  tag: string
-  rule_id?: string
-  severity?: string
-  action?: string
-  created_by?: string
-}
-
-export interface ScoreConfigRule {
-  engine_id: number
-  rule_id: string
-  pillar: string
-  name: string
-  severity: string
-  enabled_by_default: boolean
-}
-
-export interface ScoreConfigOverride {
-  id: number
-  tenant_id: number
-  engine_id: number
-  rule_id: string
-  scope: 'tenant' | 'cluster' | 'namespace' | 'workload'
-  cluster_name: string | null
-  namespace: string | null
-  workload_uid: string | null
-  enabled: boolean
-  reason: string | null
-  created_by: string | null
-  created_at: string
-}
-
-export interface CreateOverridePayload {
-  engine_id: number
-  rule_id: string
-  scope: 'tenant' | 'cluster' | 'namespace' | 'workload'
-  cluster_name?: string
-  namespace?: string
-  workload_uid?: string
-  enabled: boolean
-  reason?: string
-  created_by: string
-}
-
-export interface PillarWeight {
-  engine_id: number
-  pillar: string
-  weight: number
-}
-
-export interface SetWeightsPayload {
-  engine_id: number
-  weights: Record<string, number>
-  updated_by?: string
-}
-
-
 export interface ServiceDefinitionMapping {
   workloadName: string
   repoUrl: string
@@ -715,78 +530,6 @@ export interface DatadogProbeResult {
 export interface DatadogConfigStatus {
   configured: boolean
   probeStatus: 'ok' | 'error' | 'not_configured'
-}
-
-type SseEvent = { type: string } & Record<string, unknown>
-
-async function fetchWithBackoff(url: string, options: RequestInit, maxRetries = 3): Promise<Response> {
-  let lastError: Error = new Error('fetch failed')
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    if (attempt > 0) {
-      await new Promise(r => setTimeout(r, Math.min(1000 * 2 ** (attempt - 1), 8000)))
-    }
-    try {
-      const response = await fetch(url, options)
-      return response
-    } catch (err) {
-      lastError = err instanceof Error ? err : new Error(String(err))
-    }
-  }
-  throw lastError
-}
-
-async function* streamSse(path: string, body: unknown, signal?: AbortSignal): AsyncGenerator<SseEvent> {
-  const url = buildUrl(path)
-  const token = getStoredAccessToken()
-  const authMode = getAuthMode()
-  const devAuth = getDevAuthConfig()
-
-  const response = await fetchWithBackoff(url.toString(), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(authMode === 'mock'
-        ? {
-            'X-Dev-Auth': 'true',
-            'X-Dev-Tenant-Id': String(devAuth.tenantId),
-            'X-Dev-User': devAuth.email,
-            'X-Dev-Roles': devAuth.roles.join(','),
-          }
-        : {}),
-      ...(authMode !== 'mock' && token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify(body),
-    signal,
-  })
-
-  if (!response.ok) {
-    const message = await response.text()
-    throw new Error(message || `API error ${response.status}`)
-  }
-
-  const reader = response.body!.getReader()
-  const decoder = new TextDecoder()
-  let buffer = ''
-
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    buffer += decoder.decode(value, { stream: true })
-    const lines = buffer.split('\n')
-    buffer = lines.pop() ?? ''
-    for (const line of lines) {
-      if (line.startsWith('data: ')) {
-        const json = line.slice(6).trim()
-        if (json) {
-          try {
-            yield JSON.parse(json) as SseEvent
-          } catch {
-            /* skip malformed */
-          }
-        }
-      }
-    }
-  }
 }
 
 function mapAiConfig(item: AiConfigApiResponse): AiConfig {
@@ -1007,6 +750,9 @@ export interface WorkloadCost {
   totalCost: number
   avgDailyCost: number
   daysWithData: number
+  // docs/todo/cost-pillar-plan.md §2 — proveniência da coleta (k8s hoje; provider "gcp-*" hoje).
+  infraKind: string
+  provider: string
 }
 
 export interface WorkloadCostsResponse {
@@ -1237,6 +983,7 @@ interface ApiCoverageFinding {
   outcome?: string
   message?: string
   source?: string
+  cost_impact_usd_month?: number
 }
 
 interface ApiCoverageScorecard {
@@ -1297,6 +1044,7 @@ function mapCoverageScorecard(item: ApiCoverageScorecard): CoverageScorecard {
       outcome: (f.outcome ?? '').toLowerCase(),
       message: f.message ?? '',
       source: f.source,
+      cost_impact_usd_month: f.cost_impact_usd_month,
     })),
     moves: (item.moves ?? []).map((m) => ({
       rank: m.rank ?? 0,
@@ -1475,18 +1223,6 @@ export const api = {
     },
   },
   workloads: {
-    scorecard: async (id: string) => {
-      const response = await request<ApiScorecardItem>(`/workloads/${id}/scorecard`, {
-        optional: true,
-      })
-      return response ? mapScorecardItem(response) : null
-    },
-    remediation: async (id: string) => {
-      const response = await request<ApiRemediationItem>(`/workloads/${id}/remediation`, {
-        optional: true,
-      })
-      return response ? mapRemediationItem(response) : null
-    },
     githubLink: async (id: string): Promise<{ linked: boolean; repoUrl?: string; serviceYamlPath?: string } | null> =>
       request<{ linked: boolean; repo_url?: string; service_yaml_path?: string }>(
         `/workloads/${id}/github-link`,
@@ -1604,199 +1340,23 @@ export const api = {
     },
   },
   datadogConfig: {
+    // Rota legada de compatibilidade (settingsInsights.ts no titlis-api-ts): espera `site` solto
+    // no body, não `ddSite`. NÃO confundir com datadogSettings.save (PUT em settingsDatadog.ts,
+    // que usa `ddSite`) — são dois handlers HTTP diferentes no mesmo path.
     save: async (payload: { ddApiKey: string; ddAppKey?: string; site?: string }): Promise<void> => {
       await request('/settings/datadog', {
         method: 'POST' as const,
         body: payload,
       })
     },
+    // GET /settings/datadog/status NUNCA faz probe de verdade — só diz se existe credencial salva
+    // (probeStatus fica 'not_checked'/'not_configured', nunca 'ok'/'error'). Para saber se a
+    // credencial funciona de fato, use datadogSettings.test() (GET /settings/datadog/test).
     status: async (): Promise<DatadogConfigStatus> => {
       const res = await request<DatadogConfigStatus>('/settings/datadog/status', { optional: true })
       return res ?? { configured: false, probeStatus: 'not_configured' }
     },
   },
-  scoreConfig: {
-    getRules: async (engine = 'kubernetes'): Promise<ScoreConfigRule[]> => {
-      const res = await request<ScoreConfigRule[]>(`/settings/score-config/rules?engine=${engine}`, { optional: true })
-      return res ?? []
-    },
-    getOverrides: async (engine = 'kubernetes'): Promise<ScoreConfigOverride[]> => {
-      const res = await request<ScoreConfigOverride[]>(`/settings/score-config/overrides?engine=${engine}`, { optional: true })
-      return res ?? []
-    },
-    createOverride: async (body: CreateOverridePayload): Promise<ScoreConfigOverride> => {
-      const res = await request<ScoreConfigOverride>('/settings/score-config/overrides', {
-        method: 'POST' as const,
-        body,
-      })
-      if (!res) throw new Error('Não foi possível salvar a configuração.')
-      return res
-    },
-    deleteOverride: async (id: number): Promise<void> => {
-      await request(`/settings/score-config/overrides/${id}`, { method: 'DELETE' as const })
-    },
-    getWeights: async (engine = 'kubernetes'): Promise<PillarWeight[]> => {
-      const res = await request<PillarWeight[]>(`/settings/score-config/weights?engine=${engine}`, { optional: true })
-      return res ?? []
-    },
-    setWeights: async (body: SetWeightsPayload): Promise<PillarWeight[]> => {
-      const res = await request<PillarWeight[]>('/settings/score-config/weights', {
-        method: 'PUT' as const,
-        body,
-      })
-      if (!res) throw new Error('Não foi possível salvar os pesos.')
-      return res
-    },
-    syncCatalog: async (): Promise<{ synced: number }> => {
-      const res = await request<{ synced: number }>('/settings/score-config/sync-catalog', {
-        method: 'POST' as const,
-      })
-      if (!res) throw new Error('Não foi possível sincronizar o catálogo.')
-      return res
-    },
-  },
-  clusters: {
-    list: async (): Promise<ClusterItem[]> => {
-      const res = await request<ClusterItem[]>('/settings/tags/resource-list/clusters', { optional: true })
-      return res ?? []
-    },
-  },
-  namespaces: {
-    list: async (clusterId?: number): Promise<NamespaceItem[]> => {
-      const path = clusterId
-        ? `/settings/tags/resource-list/namespaces?clusterId=${clusterId}`
-        : '/settings/tags/resource-list/namespaces'
-      const res = await request<NamespaceItem[]>(path, { optional: true })
-      return res ?? []
-    },
-  },
-  workloadItems: {
-    list: async (clusterId?: number, namespaceId?: number): Promise<WorkloadItem[]> => {
-      const params = new URLSearchParams()
-      if (namespaceId) params.set('namespaceId', String(namespaceId))
-      else if (clusterId) params.set('clusterId', String(clusterId))
-      const qs = params.toString()
-      const res = await request<WorkloadItem[]>(
-        `/settings/tags/resource-list/workloads${qs ? `?${qs}` : ''}`,
-        { optional: true },
-      )
-      return res ?? []
-    },
-  },
-  tags: {
-    available: async (resourceType = 'workload'): Promise<string[]> => {
-      const res = await request<string[]>(`/tags/available?resourceType=${encodeURIComponent(resourceType)}`, { optional: true })
-      return res ?? []
-    },
-    list: async (resourceType: string): Promise<ResourceTagItem[]> => {
-      const res = await request<ResourceTagItem[]>(`/settings/tags/${resourceType}`, { optional: true })
-      return res ?? []
-    },
-    add: async (resourceType: string, resourceId: number, tag: string): Promise<void> => {
-      await request(`/settings/tags/${resourceType}/${resourceId}`, {
-        method: 'POST' as const,
-        body: { tag },
-      })
-    },
-    remove: async (resourceType: string, resourceId: number, tag: string): Promise<void> => {
-      await request(`/settings/tags/${resourceType}/${resourceId}/${encodeURIComponent(tag)}`, {
-        method: 'DELETE' as const,
-      })
-    },
-  },
-  tagPolicies: {
-    list: async (): Promise<TagPolicy[]> => {
-      const res = await request<TagPolicy[]>('/settings/scoring/tag-policies', { optional: true })
-      return res ?? []
-    },
-    create: async (body: CreateTagPolicyPayload): Promise<TagPolicy> => {
-      const res = await request<TagPolicy>('/settings/scoring/tag-policies', {
-        method: 'POST' as const,
-        body,
-      })
-      if (!res) throw new Error('Não foi possível criar a política.')
-      return res
-    },
-    delete: async (id: number): Promise<void> => {
-      await request(`/settings/scoring/tag-policies/${id}`, { method: 'DELETE' as const })
-    },
-  },
-  ai: {
-    explainStream: (
-      workloadId: string,
-      ruleId: string,
-      body: {
-        pillar: string
-        severity: string
-        deploymentName: string
-        namespace: string
-        actualValue?: string | null
-        containerName?: string | null
-      },
-      signal?: AbortSignal,
-    ) =>
-      streamSse(`/ai/workloads/${workloadId}/findings/${ruleId}/explain`, {
-        pillar: body.pillar,
-        severity: body.severity,
-        deploymentName: body.deploymentName,
-        namespace: body.namespace,
-        actualValue: body.actualValue ?? null,
-        containerName: body.containerName ?? null,
-      }, signal),
-    remediateStream: (
-      workloadId: string,
-      body: { findingIds: string[]; repoUrl: string; deployManifestPath?: string; serviceYamlPath?: string },
-    ) =>
-      streamSse(`/ai/workloads/${workloadId}/remediate`, {
-        findingIds: body.findingIds,
-        repoUrl: body.repoUrl,
-        deployManifestPath: body.deployManifestPath ?? 'manifests/kubernetes/main/deploy.yaml',
-        serviceYamlPath: body.serviceYamlPath ?? '.titlis/service.yaml',
-      }),
-    confirmRemediation: (threadId: string, approved: boolean) =>
-      streamSse(`/ai/remediate/${threadId}/confirm`, { approved }),
-    setManifestPath: (threadId: string, manifestPath: string) =>
-      streamSse(`/ai/remediate/${threadId}/set-path`, { manifestPath }),
-    submitServiceYaml: (
-      threadId: string,
-      form: {
-        manifestPath: string
-        baseBranch: string
-        name: string
-        team: string
-        namespaces: string[]
-        namePattern: string
-        env: string
-        contacts?: Array<Record<string, unknown>>
-        extraPaths?: Record<string, unknown>
-      },
-    ) =>
-      streamSse(`/ai/remediate/${threadId}/submit-service-yaml`, {
-        manifestPath: form.manifestPath,
-        baseBranch: form.baseBranch,
-        name: form.name,
-        team: form.team,
-        namespaces: form.namespaces,
-        namePattern: form.namePattern,
-        env: form.env,
-        contacts: form.contacts ?? null,
-        extraPaths: form.extraPaths ?? null,
-      }),
-    agentChat: (sessionId: string, message: string, workloadId?: string) =>
-      streamSse('/ai/agent/chat', { sessionId, message, ...(workloadId ? { workloadId } : {}) }),
-    agentToolsRespond: (
-      sessionId: string,
-      decisions: { proposalId: string; approved: boolean; editedArgs?: Record<string, unknown> }[],
-    ) =>
-      streamSse(`/ai/agent/${sessionId}/tools/respond`, { decisions }),
-  },
-  remediation: {
-    history: async (days = 30): Promise<RemediationTimelineResponse> => {
-      const res = await request<RemediationTimelineResponse>(`/remediation/history?days=${days}`)
-      return res ?? { period_days: days, summary: { total_prs: 0, merged: 0, failed: 0, in_progress: 0, success_rate: null }, items: [] }
-    },
-  },
-
   queues: {
     list: async (filters?: { compliance?: string; lifecycle?: string; type?: string; search?: string }): Promise<QueueSummary[]> => {
       const res = await request<ApiQueueSummaryItem[]>('/queues', {
@@ -1878,9 +1438,12 @@ export const api = {
     save: async (payload: { ddApiKey?: string; ddAppKey?: string; ddSite?: string; queueMonitoringEnabled?: boolean; monitorCreationEnabled?: boolean }): Promise<void> => {
       await request('/settings/datadog', { method: 'PUT' as const, body: payload })
     },
+    // GET /settings/datadog/test (settingsDatadog.ts) — único endpoint que faz probe de verdade
+    // contra a API do Datadog. Responde { ok: true } ou { ok: false, error }, nunca `message`.
     test: async (): Promise<{ ok: boolean; message: string }> => {
-      const res = await request<{ ok: boolean; message: string }>('/settings/datadog/test', { optional: true })
-      return res ?? { ok: false, message: 'Sem resposta do servidor.' }
+      const res = await request<{ ok: boolean; error?: string }>('/settings/datadog/test')
+      if (!res) return { ok: false, message: 'Sem resposta do servidor.' }
+      return { ok: res.ok, message: res.ok ? 'Conexão com o Datadog verificada com sucesso.' : (res.error ?? 'Falha ao validar as credenciais.') }
     },
   },
 
@@ -1893,6 +1456,18 @@ export const api = {
     },
     save: async (payload: { veracodeApiId?: string; veracodeApiKey?: string }): Promise<void> => {
       await request('/settings/veracode', { method: 'PUT' as const, body: payload })
+    },
+  },
+
+  // docs/todo/lookout-chat-plan.md §2.4 — credencial do servidor MCP do Grafana do tenant
+  // (ConfAI/Argus consulta via sessão MCP, mesmo padrão do Datadog).
+  grafanaSettings: {
+    get: async (): Promise<{ hasMcpUrl: boolean; hasApiKey: boolean }> => {
+      const res = await request<{ hasMcpUrl: boolean; hasApiKey: boolean }>('/settings/grafana', { optional: true })
+      return res ?? { hasMcpUrl: false, hasApiKey: false }
+    },
+    save: async (payload: { grafanaMcpUrl?: string; grafanaApiKey?: string }): Promise<void> => {
+      await request('/settings/grafana', { method: 'PUT' as const, body: payload })
     },
   },
 
@@ -1970,10 +1545,110 @@ export const api = {
     },
   },
 
+  // RPM Fase C — ConfAI: mural do analista de confiabilidade (briefings + playbooks + contexto).
+  lookout: {
+    briefings: async (days = 14): Promise<LookoutBriefing[]> => {
+      const res = await request<LookoutBriefing[]>('/lookout/briefings', { params: { days: String(days) }, optional: true })
+      return res ?? []
+    },
+    feedback: async (id: number, verdict: 'util' | 'ruido'): Promise<void> => {
+      await request(`/lookout/briefings/${id}/feedback`, { method: 'POST', body: { verdict } })
+    },
+    playbooks: async (): Promise<LookoutPlaybook[]> => {
+      const res = await request<LookoutPlaybook[]>('/lookout/playbooks', { optional: true })
+      return res ?? []
+    },
+    estateReport: async (): Promise<LookoutBriefing | null> => {
+      return await request<LookoutBriefing>('/lookout/estate-report/latest', { optional: true })
+    },
+    serviceContext: async (uid: string): Promise<LookoutServiceContext> => {
+      const res = await request<LookoutServiceContext>(`/lookout/service/${encodeURIComponent(uid)}/context`, { optional: true })
+      return res ?? { investigations: [], memory: [] }
+    },
+    seals: async (): Promise<LookoutSeals> => {
+      const res = await request<LookoutSeals>('/lookout/seals', { optional: true })
+      return res ?? {}
+    },
+    investigate: async (workloadUid: string): Promise<{ investigation_id?: number; message?: string }> => {
+      const res = await request<{ investigation_id?: number; message?: string }>('/lookout/investigate', {
+        method: 'POST',
+        body: { workloadUid },
+      })
+      return res ?? {}
+    },
+    aiUsage: async (days = 30): Promise<AiUsageSummary | null> =>
+      request<AiUsageSummary>('/lookout/ai-usage', { params: { days: String(days) }, optional: true }),
+    chat: {
+      sessions: async (): Promise<LookoutChatSession[]> => {
+        const res = await request<LookoutChatSession[]>('/lookout/chat/sessions', { optional: true })
+        return res ?? []
+      },
+      createSession: async (): Promise<number> => {
+        const res = await request<{ chatSessionId: number }>('/lookout/chat/sessions', { method: 'POST' })
+        if (!res) throw new Error('Não foi possível iniciar a conversa.')
+        return res.chatSessionId
+      },
+      messages: async (chatSessionId: number): Promise<LookoutChatMessage[]> => {
+        const res = await request<LookoutChatMessage[]>(`/lookout/chat/sessions/${chatSessionId}`, { optional: true })
+        return res ?? []
+      },
+      send: async (chatSessionId: number, message: string, activeSkills?: string[]): Promise<LookoutChatReply> => {
+        const res = await request<LookoutChatReply>(`/lookout/chat/sessions/${chatSessionId}/messages`, {
+          method: 'POST',
+          body: { message, activeSkills },
+        })
+        if (!res) throw new Error('O ConfAI não respondeu.')
+        return res
+      },
+      // Fase J — mesmo resultado de `send`, só que `onDelta` é chamado token a token conforme
+      // a resposta chega (SSE via fetch()+ReadableStream, não EventSource — precisamos de POST).
+      stream: async (
+        chatSessionId: number,
+        message: string,
+        onDelta: (delta: string) => void,
+        activeSkills?: string[],
+      ): Promise<LookoutChatReply> => {
+        type DoneEvent = { message_md: string; tool_trace: LookoutChatReply['toolTrace']; out_of_scope: boolean }
+        const done = await streamSse<DoneEvent>(`/lookout/chat/sessions/${chatSessionId}/stream`, { message, activeSkills }, onDelta)
+        return { messageMd: done.message_md, toolTrace: done.tool_trace, outOfScope: done.out_of_scope }
+      },
+    },
+    skills: {
+      list: async (): Promise<LookoutSkill[]> => {
+        const res = await request<LookoutSkill[]>('/lookout/skills', { optional: true })
+        return res ?? []
+      },
+      create: async (input: { title: string; appliesWhen?: string; bodyMd: string; invocationName: string }): Promise<number> => {
+        const res = await request<{ playbookId: number }>('/lookout/skills', { method: 'POST', body: input })
+        if (!res) throw new Error('Não foi possível criar a skill.')
+        return res.playbookId
+      },
+    },
+    mcpActions: {
+      list: async (): Promise<LookoutPendingMcpAction[]> => {
+        const res = await request<LookoutPendingMcpAction[]>('/lookout/mcp-actions', { optional: true })
+        return res ?? []
+      },
+      approve: async (id: number): Promise<{ ok: boolean; message: string }> => {
+        const res = await request<{ ok: boolean; message: string }>(`/lookout/mcp-actions/${id}/approve`, { method: 'POST' })
+        return res ?? { ok: false, message: 'sem resposta' }
+      },
+      reject: async (id: number): Promise<{ ok: boolean; message: string }> => {
+        const res = await request<{ ok: boolean; message: string }>(`/lookout/mcp-actions/${id}/reject`, { method: 'POST' })
+        return res ?? { ok: false, message: 'sem resposta' }
+      },
+    },
+  },
+
   hub: {
     // RPM Fase A: rollup do estate sobre a postura. titlis-ui puxa a árvore inteira (depth=all).
-    rollup: async (): Promise<EstateNode | null> => {
-      return await request<EstateNode>('/hub/rollup', { params: { depth: 'all' }, optional: true })
+    // includeCost (Fase 4 do cost-real-billing-plan.md §3-4) é opt-in — nunca ligado por padrão,
+    // pra não pagar a leitura extra de custo em quem não pediu.
+    rollup: async (includeCost = false): Promise<EstateNode | null> => {
+      return await request<EstateNode>('/hub/rollup', {
+        params: { depth: 'all', ...(includeCost ? { includeCost: 'true' } : {}) },
+        optional: true,
+      })
     },
     trend: async (node = '', days = 30): Promise<PostureTrendPoint[]> => {
       const res = await request<PostureTrendPoint[]>('/hub/trend', { params: { node: node || undefined, days: String(days) }, optional: true })

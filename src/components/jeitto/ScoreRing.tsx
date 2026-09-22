@@ -60,7 +60,7 @@ export function ScoreRing({
       {showScore && (
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <motion.span
-            className={`family-neighbor font-black leading-none ${fontSize}`}
+            className={`family-neighbor font-bold leading-none ${fontSize}`}
             style={{ color }}
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}

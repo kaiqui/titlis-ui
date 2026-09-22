@@ -41,7 +41,7 @@ export function TimeRangePicker() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition-colors hover:opacity-80"
+        className="inline-flex items-center gap-2 rounded-[8px] border px-3 py-2 text-sm font-medium transition-colors hover:opacity-80"
         style={{ borderColor: 'var(--color-border)', backgroundColor: 'var(--color-card)', color: 'var(--color-foreground)' }}
       >
         <Calendar size={14} style={{ color: 'var(--color-muted-foreground)' }} />

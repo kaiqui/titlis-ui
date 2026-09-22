@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Gauge, Sparkles, Wrench } from 'lucide-react'
+import { Gauge } from 'lucide-react'
 import { motion } from 'motion/react'
 import { Card } from '@/components/jeitto/Card'
 import { fadeInUp } from '@/lib/motion/tokens'
@@ -9,7 +9,9 @@ import { EmptyState } from '@/components/jeitto/EmptyState'
 import { PageError, PageLoading } from '@/components/jeitto/PageState'
 import { ScoreRing } from '@/components/jeitto/ScoreRing'
 import { Header } from '@/components/layout/Header'
-import { useHubRollup } from '@/hooks/useApi'
+import { useHubRollup, useLookoutSeals } from '@/hooks/useApi'
+import { isFeatureEnabled } from '@/lib/featureFlags'
+import type { LookoutSeal } from '@/types'
 import { api } from '@/lib/api'
 import { formatNumber } from '@/lib/utils'
 import { overallBand, postureBand, stripIcon } from '@/lib/posture'
@@ -48,13 +50,14 @@ function Sparkline({ points }: { points: PostureTrendPoint[] }) {
   const up = vals[vals.length - 1] >= vals[0]
   return (
     <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} aria-label="tendência da postura">
-      <polyline points={coords} fill="none" stroke={up ? '#16a34a' : '#ef4444'} strokeWidth={2} strokeLinejoin="round" />
+      <polyline points={coords} fill="none" stroke={up ? '#12a150' : '#d8341a'} strokeWidth={2} strokeLinejoin="round" />
     </svg>
   )
 }
 
 export function Reliability() {
   const { data: root, isLoading, isError, refetch } = useHubRollup()
+  const { data: seals = {} } = useLookoutSeals()
   const { days } = useTimeRange()
   const { data: trend = [] } = useQuery({ queryKey: ['hub-trend', days], queryFn: () => api.hub.trend('', days), staleTime: 60_000 })
   const [dimFilter, setDimFilter] = useState<string | null>(null)
@@ -95,7 +98,7 @@ export function Reliability() {
               <ScoreRing score={root.postureWeighted} size={88} strokeWidth={8} showFraction />
               <div>
                 <p className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full px-3 py-1 text-sm font-bold" style={{ color: band.color, backgroundColor: 'var(--color-muted)' }}>
+                  <span className="rounded-[8px] px-3 py-1 text-sm font-bold" style={{ color: band.color, backgroundColor: 'var(--color-muted)' }}>
                     {formatNumber(root.postureWeighted)} · {band.label}
                   </span>
                 </p>
@@ -108,7 +111,7 @@ export function Reliability() {
           </div>
         </Card>
 
-        <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-7">
           {root.dimensions.map((d) => {
             const dband = postureBand(d.band)
             const active = dimFilter === d.dimension
@@ -121,7 +124,7 @@ export function Reliability() {
                 style={{ borderColor: active ? dband.color : 'var(--color-border)', backgroundColor: active ? 'var(--color-muted)' : 'transparent' }}
               >
                 <p className="truncate text-xs font-semibold">{d.label}</p>
-                <p className="mt-1 text-lg font-black" style={{ color: dband.color }}>{d.strength === null ? 'n/a' : Math.round(d.strength)}</p>
+                <p className="mt-1 text-lg font-bold" style={{ color: dband.color }}>{d.strength === null ? 'n/a' : Math.round(d.strength)}</p>
                 <p className="text-[11px]" style={{ color: 'var(--color-muted-foreground)' }}>
                   {d.fragileCount} frágei{d.fragileCount === 1 ? 's' : 's'}
                 </p>
@@ -140,15 +143,10 @@ export function Reliability() {
                 <div key={m.code} className="flex items-baseline gap-3 py-2 text-sm">
                   <span className="font-mono text-xs" style={{ color: 'var(--color-primary)' }}>{String(i + 1).padStart(2, '0')}</span>
                   <span className="min-w-0">{stripIcon(m.description)}</span>
-                  <span className="shrink-0 rounded-full px-1.5 py-0.5 text-[10px]" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
+                  <span className="shrink-0 rounded-[8px] px-1.5 py-0.5 text-[10px]" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
                     {m.serviceCount} serviço{m.serviceCount === 1 ? '' : 's'}
                   </span>
-                  {m.isRemediable && (
-                    <Link to="/aria" className="inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium" style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }}>
-                      <Wrench size={10} />ARIA
-                    </Link>
-                  )}
-                  <span className="ml-auto shrink-0 font-mono text-xs" style={{ color: '#16a34a' }}>+{Math.round(m.totalLift / Math.max(1, m.serviceCount))}</span>
+                  <span className="ml-auto shrink-0 font-mono text-xs" style={{ color: '#12a150' }}>+{Math.round(m.totalLift / Math.max(1, m.serviceCount))}</span>
                 </div>
               ))}
             </div>
@@ -157,7 +155,7 @@ export function Reliability() {
 
         <Card className="p-5">
           <div className="mb-3 flex items-center justify-between">
-            <p className="text-sm font-black tracking-tight">Serviços por risco ponderado</p>
+            <p className="text-sm font-bold tracking-tight">Serviços por risco ponderado</p>
             {dimFilter && (
               <button type="button" onClick={() => setDimFilter(null)} className="text-xs" style={{ color: 'var(--color-primary)' }}>
                 limpar filtro
@@ -172,7 +170,7 @@ export function Reliability() {
                   <th className="pb-2 pr-4 font-semibold">Postura</th>
                   <th className="pb-2 pr-4 font-semibold">Dimensão frágil</th>
                   <th className="pb-2 pr-4 font-semibold">Lift</th>
-                  <th className="pb-2 font-semibold" />
+                  {isFeatureEnabled('ai') && <th className="pb-2 font-semibold" />}
                 </tr>
               </thead>
               <tbody>
@@ -187,17 +185,13 @@ export function Reliability() {
                         {leaf.tier && <span className="ml-2 text-[10px]" style={{ color: 'var(--color-muted-foreground)' }}>tier {leaf.tier}</span>}
                       </td>
                       <td className="py-2 pr-4">
-                        <span className="rounded-full px-2 py-0.5 text-xs font-semibold" style={{ color: lband.color, backgroundColor: 'var(--color-muted)' }}>
+                        <span className="rounded-[8px] px-2 py-0.5 text-xs font-semibold" style={{ color: lband.color, backgroundColor: 'var(--color-muted)' }}>
                           {formatNumber(leaf.trustScore ?? null)} · {lband.label}
                         </span>
                       </td>
                       <td className="py-2 pr-4" style={{ color: 'var(--color-muted-foreground)' }}>{weak ? weak.label : 'sinal insuficiente'}</td>
-                      <td className="py-2 pr-4 font-mono text-xs" style={{ color: '#16a34a' }}>{lift > 0 ? `+${Math.round(lift)}` : '—'}</td>
-                      <td className="py-2">
-                        <Link to="/aria" className="inline-flex items-center gap-1 text-xs" style={{ color: 'var(--color-primary)' }}>
-                          <Sparkles size={12} />ARIA
-                        </Link>
-                      </td>
+                      <td className="py-2 pr-4 font-mono text-xs" style={{ color: '#12a150' }}>{lift > 0 ? `+${Math.round(lift)}` : '—'}</td>
+                      {isFeatureEnabled('ai') && <td className="py-2">{leaf.workloadUid && <MemorySeal seal={seals[leaf.workloadUid]} />}</td>}
                     </motion.tr>
                   )
                 })}
@@ -208,6 +202,37 @@ export function Reliability() {
         </Card>
       </div>
     </div>
+  )
+}
+
+const VERDICT_LABEL: Record<string, string> = {
+  regressao_real: 'regressão',
+  postura_fraca: 'postura fraca',
+  ruido: 'ruído',
+  postura_saudavel: 'ok',
+  sinal_insuficiente: 'sem sinal',
+}
+
+// Selo da memória do ConfAI numa linha de serviço (LKT §8): "visto Nx", "ruído histórico".
+function MemorySeal({ seal }: { seal?: LookoutSeal }) {
+  if (!seal || (seal.investigations === 0 && seal.memory === 0)) return null
+  const noise = seal.noise
+  const label = noise
+    ? 'ruído histórico'
+    : seal.investigations > 1
+      ? `visto ${seal.investigations}×`
+      : VERDICT_LABEL[seal.lastVerdict ?? ''] ?? 'analisado'
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-[8px] px-1.5 py-0.5 text-[10px] font-medium"
+      style={{
+        color: noise ? 'var(--color-muted-foreground)' : 'var(--color-primary)',
+        backgroundColor: 'var(--color-muted)',
+      }}
+      title={`ConfAI: ${seal.investigations} investigação(ões), ${seal.memory} fato(s) na memória`}
+    >
+      🔍 {label}
+    </span>
   )
 }
 
