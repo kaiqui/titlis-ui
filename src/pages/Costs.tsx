@@ -108,7 +108,7 @@ export function Costs() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Header timeRange title="Custos" subtitle="Estimativa por Kubernetes/GCP — preço público × uso observado no Datadog. Sem billing export, sem configuração. ECS, Cloud Run, OCI e Azure entram como próximas pontes." />
+      <Header timeRange title="Custos" subtitle="Estimativa por Kubernetes/GCP — preço público × uso observado no Datadog. Sem billing export, sem configuração." />
 
       <div className="flex-1 space-y-5 px-4 py-6 lg:px-8">
         {!hasData ? (
