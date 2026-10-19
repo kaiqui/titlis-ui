@@ -158,6 +158,32 @@ export function useCoverageDetail(uid: string) {
   })
 }
 
+export function useJourneys(status = 'suggested,confirmed') {
+  return useQuery({ queryKey: ['journeys', status], queryFn: () => api.journeys.list(status), staleTime: 30_000 })
+}
+
+export function useJourneyImpact() {
+  return useQuery({ queryKey: ['journeys', 'impact'], queryFn: () => api.journeys.impact(), staleTime: 60_000 })
+}
+
+export function useTeamReport(team: string, days = 30) {
+  return useQuery({
+    queryKey: ['reports', 'team', team, days],
+    queryFn: () => api.reports.team(team, days),
+    enabled: !!team,
+    staleTime: 60_000,
+  })
+}
+
+export function useApplicationOutcome(uid: string, days = 30) {
+  return useQuery({
+    queryKey: ['applications', 'outcome', uid, days],
+    queryFn: () => api.applications.outcome(uid, days),
+    enabled: !!uid,
+    staleTime: 60_000,
+  })
+}
+
 export function useCoverageGraph(uid: string) {
   return useQuery({
     queryKey: ['coverage', 'graph', uid],

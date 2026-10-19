@@ -2,6 +2,11 @@ import type {
   AdminOverview,
   AdminUsersResponse,
   AiConfig,
+  ApplicationOutcome,
+  TeamReport,
+  Journey,
+  JourneyImpact,
+  JourneyInput,
   AiUsageSummary,
   DatadogQueueSettings,
   Finding,
@@ -1515,6 +1520,38 @@ export const api = {
     },
   },
 
+  journeys: {
+    list: async (status = 'suggested,confirmed'): Promise<Journey[]> =>
+      (await request<Journey[]>('/journeys', { params: { status } })) ?? [],
+    impact: async (): Promise<{ journeys: JourneyImpact[] }> =>
+      (await request<{ journeys: JourneyImpact[] }>('/journeys/impact')) ?? { journeys: [] },
+    save: (input: JourneyInput) => request<Journey>('/journeys', { method: 'POST', body: input }),
+    confirm: (key: string, input?: JourneyInput) =>
+      request<Journey>(`/journeys/${encodeURIComponent(key)}/confirm`, { method: 'POST', body: input ?? {} }),
+    archive: (key: string) => request<Journey>(`/journeys/${encodeURIComponent(key)}/archive`, { method: 'POST', body: {} }),
+    exportYaml: async (): Promise<string> => {
+      const response = await fetch(buildUrl('/journeys/export').toString(), { headers: buildAuthHeaders(false) })
+      if (!response.ok) throw new Error(`Falha ao exportar (HTTP ${response.status})`)
+      return response.text()
+    },
+    importYaml: (yaml: string) => request<{ imported: number }>('/journeys/import', { method: 'POST', body: { yaml } }),
+  },
+  reports: {
+    team: (team: string, days = 30): Promise<TeamReport | null> =>
+      request<TeamReport>(`/reports/teams/${encodeURIComponent(team)}`, { params: { days: String(days) }, optional: true }),
+    teamCsv: async (team: string, days = 30): Promise<string> => {
+      const url = buildUrl(`/reports/teams/${encodeURIComponent(team)}`)
+      url.searchParams.set('days', String(days))
+      url.searchParams.set('format', 'csv')
+      const response = await fetch(url.toString(), { headers: buildAuthHeaders(false) })
+      if (!response.ok) throw new Error(`Falha ao exportar CSV (HTTP ${response.status})`)
+      return response.text()
+    },
+  },
+  applications: {
+    outcome: (uid: string, days = 30): Promise<ApplicationOutcome | null> =>
+      request<ApplicationOutcome>(`/applications/${encodeURIComponent(uid)}/outcome`, { params: { days: String(days) }, optional: true }),
+  },
   coverage: {
     list: async (): Promise<CoverageScorecard[]> => {
       const res = await request<ApiCoverageScorecard[]>('/coverage', { optional: true })

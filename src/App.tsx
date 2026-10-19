@@ -17,6 +17,8 @@ import { SettingsIntegrations } from '@/pages/SettingsIntegrations'
 import { Queues } from '@/pages/Queues'
 import { Coverage } from '@/pages/Coverage'
 import { CoverageDetail } from '@/pages/CoverageDetail'
+import { TeamReport } from '@/pages/TeamReport'
+import { Journeys } from '@/pages/Journeys'
 import { Reliability } from '@/pages/Reliability'
 import { Confia } from '@/pages/Confia'
 import { Governance } from '@/pages/Governance'
@@ -94,6 +96,8 @@ export default function App() {
                 <Route path="/costs" element={<Costs />} />
                 <Route path="/coverage" element={<Coverage />} />
                 <Route path="/coverage/:uid" element={<CoverageDetail />} />
+                <Route path="/teams/:team" element={<TeamReport />} />
+                <Route path="/journeys" element={<Journeys />} />
                 <Route path="/recommendations" element={<Navigate to="/reliability" replace />} />
                 <Route path="/history" element={<Navigate to="/governance" replace />} />
                 <Route

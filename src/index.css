@@ -1072,3 +1072,17 @@ h1, h2, h3, h4, h5, h6 {
   .card-mobile-center   { display: none !important; }
   .navbar               { padding: 0.75rem 1rem; }
 }
+
+/* customer-reliability-plan V-3 — PDF do relatório por time = impressão do navegador (D-3). */
+@media print {
+  aside,
+  nav,
+  .jeitto-header,
+  [data-print-hide] {
+    display: none !important;
+  }
+  main {
+    margin-left: 0 !important;
+    padding-bottom: 0 !important;
+  }
+}

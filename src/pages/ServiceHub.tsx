@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/jeitto/EmptyState'
 import { PageError, PageLoading } from '@/components/jeitto/PageState'
 import { Header } from '@/components/layout/Header'
 import { ScoreRing } from '@/components/jeitto/ScoreRing'
+import { OutcomeMix } from '@/components/sre/OutcomeMix'
 import { useHubRollup } from '@/hooks/useApi'
 import { formatCurrency, formatNumber } from '@/lib/utils'
 import { overallBand, postureBand, stripIcon } from '@/lib/posture'
@@ -94,6 +95,11 @@ function NodeCard({ node, onOpen, index }: { node: EstateNode; onOpen: (path: st
       <div className="mt-2.5">
         <BandBar mix={node.bandMix} total={node.serviceCount} />
       </div>
+      {node.outcomeMix && (
+        <div className="mt-2">
+          <OutcomeMix mix={node.outcomeMix} single={node.kind === 'service' ? node.outcomeState : undefined} />
+        </div>
+      )}
       <p className="mt-2 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
         {node.kind === 'service'
           ? `${node.confidence ? node.confidence.replace('_', ' ') : 'sem confiança'}${node.tier ? ` · tier ${node.tier}` : ''}`
@@ -182,6 +188,12 @@ export function ServiceHub() {
                 </span>
               </div>
               <div className="mt-3"><BandBar mix={current.bandMix} total={current.serviceCount} /></div>
+              {current.outcomeMix && <div className="mt-2"><OutcomeMix mix={current.outcomeMix} single={current.kind === 'service' ? current.outcomeState : undefined} /></div>}
+              {current.kind === 'squad' && !current.name.startsWith('Sem dono') && (
+                <Link to={`/teams/${encodeURIComponent(current.name)}`} className="mt-3 inline-flex items-center gap-1 text-xs font-semibold hover:underline" style={{ color: 'var(--color-primary)' }}>
+                  Relatório do time <ArrowRight size={12} />
+                </Link>
+              )}
               <DimBars node={current} />
             </div>
           </div>

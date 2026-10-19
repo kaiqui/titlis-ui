@@ -603,6 +603,9 @@ export interface EstateNode {
   // docs/todo/cost-real-billing-plan.md §3-4 — só presente quando o rollup foi pedido com
   // includeCost=true E há dado de custo pro subtree; ausente ≠ 0 (nunca inventa "custo zero").
   costTotal?: number
+  // customer-reliability-plan V-2 — contagem por estado de resultado no subtree; outcomeState só na folha
+  outcomeMix?: Record<ReliabilityState, number>
+  outcomeState?: ReliabilityState
 }
 
 export interface PostureTrendPoint {
@@ -715,6 +718,171 @@ export interface CoverageGraphNeighbor {
   name: string
   relation: string
   via: string | null
+  direction?: 'upstream' | 'downstream'
+  depth?: number
+}
+
+// Jornadas (GET /v1/journeys) — espelha titlis-api-ts/src/domain/journey.ts + impacto do scoreops.
+export type JourneyStatus = 'suggested' | 'confirmed' | 'archived'
+export type ImpactLevel = 'confirmed' | 'probable' | 'potential' | 'none' | 'unknown'
+
+export interface JourneyStep {
+  journeyStepId: number
+  stepOrder: number
+  serviceName: string
+  resourceName: string | null
+  subscriptionId: string | null
+  kind: 'entry' | 'sync' | 'async'
+  latencyThresholdMs: number | null
+  required: boolean
+  drift: string | null
+  driftDetail: string | null
+}
+
+export interface Journey {
+  journeyKey: string
+  name: string
+  tier: string | null
+  ownerTeam: string | null
+  status: JourneyStatus
+  source: 'declared' | 'suggested' | 'imported'
+  availabilityObjective: number | null
+  latencyObjective: number | null
+  confidence: number | null
+  evidence: Record<string, unknown> | null
+  confirmedBy: string | null
+  steps: JourneyStep[]
+  outcome?: { state: ReliabilityState; ratio: number | null; weakest: string | null }
+}
+
+export interface JourneyImpact {
+  key: string
+  level: ImpactLevel
+  reasons: string[]
+  evidence: Array<{ source: string; locator: string; window?: string; detail?: string }>
+  failedRequests?: number
+  responsibleLink?: string
+  pathServices: string[]
+}
+
+export interface JourneyInput {
+  journeyKey?: string
+  name: string
+  tier?: string | null
+  ownerTeam?: string | null
+  availabilityObjective?: number | null
+  steps: Array<{ serviceName: string; resourceName?: string | null; subscriptionId?: string | null; kind: 'entry' | 'sync' | 'async'; required?: boolean }>
+}
+
+// Relatório por time (GET /v1/reports/teams/:team) — espelha titlis-api-ts/src/services/teamReport.ts.
+export interface TeamReport {
+  team: string
+  generatedAt: string
+  window: { from: string; to: string; days: number }
+  previousWindow: { from: string; to: string; days: number }
+  objectives: { availabilityPct: number; latencyPct: number; latencyThresholdMs: number }
+  dataStatus: 'ok' | 'insufficient_data'
+  indicators: {
+    journeyAttainment: { withinObjective: number; measured: number; pct: number | null } | null
+    worstJourney: { journeyKey: string; name: string; ratio: number; weakestService: string | null } | null
+    weightedRisk: number
+    postureWeighted: number | null
+    postureWorst: number | null
+    coveragePct: number
+    measuredServices: number
+    totalServices: number
+  }
+  services: Array<{
+    service: string
+    uid: string | null
+    product: string | null
+    tier: string | null
+    ownership: 'owner' | 'conflict'
+    conflictWith: string | null
+    state: ReliabilityState
+    stateLabel: string
+    availabilityPct: number | null
+    previousAvailabilityPct: number | null
+    latencyPct: number | null
+    budgetConsumed: number | null
+    trustScore: number | null
+    previousTrustScore: number | null
+    slos: { valid: number; invalid: number }
+    routesBelowObjective: string[]
+    recurringRoutes: string[]
+    topFinding: { code: string; severity: string; message: string } | null
+  }>
+  journeysOwned: Array<{ journeyKey: string; name: string; tier: string | null; state: ReliabilityState }>
+  journeysDependingOnTeam: Array<{ journeyKey: string; name: string; ownerTeam: string | null; services: string[] }>
+  slos: { valid: number; invalid: number }
+  findings: Array<{ service: string; code: string; severity: string; message: string; priority: 'P0' | 'P1' | 'P2' }>
+  recurring: Array<{ service: string; resource: string }>
+  recommendations: string[]
+}
+
+// Resultado por aplicação (GET /v1/applications/:uid/outcome) — o que o cliente viveu, separado
+// da postura. Espelha titlis-api-ts/src/services/applicationOutcome.ts.
+export type ReliabilityState = 'healthy' | 'at_risk' | 'degraded' | 'not_measured'
+
+export interface FindingEvidence {
+  source: string
+  locator: string
+  window?: string
+  link?: string
+  detail?: string
+}
+
+export interface ApplicationOutcome {
+  uid: string
+  service: string
+  team: string | null
+  product: string | null
+  window: { from: string; to: string; days: number }
+  objectives: { availabilityPct: number; latencyPct: number; latencyThresholdMs: number }
+  state: ReliabilityState
+  stateLabel: string
+  reasons: string[]
+  result: {
+    requests: number
+    failures: number
+    availabilityPct: number | null
+    latencyPct: number | null
+    availabilityBudgetConsumed: number | null
+    latencyBudgetConsumed: number | null
+    lastDay: string | null
+  } | null
+  routes: Array<{
+    resource: string
+    requests: number
+    failures: number
+    client4xx: number
+    failurePct: number | null
+    availabilityPct: number | null
+    latencyPct: number | null
+    p95MsWorstDay: number | null
+    status: 'ok' | 'below_objective' | 'low_volume'
+  }>
+  daily: Array<{ day: string; requests: number; availabilityPct: number | null; latencyPct: number | null }>
+  dependencies: {
+    measured: boolean
+    isEntrypoint: boolean | null
+    upstreamCount: number | null
+    downstream: Array<{ target: string; external: boolean; calls: number; errorPct: number; status: 'ok' | 'degraded'; state: ReliabilityState | null }>
+    probableCause: string | null
+  }
+  posture: { trustScore: number | null; confidence: string | null; fragileDimensions: string[] }
+  actions: Array<{ code: string; severity: string; message: string; dimension: string | null; evidence: FindingEvidence[] }>
+  impact?: Array<{
+    key: string
+    name: string
+    tier: string | null
+    level: 'confirmed' | 'probable' | 'potential' | 'none' | 'unknown'
+    levelLabel: string
+    reasons: string[]
+    failedRequests: number | null
+    responsibleLink: string | null
+    isResponsible: boolean
+  }>
 }
 
 export interface CoverageGraph {

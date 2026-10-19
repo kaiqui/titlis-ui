@@ -23,7 +23,8 @@ import { PageError, PageLoading } from '@/components/jeitto/PageState'
 import { ScoreRing } from '@/components/jeitto/ScoreRing'
 import { Header } from '@/components/layout/Header'
 import { SummaryStrip } from '@/components/sre/SummaryStrip'
-import { useCoverageDetail, useCoverageGraph, useLookoutServiceContext } from '@/hooks/useApi'
+import { useApplicationOutcome, useCoverageDetail, useCoverageGraph, useLookoutServiceContext } from '@/hooks/useApi'
+import { ReliabilityOutcome } from '@/components/sre/ReliabilityOutcome'
 import { isFeatureEnabled } from '@/lib/featureFlags'
 import { formatDate, formatNumber, severityColor } from '@/lib/utils'
 import {
@@ -45,11 +46,16 @@ function isPendingCoverage(trustScore: number | null, dimensionCount: number, fi
 const KIND_LABELS: Record<string, string> = {
   service: 'Service', ingress: 'Ingress', hpa: 'HPA', pdb: 'PDB',
   networkpolicy: 'NetworkPolicy', configmap: 'ConfigMap', secret: 'Secret',
-  dd_service: 'Datadog Service', dd_monitor: 'Monitor', dd_slo: 'SLO', queue: 'Fila',
+  dd_service: 'Datadog Service', dd_monitor: 'Monitor', dd_slo: 'SLO', queue: 'Fila', dd_external: 'Externo',
 }
 
 function kindLabel(k: string): string {
   return KIND_LABELS[k] ?? k
+}
+
+function relationLabel(n: CoverageGraphNeighbor): string {
+  if (n.relation !== 'calls') return n.relation
+  return n.direction === 'upstream' ? 'chama este serviço' : 'é chamado por este serviço'
 }
 
 function neighborLink(n: CoverageGraphNeighbor): string | null {
@@ -63,6 +69,7 @@ export function CoverageDetail() {
   const navigate = useNavigate()
   const detail = useCoverageDetail(uid)
   const graph = useCoverageGraph(uid)
+  const outcome = useApplicationOutcome(uid)
   const memory = useLookoutServiceContext(uid)
   const investigate = useMutation({
     mutationFn: () => api.lookout.investigate(uid),
@@ -141,6 +148,8 @@ export function CoverageDetail() {
             </a>
           ))}
         </div>
+
+        {outcome.data && <ReliabilityOutcome outcome={outcome.data} />}
 
         {pending ? (
           <Card className="p-5">
@@ -242,7 +251,7 @@ export function CoverageDetail() {
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">{n.name}</p>
                       <p className="text-xs text-[var(--color-muted-foreground)]">
-                        {kindLabel(n.kind)} · {n.relation}{n.via ? ` (via ${n.via})` : ''}
+                        {kindLabel(n.kind)} · {relationLabel(n)}{n.via ? ` (via ${n.via})` : ''}
                       </p>
                     </div>
                     <span className="text-[11px] uppercase text-[var(--color-muted-foreground)]">{n.provider}</span>

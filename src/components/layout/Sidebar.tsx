@@ -5,6 +5,7 @@ import {
   ChevronDown,
   ChevronLeft,
   Gauge,
+  Route,
   Inbox,
   Sparkles,
   Key,
@@ -50,6 +51,7 @@ const confiaChildren: NavChild[] = [
 const primaryNavItems: NavItemDef[] = [
   { to: '/', icon: LayoutDashboard, label: 'Hub', exact: true },
   { to: '/reliability', icon: Gauge, label: 'Confiabilidade', featureId: 'nav_reliability' },
+  { to: '/journeys', icon: Route, label: 'Jornadas', featureId: 'nav_journeys' },
   { to: '/confia', icon: Sparkles, label: 'ConfAI', featureId: 'nav_confia', feature: 'ai' as Feature, children: confiaChildren },
   { to: '/queues', icon: Inbox, label: 'Filas', featureId: 'nav_queues', feature: 'queues' as Feature },
 ]
