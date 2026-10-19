@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Activity, AlertOctagon, AlertTriangle, BarChart3, CheckCircle2, ChevronLeft, ChevronRight, Download, GitMerge, ShieldAlert, Users } from 'lucide-react'
+import { Activity, AlertOctagon, AlertTriangle, BarChart3, CheckCircle2, ChevronLeft, ChevronRight, Download, ShieldAlert, Users } from 'lucide-react'
 import { Header } from '@/components/layout/Header'
 import { Card, CardHeader, CardTitle } from '@/components/jeitto/Card'
 import { MetricCard } from '@/components/jeitto/MetricCard'
@@ -27,20 +27,20 @@ const ROLE_LABELS: Record<string, string> = {
 }
 
 const ROLE_COLORS: Record<string, string> = {
-  admin: 'bg-purple-500/15 text-purple-400',
+  admin: 'bg-[var(--color-accent-soft)] text-[var(--color-accent)]',
   viewer: 'bg-slate-500/15 text-slate-400',
 }
 
 function scoreTextColor(score: number) {
-  if (score >= 80) return 'text-emerald-500'
-  if (score >= 50) return 'text-amber-500'
-  return 'text-red-500'
+  if (score >= 80) return 'text-[var(--color-success)]'
+  if (score >= 50) return 'text-[var(--color-warning)]'
+  return 'text-[var(--color-danger)]'
 }
 
 function scoreBgColor(score: number) {
-  if (score >= 80) return 'bg-emerald-500'
-  if (score >= 50) return 'bg-amber-500'
-  return 'bg-red-500'
+  if (score >= 80) return 'bg-[var(--color-success)]'
+  if (score >= 50) return 'bg-[var(--color-warning)]'
+  return 'bg-[var(--color-danger)]'
 }
 
 function formatRelativeTime(dateStr: string | null): string {
@@ -72,7 +72,7 @@ function Th({ children }: { children: React.ReactNode }) {
 function StatMini({ label, value, colorClass }: { label: string; value: string; colorClass?: string }) {
   return (
     <div className="text-center">
-      <p className={cn('text-2xl font-black', colorClass ?? 'text-[var(--color-foreground)]')}>
+      <p className={cn('text-2xl font-bold', colorClass ?? 'text-[var(--color-foreground)]')}>
         {value}
       </p>
       <p className="mt-0.5 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>{label}</p>
@@ -87,7 +87,7 @@ function SectionRow({ icon, iconClass, label, value }: { icon: React.ReactNode; 
         <span className={iconClass}>{icon}</span>
         <span className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>{label}</span>
       </div>
-      <span className="font-black text-lg" style={{ color: 'var(--color-foreground)' }}>{value}</span>
+      <span className="font-bold text-lg" style={{ color: 'var(--color-foreground)' }}>{value}</span>
     </div>
   )
 }
@@ -113,7 +113,7 @@ export function AdminOverview({ standalone = true }: { standalone?: boolean }) {
   }
   if (!overview) return null
 
-  const { compliance, remediations, pillars, users } = overview
+  const { compliance, pillars, users } = overview
   const userList = usersData?.users ?? []
   const totalPages = Math.ceil(userList.length / PAGE_SIZE)
   const pagedUsers = userList.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
@@ -123,44 +123,36 @@ export function AdminOverview({ standalone = true }: { standalone?: boolean }) {
       {standalone && (
         <Header
           title="Visão Executiva"
-          subtitle="Panorama de compliance, automação e adoção da plataforma."
+          subtitle="Panorama da postura de confiabilidade e da adoção da plataforma."
         />
       )}
 
       <div className="space-y-6 px-4 py-6 lg:px-8">
 
-        {/* Bloco 1 — 4 big numbers */}
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {/* Bloco 1 — big numbers (postura RPM, do coverage_scorecard) */}
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <MetricCard
-            label="Score médio de compliance"
+            label="Trust Score médio"
             value={`${compliance.averageScore.toFixed(0)} / 100`}
             icon={BarChart3}
             iconColor={scoreTextColor(compliance.averageScore)}
             delay={0}
           />
           <MetricCard
-            label="Em conformidade"
+            label="Serviços saudáveis"
             value={`${compliance.compliancePercent.toFixed(0)}%`}
-            sub={`${fmt(compliance.compliantWorkloads)} de ${fmt(compliance.totalWorkloads)} workloads`}
+            sub={`${fmt(compliance.compliantWorkloads)} de ${fmt(compliance.totalWorkloads)} serviços`}
             icon={CheckCircle2}
-            iconColor="text-emerald-500"
+            iconColor="text-[var(--color-success)]"
             delay={0.05}
           />
           <MetricCard
-            label="Workloads monitorados"
+            label="Serviços com scorecard"
             value={fmt(compliance.totalWorkloads)}
             sub=" "
             icon={Activity}
-            iconColor="text-blue-500"
+            iconColor="text-[var(--color-info)]"
             delay={0.10}
-          />
-          <MetricCard
-            label="Remediações automatizadas"
-            value={fmt(remediations.totalAutomated)}
-            sub={`${fmt(remediations.merged)} PRs mesclados`}
-            icon={GitMerge}
-            iconColor="text-violet-500"
-            delay={0.15}
           />
         </div>
 
@@ -219,7 +211,7 @@ export function AdminOverview({ standalone = true }: { standalone?: boolean }) {
                         <td className="py-3 pr-4">
                           {isPending ? (
                             <div className="flex items-center gap-2">
-                              <span className={cn('inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold', ROLE_COLORS[targetRole!] ?? 'bg-slate-500/15 text-slate-400')}>
+                              <span className={cn('inline-flex items-center rounded-[8px] px-2.5 py-1 text-xs font-semibold', ROLE_COLORS[targetRole!] ?? 'bg-slate-500/15 text-slate-400')}>
                                 {ROLE_LABELS[targetRole!] ?? targetRole}
                               </span>
                               <button
@@ -230,7 +222,7 @@ export function AdminOverview({ standalone = true }: { standalone?: boolean }) {
                                   )
                                 }}
                                 disabled={updateRole.isPending}
-                                className="rounded px-2 py-0.5 text-xs font-semibold bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 disabled:opacity-50 transition-colors"
+                                className="rounded px-2 py-0.5 text-xs font-semibold bg-[var(--color-success-soft)] text-[var(--color-success)] hover:bg-[var(--color-success-soft)] disabled:opacity-50 transition-colors"
                               >
                                 {updateRole.isPending ? '...' : 'Confirmar'}
                               </button>
@@ -245,7 +237,7 @@ export function AdminOverview({ standalone = true }: { standalone?: boolean }) {
                             </div>
                           ) : (
                             <div className="flex items-center gap-2">
-                              <span className={cn('inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold', ROLE_COLORS[user.role] ?? 'bg-slate-500/15 text-slate-400')}>
+                              <span className={cn('inline-flex items-center rounded-[8px] px-2.5 py-1 text-xs font-semibold', ROLE_COLORS[user.role] ?? 'bg-slate-500/15 text-slate-400')}>
                                 {ROLE_LABELS[user.role] ?? user.role}
                               </span>
                               {!isSelf && (
@@ -265,7 +257,7 @@ export function AdminOverview({ standalone = true }: { standalone?: boolean }) {
                         </td>
                         <td className="py-3 pr-4">
                           <span
-                            className={cn('text-[13px]', user.lastLoginAt ? '' : 'text-amber-500')}
+                            className={cn('text-[13px]', user.lastLoginAt ? '' : 'text-[var(--color-warning)]')}
                             style={user.lastLoginAt ? { color: 'var(--color-foreground)' } : undefined}
                           >
                             {formatRelativeTime(user.lastLoginAt)}
@@ -276,7 +268,7 @@ export function AdminOverview({ standalone = true }: { standalone?: boolean }) {
                         </td>
                         <td className="py-3">
                           <span className="flex items-center gap-1.5">
-                            <span className={cn('inline-block h-2 w-2 rounded-full', user.isActive ? 'bg-emerald-500' : 'bg-slate-400')} />
+                            <span className={cn('inline-block h-2 w-2 rounded-full', user.isActive ? 'bg-[var(--color-success)]' : 'bg-slate-400')} />
                             <span className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
                               {user.isActive ? 'Ativo' : 'Inativo'}
                             </span>
@@ -317,58 +309,37 @@ export function AdminOverview({ standalone = true }: { standalone?: boolean }) {
           )}
         </Card>
 
-        {/* Bloco 3 — Automação & Risco */}
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Automação</CardTitle>
-            </CardHeader>
-            <div className="space-y-3">
-              <SectionRow icon="✓" iconClass="text-emerald-500 text-base" label="PRs mesclados" value={fmt(remediations.merged)} />
-              <SectionRow icon="◷" iconClass="text-blue-400 text-base" label="Em andamento" value={fmt(remediations.inProgress)} />
-              <SectionRow icon="✗" iconClass="text-red-500 text-base" label="Com falha" value={fmt(remediations.failed)} />
-              <div className="mt-4 border-t pt-4" style={{ borderColor: 'var(--color-border)' }}>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>Taxa de sucesso</span>
-                  <span className={cn('font-black text-2xl', scoreTextColor(remediations.successRate))}>
-                    {remediations.successRate.toFixed(0)}%
-                  </span>
-                </div>
-              </div>
-            </div>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Risco Operacional</CardTitle>
-            </CardHeader>
-            <div className="space-y-3">
-              <SectionRow
-                icon={<ShieldAlert size={15} />}
-                iconClass="text-red-500"
-                label="Workloads críticos (score < 50)"
-                value={fmt(compliance.criticalWorkloads)}
-              />
-              <SectionRow
-                icon={<AlertTriangle size={15} />}
-                iconClass="text-amber-500"
-                label="Falhas críticas acumuladas"
-                value={fmt(compliance.totalCriticalFailures)}
-              />
-              <SectionRow
-                icon={<AlertOctagon size={15} />}
-                iconClass="text-slate-400"
-                label="Sem avaliação"
-                value={fmt(compliance.workloadsWithoutEvaluation)}
-              />
-            </div>
-          </Card>
-        </div>
-
-        {/* Bloco 4 — Pillar bars */}
+        {/* Bloco 3 — Risco */}
         <Card>
           <CardHeader>
-            <CardTitle>Compliance por Pilar</CardTitle>
+            <CardTitle>Risco de Confiabilidade</CardTitle>
+          </CardHeader>
+          <div className="space-y-3">
+            <SectionRow
+              icon={<ShieldAlert size={15} />}
+              iconClass="text-[var(--color-danger)]"
+              label="Serviços críticos (Trust < 35)"
+              value={fmt(compliance.criticalWorkloads)}
+            />
+            <SectionRow
+              icon={<AlertTriangle size={15} />}
+              iconClass="text-[var(--color-warning)]"
+              label="Serviços saudáveis (Trust ≥ 55)"
+              value={fmt(compliance.compliantWorkloads)}
+            />
+            <SectionRow
+              icon={<AlertOctagon size={15} />}
+              iconClass="text-slate-400"
+              label="Total de serviços com scorecard"
+              value={fmt(compliance.totalWorkloads)}
+            />
+          </div>
+        </Card>
+
+        {/* Bloco 4 — Dimensão bars */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Cobertura por dimensão</CardTitle>
           </CardHeader>
           {pillars.length === 0 ? (
             <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
@@ -381,9 +352,9 @@ export function AdminOverview({ standalone = true }: { standalone?: boolean }) {
                   <span className="w-32 shrink-0 text-right text-xs font-medium" style={{ color: 'var(--color-muted-foreground)' }}>
                     {PILLAR_LABELS[p.pillar] ?? p.pillar}
                   </span>
-                  <div className="h-2 flex-1 overflow-hidden rounded-full" style={{ backgroundColor: 'var(--color-border)' }}>
+                  <div className="h-2 flex-1 overflow-hidden rounded-[4px]" style={{ backgroundColor: 'var(--color-border)' }}>
                     <div
-                      className={cn('h-full rounded-full transition-all', scoreBgColor(p.averageScore))}
+                      className={cn('h-full rounded-[4px] transition-all', scoreBgColor(p.averageScore))}
                       style={{ width: `${Math.min(p.averageScore, 100)}%` }}
                     />
                   </div>
@@ -406,7 +377,7 @@ export function AdminOverview({ standalone = true }: { standalone?: boolean }) {
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <StatMini label="Total" value={fmt(users.total)} />
-              <StatMini label="Ativos (30d)" value={fmt(users.activeLastThirtyDays)} colorClass="text-emerald-500" />
+              <StatMini label="Ativos (30d)" value={fmt(users.activeLastThirtyDays)} colorClass="text-[var(--color-success)]" />
             </div>
             <div className="border-t pt-4" style={{ borderColor: 'var(--color-border)' }}>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--color-muted-foreground)' }}>
@@ -416,10 +387,10 @@ export function AdminOverview({ standalone = true }: { standalone?: boolean }) {
                 {Object.entries(users.byRole).map(([role, count]) => (
                   <span
                     key={role}
-                    className={cn('inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold', ROLE_COLORS[role] ?? 'bg-slate-500/15 text-slate-400')}
+                    className={cn('inline-flex items-center gap-1.5 rounded-[8px] px-3 py-1 text-xs font-semibold', ROLE_COLORS[role] ?? 'bg-slate-500/15 text-slate-400')}
                   >
                     {ROLE_LABELS[role] ?? role}
-                    <span className="font-black">{count}</span>
+                    <span className="font-bold">{count}</span>
                   </span>
                 ))}
               </div>

@@ -13,7 +13,7 @@ Use campanhas quando:
 - Você quer otimizar HPA de uma frota inteira de serviços
 - Quer aplicar um padrão de configuração de forma consistente em vários times
 
-Para correções pontuais em um único workload, use o [ARIA](/docs/assistente-ia) diretamente.
+Para correções pontuais em um único workload, use o ConfAI diretamente.
 
 ---
 
@@ -26,13 +26,13 @@ Para correções pontuais em um único workload, use o [ARIA](/docs/assistente-i
 3. Clique em **Criar campanha**
 4. Revise o resumo (quantos workloads, tipos de mudança) e confirme
 
-### A partir de findings de scorecard (via ARIA)
+### A partir de findings de scorecard (via ConfAI)
 
-Você pode pedir ao ARIA para criar uma campanha baseada em findings:
+Você pode pedir ao ConfAI para criar uma campanha baseada em findings:
 
 > *"Crie uma campanha para adicionar liveness probe em todos os workloads do namespace payments"*
 
-O ARIA lista os workloads afetados, exibe um resumo da mudança e aguarda sua confirmação
+O ConfAI lista os workloads afetados, exibe um resumo da mudança e aguarda sua confirmação
 antes de iniciar.
 
 ---
@@ -90,7 +90,7 @@ Você pode reabrir o item manualmente na plataforma, o que cria um novo PR.
 
 ## Política de never-reduce
 
-Assim como no ARIA, campanhas nunca geram PRs que reduzam recursos:
+Assim como no ConfAI, campanhas nunca geram PRs que reduzam recursos:
 - `minReplicas` nunca diminui
 - `maxReplicas` nunca diminui
 - CPU requests e limits nunca diminuem

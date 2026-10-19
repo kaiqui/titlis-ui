@@ -34,10 +34,10 @@ export function MetricCard({
       <Card className="jeitto-stat-band h-full">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
-            <p className="family-neighbor text-[11px] font-extrabold uppercase tracking-[0.18em]" style={{ color: 'var(--color-muted-foreground)' }}>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.1em]" style={{ color: 'var(--color-muted-foreground)' }}>
               {label}
             </p>
-            <p className="family-neighbor mt-3 text-[1.8rem] font-black tracking-tight lg:text-[1.95rem]" style={{ color: 'var(--color-foreground)' }}>
+            <p className="family-neighbor mt-2.5 text-[1.7rem] font-bold tracking-tight lg:text-[1.85rem]" style={{ color: 'var(--color-foreground)' }}>
               {value}
             </p>
             {sub && (
@@ -46,8 +46,8 @@ export function MetricCard({
               </p>
             )}
             {trend && trendValue && (
-              <div className={`mt-4 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
-                trend === 'up' ? 'bg-emerald-500/10 text-emerald-500' : trend === 'down' ? 'bg-red-500/10 text-red-500' : 'bg-slate-500/10 text-slate-500'
+              <div className={`mt-4 inline-flex items-center gap-1 rounded-[8px] px-2.5 py-1 text-xs font-semibold ${
+                trend === 'up' ? 'bg-[var(--color-success-soft)] text-[var(--color-success)]' : trend === 'down' ? 'bg-[var(--color-danger-soft)] text-[var(--color-danger)]' : 'bg-slate-500/10 text-slate-500'
               }`}>
                 {trend === 'up' ? <TrendingUp size={12} /> : trend === 'down' ? <TrendingDown size={12} /> : <Minus size={12} />}
                 {trendValue}

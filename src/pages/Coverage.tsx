@@ -79,7 +79,7 @@ export function Coverage() {
             {[
               { label: 'Serviços avaliados', value: String(stats.total), className: '' },
               { label: 'Postura média', value: formatNumber(stats.avgTrust), className: '' },
-              { label: 'Pior postura', value: formatNumber(stats.worstTrust), className: 'text-red-500' },
+              { label: 'Pior postura', value: formatNumber(stats.worstTrust), className: 'text-[var(--color-danger)]' },
               { label: 'Confiança', value: `${stats.signalPct}%`, className: '' },
             ].map((item, index) => (
               <motion.div key={item.label} {...fadeInUp} transition={{ ...fadeInUp.transition, delay: index * 0.05 }}>
@@ -102,7 +102,7 @@ export function Coverage() {
 
           <Card className="p-5">
             <div className="mb-4 flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-red-500" />
+              <AlertTriangle className="h-5 w-5 text-[var(--color-danger)]" />
               <h2 className="text-lg font-semibold">Maiores riscos</h2>
             </div>
             {risks.length === 0 ? (
@@ -175,7 +175,7 @@ export function Coverage() {
                               {isPendingCoverage(s) ? (
                                 <span className="text-[var(--color-muted-foreground)]">pendente</span>
                               ) : (
-                                <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold ${scoreBgColor(s.trustScore)}`}>
+                                <span className={`inline-flex items-center gap-1.5 rounded-[8px] px-2 py-0.5 text-xs font-semibold ${scoreBgColor(s.trustScore)}`}>
                                   {formatNumber(s.trustScore)} · {band.label}
                                 </span>
                               )}

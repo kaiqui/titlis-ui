@@ -12,7 +12,7 @@ export function DetailPanel({ title, subtitle, headerMeta, children }: DetailPan
     <Card className="h-full">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="family-neighbor text-lg font-black tracking-tight" style={{ color: 'var(--color-foreground)' }}>
+          <h3 className="family-neighbor text-lg font-bold tracking-tight" style={{ color: 'var(--color-foreground)' }}>
             {title}
           </h3>
           {subtitle && (

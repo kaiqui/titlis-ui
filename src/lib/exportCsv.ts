@@ -42,3 +42,23 @@ export function exportUsersCsv(users: AdminUser[]): void {
   a.click()
   URL.revokeObjectURL(url)
 }
+
+// Download genérico de um CSV já pronto (ex.: GET /v1/reports/teams/:team?format=csv).
+export function downloadCsv(filename: string, csv: string): void {
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+export function downloadText(filename: string, text: string, mime: string): void {
+  const url = URL.createObjectURL(new Blob([text], { type: `${mime};charset=utf-8;` }))
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}

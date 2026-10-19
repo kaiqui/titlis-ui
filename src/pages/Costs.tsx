@@ -20,15 +20,36 @@ function formatDayLabel(isoDate: string): string {
   return `${isoDate.slice(8, 10)}/${isoDate.slice(5, 7)}`
 }
 
+// docs/todo/cost-pillar-plan.md §2 — badge de proveniência: hoje só "k8s · gcp", mas o campo já
+// existe pra quando ECS/Cloud Run/OCI/Azure entrarem como bridges novas (Fase 5).
+function cloudFromProvider(provider: string): string {
+  if (provider.startsWith('gcp')) return 'gcp'
+  if (provider.startsWith('aws')) return 'aws'
+  if (provider.startsWith('azure')) return 'azure'
+  if (provider.startsWith('oci')) return 'oci'
+  return provider
+}
+
+function SourceBadge({ infraKind, provider }: { infraKind: string; provider: string }) {
+  return (
+    <span
+      className="rounded-[6px] border px-1.5 py-0.5 font-mono text-[10px] uppercase"
+      style={{ borderColor: 'var(--color-border)', color: 'var(--color-muted-foreground)' }}
+    >
+      {infraKind} · {cloudFromProvider(provider)}
+    </span>
+  )
+}
+
 function VariationBadge({ pct }: { pct: number | null }) {
   if (pct == null) {
     return <span className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>sem período anterior</span>
   }
   const stable = Math.abs(pct) < 0.5
   const Icon = stable ? Minus : pct > 0 ? ArrowUpRight : ArrowDownRight
-  const color = stable ? 'var(--color-muted-foreground)' : pct > 0 ? '#ef4444' : '#10b981'
+  const color = stable ? 'var(--color-muted-foreground)' : pct > 0 ? '#d8341a' : '#12a150'
   return (
-    <span className="flex items-center gap-1 text-sm font-black tabular-nums" style={{ color }}>
+    <span className="flex items-center gap-1 text-sm font-bold tabular-nums" style={{ color }}>
       <Icon size={14} />
       {stable ? 'estável' : `${pct > 0 ? '+' : ''}${pct.toFixed(1)}%`}
     </span>
@@ -87,7 +108,7 @@ export function Costs() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Header timeRange title="Custos" subtitle="Estimativa multi-cloud (GCP / AWS / Azure) — preço público × uso observado no Datadog. Sem billing export, sem configuração." />
+      <Header timeRange title="Custos" subtitle="Estimativa por Kubernetes/GCP — preço público × uso observado no Datadog. Sem billing export, sem configuração." />
 
       <div className="flex-1 space-y-5 px-4 py-6 lg:px-8">
         {!hasData ? (
@@ -113,7 +134,7 @@ export function Costs() {
                 <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--color-muted-foreground)' }}>
                   <Wallet size={14} /> Total no período
                 </div>
-                <p className="mt-2 text-2xl font-black tabular-nums" style={{ color: 'var(--color-foreground)' }}>
+                <p className="mt-2 text-2xl font-bold tabular-nums" style={{ color: 'var(--color-foreground)' }}>
                   {currencyFmt.format(summary.totalCost)}
                 </p>
                 <p className="mt-1 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>últimos {days} dias</p>
@@ -129,7 +150,7 @@ export function Costs() {
                 <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--color-muted-foreground)' }}>
                   <Users size={14} /> Média diária
                 </div>
-                <p className="mt-2 text-2xl font-black tabular-nums" style={{ color: 'var(--color-foreground)' }}>
+                <p className="mt-2 text-2xl font-bold tabular-nums" style={{ color: 'var(--color-foreground)' }}>
                   {currencyFmt.format(avgDaily)}
                 </p>
                 <p className="mt-1 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>{workloads.workloads.length} workloads com custo</p>
@@ -138,7 +159,7 @@ export function Costs() {
                 <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--color-muted-foreground)' }}>
                   <Clock size={14} /> Última coleta
                 </div>
-                <p className="mt-2 text-2xl font-black tabular-nums" style={{ color: 'var(--color-foreground)' }}>
+                <p className="mt-2 text-2xl font-bold tabular-nums" style={{ color: 'var(--color-foreground)' }}>
                   {formatDate(summary.lastCollectionAt)}
                 </p>
                 <p className="mt-1 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>coleta diária automática</p>
@@ -149,7 +170,7 @@ export function Costs() {
               <Card className="p-5">
                 <div className="mb-5 flex flex-wrap items-center gap-2">
                   <TrendingUp size={16} style={{ color: 'var(--color-primary)' }} />
-                  <p className="text-sm font-black" style={{ color: 'var(--color-foreground)' }}>Custo diário</p>
+                  <p className="text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>Custo diário</p>
                   <span className="ml-auto text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
                     dias sem coleta aparecem como zero
                   </span>
@@ -179,7 +200,7 @@ export function Costs() {
               <Card className="p-5">
                 <div className="mb-4 flex items-center gap-2">
                   <Users size={16} style={{ color: 'var(--color-primary)' }} />
-                  <p className="text-sm font-black" style={{ color: 'var(--color-foreground)' }}>Custo por time</p>
+                  <p className="text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>Custo por time</p>
                 </div>
                 <div className="flex flex-col gap-3">
                   {teams.teams.map(t => (
@@ -190,9 +211,9 @@ export function Costs() {
                       >
                         {t.team}
                       </span>
-                      <div className="h-4 flex-1 overflow-hidden rounded-full" style={{ backgroundColor: 'var(--color-muted)' }}>
+                      <div className="h-4 flex-1 overflow-hidden rounded-[4px]" style={{ backgroundColor: 'var(--color-muted)' }}>
                         <div
-                          className="h-full rounded-full"
+                          className="h-full rounded-[4px]"
                           style={{ width: `${Math.max(t.sharePct, 1)}%`, backgroundColor: 'var(--color-primary)' }}
                         />
                       </div>
@@ -210,7 +231,7 @@ export function Costs() {
 
             <Card className="p-5">
               <div className="mb-4 flex flex-wrap items-center gap-3">
-                <p className="text-sm font-black" style={{ color: 'var(--color-foreground)' }}>Workloads</p>
+                <p className="text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>Workloads</p>
                 <div className="ml-auto flex flex-wrap items-center gap-2">
                   <div className="relative">
                     <Search size={13} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-muted-foreground)' }} />
@@ -244,6 +265,7 @@ export function Costs() {
                         <th className="pb-2 pr-4">Namespace</th>
                         <th className="pb-2 pr-4">Cluster</th>
                         <th className="pb-2 pr-4">Time</th>
+                        <th className="pb-2 pr-4">Fonte</th>
                         <th className="pb-2 pr-4 text-right">Total no período</th>
                         <th className="pb-2 text-right">Média/dia</th>
                       </tr>
@@ -255,6 +277,7 @@ export function Costs() {
                           <td className="py-2.5 pr-4" style={{ color: 'var(--color-muted-foreground)' }}>{w.namespace}</td>
                           <td className="py-2.5 pr-4" style={{ color: 'var(--color-muted-foreground)' }}>{w.clusterName}</td>
                           <td className="py-2.5 pr-4" style={{ color: 'var(--color-muted-foreground)' }}>{w.team ?? NO_TEAM_LABEL}</td>
+                          <td className="py-2.5 pr-4"><SourceBadge infraKind={w.infraKind} provider={w.provider} /></td>
                           <td className="py-2.5 pr-4 text-right font-bold tabular-nums" style={{ color: 'var(--color-foreground)' }}>
                             {currencyFmt.format(w.totalCost)}
                           </td>

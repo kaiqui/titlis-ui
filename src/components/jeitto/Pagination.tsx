@@ -34,7 +34,7 @@ export function Pagination({
             key={size}
             type="button"
             onClick={() => onPageSizeChange(size)}
-            className="rounded-full px-2.5 py-1 font-semibold transition-colors"
+            className="rounded-[8px] px-2.5 py-1 font-semibold transition-colors"
             style={
               size === pageSize
                 ? { backgroundColor: 'var(--color-primary)', color: '#fff' }

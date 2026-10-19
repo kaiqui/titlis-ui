@@ -8,8 +8,9 @@ import { EmptyState } from '@/components/jeitto/EmptyState'
 import { PageError, PageLoading } from '@/components/jeitto/PageState'
 import { Header } from '@/components/layout/Header'
 import { ScoreRing } from '@/components/jeitto/ScoreRing'
+import { OutcomeMix } from '@/components/sre/OutcomeMix'
 import { useHubRollup } from '@/hooks/useApi'
-import { formatNumber } from '@/lib/utils'
+import { formatCurrency, formatNumber } from '@/lib/utils'
 import { overallBand, postureBand, stripIcon } from '@/lib/posture'
 import type { EstateNode } from '@/types'
 
@@ -41,7 +42,7 @@ function trail(root: EstateNode, path: string): EstateNode[] {
 function BandBar({ mix, total }: { mix: Record<string, number>; total: number }) {
   if (total === 0) return null
   return (
-    <div className="flex h-1.5 w-full overflow-hidden rounded-full" style={{ backgroundColor: 'var(--color-border)' }}>
+    <div className="flex h-1.5 w-full overflow-hidden rounded-[4px]" style={{ backgroundColor: 'var(--color-border)' }}>
       {BAND_ORDER.map((b) => {
         const n = mix[b] ?? 0
         if (n === 0) return null
@@ -63,8 +64,8 @@ function DimBars({ node }: { node: EstateNode }) {
               <span className="truncate">{d.label}</span>
               <span>{d.strength === null ? 'n/a' : Math.round(d.strength)}</span>
             </p>
-            <div className="mt-0.5 h-1 overflow-hidden rounded-full" style={{ backgroundColor: 'var(--color-border)' }}>
-              <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: band.color }} />
+            <div className="mt-0.5 h-1 overflow-hidden rounded-[4px]" style={{ backgroundColor: 'var(--color-border)' }}>
+              <div className="h-full rounded-[4px]" style={{ width: `${pct}%`, backgroundColor: band.color }} />
             </div>
           </div>
         )
@@ -87,21 +88,31 @@ function NodeCard({ node, onOpen, index }: { node: EstateNode; onOpen: (path: st
           </div>
           <p className="truncate font-semibold">{node.name}</p>
         </div>
-        <span className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold" style={{ color: band.color, backgroundColor: 'var(--color-muted)' }}>
+        <span className="shrink-0 rounded-[8px] px-2 py-0.5 text-[11px] font-bold" style={{ color: band.color, backgroundColor: 'var(--color-muted)' }}>
           {formatNumber(node.postureWeighted)} · {band.label}
         </span>
       </div>
       <div className="mt-2.5">
         <BandBar mix={node.bandMix} total={node.serviceCount} />
       </div>
+      {node.outcomeMix && (
+        <div className="mt-2">
+          <OutcomeMix mix={node.outcomeMix} single={node.kind === 'service' ? node.outcomeState : undefined} />
+        </div>
+      )}
       <p className="mt-2 text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
         {node.kind === 'service'
           ? `${node.confidence ? node.confidence.replace('_', ' ') : 'sem confiança'}${node.tier ? ` · tier ${node.tier}` : ''}`
           : `${node.serviceCount} serviço${node.serviceCount === 1 ? '' : 's'} · ${fragile} ${fragile === 1 ? 'serviço frágil' : 'serviços frágeis'} · confiança ${node.confidencePct}%`}
       </p>
       {node.ownerGap > 0 && (
-        <p className="mt-1.5 flex items-center gap-1 text-[11px]" style={{ color: '#d97706' }}>
+        <p className="mt-1.5 flex items-center gap-1 text-[11px]" style={{ color: '#a06e00' }}>
           <AlertTriangle size={11} />{node.ownerGap} sem dono no Datadog
+        </p>
+      )}
+      {node.costTotal !== undefined && (
+        <p className="mt-1.5 text-[11px]" style={{ color: 'var(--color-muted-foreground)' }}>
+          {formatCurrency(node.costTotal)}<span className="opacity-70">/30d</span>
         </p>
       )}
     </Card>
@@ -119,7 +130,7 @@ function NodeCard({ node, onOpen, index }: { node: EstateNode; onOpen: (path: st
 }
 
 export function ServiceHub() {
-  const { data: root, isLoading, isError, refetch } = useHubRollup()
+  const { data: root, isLoading, isError, refetch } = useHubRollup(true)
   const [path, setPath] = useState('')
 
   const current = useMemo(() => (root ? findByPath(root, path) ?? root : null), [root, path])
@@ -168,19 +179,26 @@ export function ServiceHub() {
             <ScoreRing score={current.postureWeighted} size={92} strokeWidth={8} showFraction />
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full px-3 py-1 text-sm font-bold" style={{ color: band.color, backgroundColor: 'var(--color-muted)' }}>
+                <span className="rounded-[8px] px-3 py-1 text-sm font-bold" style={{ color: band.color, backgroundColor: 'var(--color-muted)' }}>
                   {formatNumber(current.postureWeighted)} · {band.label}
                 </span>
                 <span className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
                   pior {formatNumber(current.postureWorst)} · confiança {current.confidencePct}% · {current.serviceCount} serviços
+                  {current.costTotal !== undefined && <> · {formatCurrency(current.costTotal)}/30d</>}
                 </span>
               </div>
               <div className="mt-3"><BandBar mix={current.bandMix} total={current.serviceCount} /></div>
+              {current.outcomeMix && <div className="mt-2"><OutcomeMix mix={current.outcomeMix} single={current.kind === 'service' ? current.outcomeState : undefined} /></div>}
+              {current.kind === 'squad' && !current.name.startsWith('Sem dono') && (
+                <Link to={`/teams/${encodeURIComponent(current.name)}`} className="mt-3 inline-flex items-center gap-1 text-xs font-semibold hover:underline" style={{ color: 'var(--color-primary)' }}>
+                  Relatório do time <ArrowRight size={12} />
+                </Link>
+              )}
               <DimBars node={current} />
             </div>
           </div>
           {current.ownerGap > 0 && (
-            <p className="mt-4 flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs" style={{ backgroundColor: 'rgba(217,119,6,0.1)', color: '#b45309' }}>
+            <p className="jc-alert jc-alert-warning mt-4 flex items-center gap-1.5">
               <AlertTriangle size={13} />
               {current.ownerGap} serviço{current.ownerGap === 1 ? '' : 's'} sem <code>team</code> no Datadog Service Definition — aparecem em "Sem dono (Datadog)".
             </p>
@@ -198,11 +216,11 @@ export function ServiceHub() {
                   <span className="font-mono text-xs" style={{ color: 'var(--color-primary)' }}>{String(i + 1).padStart(2, '0')}</span>
                   <span className="min-w-0">{stripIcon(m.description)}</span>
                   {m.serviceCount > 1 && (
-                    <span className="shrink-0 rounded-full px-1.5 py-0.5 text-[10px]" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
+                    <span className="shrink-0 rounded-[8px] px-1.5 py-0.5 text-[10px]" style={{ backgroundColor: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}>
                       {m.serviceCount} serviços
                     </span>
                   )}
-                  <span className="ml-auto shrink-0 font-mono text-xs" style={{ color: '#16a34a' }}>+{Math.round(m.totalLift / Math.max(1, m.serviceCount))}</span>
+                  <span className="ml-auto shrink-0 font-mono text-xs" style={{ color: '#12a150' }}>+{Math.round(m.totalLift / Math.max(1, m.serviceCount))}</span>
                 </div>
               ))}
             </div>

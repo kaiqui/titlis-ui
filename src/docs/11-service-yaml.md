@@ -16,7 +16,7 @@ score de Cobertura e Confiabilidade.
 - **Caminho:** `.titlis/service.yaml` na **raiz do repositório** do serviço (um por repo/serviço).
 - **Descoberta:** o worker **titlis-servicemap** varre os repositórios do GitHub do tenant
   procurando esse arquivo. Para isso, basta ter o **GitHub token configurado** em
-  **Configurar ARIA / Integrações**.
+  **Integrações**.
 - **Frequência:** o worker re-escaneia periodicamente. Ao mudar o `service.yaml`, a correlação
   é re-sincronizada no próximo ciclo (a ligação fila/workload é recalculada a cada upsert).
 - **Lifecycle:** se o arquivo deixar de existir, o serviço é marcado como *stale* (soft-delete) —
@@ -150,7 +150,7 @@ recriados) e as filas existentes são religadas. Filas que não casam com nenhum
 
 ## `spec.gitops.paths` — onde a remediação abre PR
 
-Diz à ARIA **qual arquivo e branch** alterar quando for corrigir um finding via PR. É um mapa
+Diz à ConfAI **qual arquivo e branch** alterar quando for corrigir um finding via PR. É um mapa
 `ambiente → { path, base_branch }`:
 ```yaml
 spec:

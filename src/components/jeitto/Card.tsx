@@ -12,15 +12,15 @@ export function Card({ children, className, onClick, hover }: CardProps) {
     <section
       onClick={onClick}
       className={cn(
-        'relative overflow-hidden rounded-[2rem] border p-5 transition-all duration-200',
-        hover && 'cursor-pointer hover:-translate-y-1 hover:shadow-2xl hover:saturate-[1.02]',
+        'relative overflow-hidden rounded-[12px] border p-5 transition-shadow duration-150',
+        hover && 'cursor-pointer hover:shadow-[var(--shadow-brutal)]',
         onClick && 'cursor-pointer',
         className,
       )}
       style={{
         background: 'var(--color-card)',
-        borderColor: 'var(--color-border)',
-        boxShadow: '0 10px 24px rgba(15, 23, 42, 0.06)',
+        borderColor: 'var(--color-hairline)',
+        boxShadow: 'var(--shadow-brutal-sm)',
       }}
     >
       <div className="relative z-[1]">{children}</div>
@@ -38,7 +38,7 @@ export function CardHeader({ children, className }: { children: React.ReactNode;
 
 export function CardTitle({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <h3 className={cn('family-neighbor text-[0.95rem] font-black tracking-tight', className)} style={{ color: 'var(--color-foreground)' }}>
+    <h3 className={cn('family-neighbor text-[0.95rem] font-semibold tracking-tight', className)} style={{ color: 'var(--color-foreground)' }}>
       {children}
     </h3>
   )

@@ -35,7 +35,7 @@ export function SelectionList({ items, activeId, onSelect }: SelectionListProps)
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-black" style={{ color: 'var(--color-foreground)' }}>
+                  <p className="truncate text-sm font-bold" style={{ color: 'var(--color-foreground)' }}>
                     {item.title}
                   </p>
                   {item.subtitle && (

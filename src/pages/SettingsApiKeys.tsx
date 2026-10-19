@@ -52,7 +52,7 @@ export function SettingsApiKeys() {
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
-      <Header title="Chaves de API" subtitle="Gerencie chaves de API para agentes de IA (ARIA, Claude e outros clientes MCP)." />
+      <Header title="Chaves de API" subtitle="Gerencie chaves de API para agentes de IA e clientes MCP (ex.: Claude)." />
 
       <div className="flex-1 overflow-y-auto px-6 py-6">
         <div className="mx-auto max-w-3xl space-y-6">
@@ -62,7 +62,7 @@ export function SettingsApiKeys() {
             style={{ borderColor: 'var(--color-border)', background: 'var(--color-muted)', color: 'var(--color-muted-foreground)' }}
           >
             Essa chave é a credencial de leitura para o <strong style={{ color: 'var(--color-foreground)' }}>MCP do Titlis</strong> —
-            autentica a ARIA e agentes de IA (como o Claude) que precisam consultar hub, scorecards,
+            autentica agentes de IA e clientes MCP (como o Claude) que precisam consultar hub, scorecards,
             cobertura, SLOs, custos e afins a partir de fora. Não existe mais operator na stack RPM;
             use <code className="rounded px-1 py-0.5 text-xs" style={{ background: 'var(--color-card)' }}>Authorization: Bearer &lt;chave&gt;</code> direto no servidor MCP.
           </div>
@@ -71,12 +71,7 @@ export function SettingsApiKeys() {
           {feedback && (
             <motion.div
               {...fadeInUp}
-              className="rounded-2xl border px-4 py-3 text-sm"
-              style={{
-                borderColor: feedback.tone === 'success' ? 'rgba(34,197,94,0.22)' : 'rgba(239,68,68,0.22)',
-                color: feedback.tone === 'success' ? '#16a34a' : '#dc2626',
-                background: feedback.tone === 'success' ? 'rgba(240,253,244,0.8)' : 'rgba(254,242,242,0.8)',
-              }}
+              className={`jc-alert ${feedback.tone === 'success' ? 'jc-alert-success' : 'jc-alert-danger'}`}
             >
               {feedback.message}
             </motion.div>
@@ -85,8 +80,8 @@ export function SettingsApiKeys() {
 
           <AnimatePresence>
           {newKey && (
-            <motion.div {...fadeInUp} className="rounded-[1.6rem] border p-5" style={{ borderColor: 'rgba(34,197,94,0.25)', background: 'rgba(240,253,244,0.6)' }}>
-              <div className="flex items-center gap-2 text-sm font-semibold" style={{ color: '#16a34a' }}>
+            <motion.div {...fadeInUp} className="jc-alert jc-alert-success">
+              <div className="flex items-center gap-2 text-sm font-semibold">
                 <Check size={16} />
                 Chave criada. Guarde agora — ela não será exibida novamente.
               </div>
@@ -102,7 +97,7 @@ export function SettingsApiKeys() {
                     setTimeout(() => setCopied(false), 2000)
                   }}
                   className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-colors"
-                  style={{ borderColor: 'var(--color-border)', color: copied ? '#16a34a' : 'var(--color-muted-foreground)' }}
+                  style={{ borderColor: 'var(--color-border)', color: copied ? '#12a150' : 'var(--color-muted-foreground)' }}
                   title="Copiar chave"
                 >
                   {copied ? <Check size={16} /> : <Copy size={16} />}
@@ -182,14 +177,14 @@ export function SettingsApiKeys() {
                         }
                       }}
                       disabled={revokeMutation.isPending}
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-colors hover:border-red-300 hover:text-red-500"
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition-colors hover:border-[var(--color-danger)] hover:text-[var(--color-danger)]"
                       style={{ borderColor: 'var(--color-border)', color: 'var(--color-muted-foreground)' }}
                       title="Revogar chave"
                     >
                       <Trash2 size={15} />
                     </button>
                   ) : (
-                    <span className="shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: 'rgba(239,68,68,0.1)', color: '#dc2626' }}>
+                    <span className="shrink-0 rounded-[8px] px-2 py-0.5 text-xs font-semibold" style={{ background: 'rgba(239,68,68,0.1)', color: '#d8341a' }}>
                       Revogada
                     </span>
                   )}

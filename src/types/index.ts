@@ -211,6 +211,26 @@ export interface ActiveRemediation {
   pendingRuleIds: string[]
 }
 
+export interface AiUsageSummary {
+  month: {
+    tokensUsed: number
+    monthlyTokenBudget: number | null
+    usagePct: number | null
+    provider: string | null
+    model: string | null
+    estimatedUsd: number
+    budgetUsd: number | null
+  }
+  windowDays: number
+  windowTokens: number
+  windowRuns: number
+  windowEstimatedUsd: number
+  pricePer1MTokensUsd: number
+  daily: { date: string; tokens: number; runs: number; estimatedUsd: number }[]
+  byKind: { kind: string; label: string; tokens: number; runs: number; estimatedUsd: number }[]
+  recentRuns: { kind: string; label: string; status: string; tokens: number; estimatedUsd: number; startedAt: string; durationMs: number | null }[]
+}
+
 export interface AiConfig {
   provider: string
   model: string
@@ -469,6 +489,14 @@ export interface CoverageMove {
   isRemediable: boolean
 }
 
+// Link de evidência pra Datadog/GitHub, computado pela titlis-api-ts a partir de dados já
+// existentes (Service Catalog do Datadog, tenant_ai_configs) — nunca de uma chamada ao vivo.
+export interface EvidenceLink {
+  type: string
+  label: string
+  url: string
+}
+
 export interface CoverageFinding {
   code: string
   pillar: string
@@ -477,6 +505,9 @@ export interface CoverageFinding {
   outcome: string
   message: string
   source?: string
+  links?: EvidenceLink[]
+  // Só presente no COST-001 quando falha — US$/mês estimado recuperável (docs/todo/cost-pillar-plan.md).
+  cost_impact_usd_month?: number
 }
 
 export interface CoverageScorecard {
@@ -491,6 +522,7 @@ export interface CoverageScorecard {
   findings: CoverageFinding[]
   moves?: CoverageMove[]
   evaluatedAt: string
+  links?: EvidenceLink[]
 }
 
 // Service-map do hub (H1/H2): produto → squad → serviço → workload (+ bucket de órfãos).
@@ -568,6 +600,12 @@ export interface EstateNode {
   confidence?: string | null
   tier?: string | null
   repoUrl?: string | null
+  // docs/todo/cost-real-billing-plan.md §3-4 — só presente quando o rollup foi pedido com
+  // includeCost=true E há dado de custo pro subtree; ausente ≠ 0 (nunca inventa "custo zero").
+  costTotal?: number
+  // customer-reliability-plan V-2 — contagem por estado de resultado no subtree; outcomeState só na folha
+  outcomeMix?: Record<ReliabilityState, number>
+  outcomeState?: ReliabilityState
 }
 
 export interface PostureTrendPoint {
@@ -576,12 +614,275 @@ export interface PostureTrendPoint {
   confidencePct: number
 }
 
+// RPM Fase C — ConfAI (titlis-lookout). Formato cru das rotas /v1/lookout/* (drizzle camelCase).
+export interface LookoutBriefing {
+  briefingId: number
+  scope: string
+  scopeRef: string | null
+  kind: string
+  title: string
+  bodyMd: string
+  severity: string
+  feedback: 'util' | 'ruido' | null
+  investigationId: number | null
+  createdAt: string
+}
+
+export interface LookoutPlaybook {
+  playbookId: number
+  title: string
+  appliesWhen: string | null
+  bodyMd: string
+  retired: boolean
+  revalidatedAt: string | null
+  createdAt: string
+}
+
+export interface LookoutInvestigation {
+  investigationId: number
+  workloadUid: string | null
+  triggerKind: string
+  hypothesis: string | null
+  verdict: string | null
+  confidence: string | null
+  createdAt: string
+}
+
+export interface LookoutServiceContext {
+  investigations: LookoutInvestigation[]
+  memory: Array<{ estateMemoryId: number; fact: string; confidence: string | null; lastConfirmedAt: string }>
+}
+
+export interface LookoutSeal {
+  investigations: number
+  memory: number
+  lastVerdict: string | null
+  noise: boolean
+}
+
+export type LookoutSeals = Record<string, LookoutSeal>
+
+// RPM Fase I — chat do ConfAI (titlis-lookout, banco próprio, drizzle camelCase).
+export interface LookoutChatSession {
+  chatSessionId: number
+  channel: string
+  externalKey: string | null
+  title: string | null
+  createdAt: string
+  lastMessageAt: string
+}
+
+export interface LookoutChatMessage {
+  chatMessageId: number
+  chatSessionId: number
+  role: 'user' | 'assistant' | 'tool'
+  contentMd: string
+  toolCallsJson: Array<{ tool: string; args: Record<string, unknown>; ok: boolean; citations?: Array<{ label: string; url: string }> }> | null
+  createdAt: string
+}
+
+export interface LookoutChatReply {
+  messageMd: string
+  toolTrace: Array<{ tool: string; args: Record<string, unknown>; ok: boolean }>
+  outOfScope: boolean
+}
+
+// RPM Fase N — proposta de escrita via MCP aguardando aprovação humana (drizzle camelCase).
+export interface LookoutPendingMcpAction {
+  pendingMcpActionId: number
+  provider: string
+  toolName: string
+  argumentsJson: Record<string, unknown>
+  rationaleMd: string | null
+  status: 'pending' | 'approved' | 'rejected' | 'applied' | 'failed'
+  approvedBy: string | null
+  resultSummary: string | null
+  createdAt: string
+}
+
+// RPM Fase K — playbook com invocation_name preenchido vira skill invocável.
+export interface LookoutSkill {
+  playbookId: number
+  title: string
+  appliesWhen: string | null
+  bodyMd: string
+  invocationName: string
+  createdBy: string
+  isPublished: boolean
+  createdAt: string
+}
+
 export interface CoverageGraphNeighbor {
   provider: string
   kind: string
   name: string
   relation: string
   via: string | null
+  direction?: 'upstream' | 'downstream'
+  depth?: number
+}
+
+// Jornadas (GET /v1/journeys) — espelha titlis-api-ts/src/domain/journey.ts + impacto do scoreops.
+export type JourneyStatus = 'suggested' | 'confirmed' | 'archived'
+export type ImpactLevel = 'confirmed' | 'probable' | 'potential' | 'none' | 'unknown'
+
+export interface JourneyStep {
+  journeyStepId: number
+  stepOrder: number
+  serviceName: string
+  resourceName: string | null
+  subscriptionId: string | null
+  kind: 'entry' | 'sync' | 'async'
+  latencyThresholdMs: number | null
+  required: boolean
+  drift: string | null
+  driftDetail: string | null
+}
+
+export interface Journey {
+  journeyKey: string
+  name: string
+  tier: string | null
+  ownerTeam: string | null
+  status: JourneyStatus
+  source: 'declared' | 'suggested' | 'imported'
+  availabilityObjective: number | null
+  latencyObjective: number | null
+  confidence: number | null
+  evidence: Record<string, unknown> | null
+  confirmedBy: string | null
+  steps: JourneyStep[]
+  outcome?: { state: ReliabilityState; ratio: number | null; weakest: string | null }
+}
+
+export interface JourneyImpact {
+  key: string
+  level: ImpactLevel
+  reasons: string[]
+  evidence: Array<{ source: string; locator: string; window?: string; detail?: string }>
+  failedRequests?: number
+  responsibleLink?: string
+  pathServices: string[]
+}
+
+export interface JourneyInput {
+  journeyKey?: string
+  name: string
+  tier?: string | null
+  ownerTeam?: string | null
+  availabilityObjective?: number | null
+  steps: Array<{ serviceName: string; resourceName?: string | null; subscriptionId?: string | null; kind: 'entry' | 'sync' | 'async'; required?: boolean }>
+}
+
+// Relatório por time (GET /v1/reports/teams/:team) — espelha titlis-api-ts/src/services/teamReport.ts.
+export interface TeamReport {
+  team: string
+  generatedAt: string
+  window: { from: string; to: string; days: number }
+  previousWindow: { from: string; to: string; days: number }
+  objectives: { availabilityPct: number; latencyPct: number; latencyThresholdMs: number }
+  dataStatus: 'ok' | 'insufficient_data'
+  indicators: {
+    journeyAttainment: { withinObjective: number; measured: number; pct: number | null } | null
+    worstJourney: { journeyKey: string; name: string; ratio: number; weakestService: string | null } | null
+    weightedRisk: number
+    postureWeighted: number | null
+    postureWorst: number | null
+    coveragePct: number
+    measuredServices: number
+    totalServices: number
+  }
+  services: Array<{
+    service: string
+    uid: string | null
+    product: string | null
+    tier: string | null
+    ownership: 'owner' | 'conflict'
+    conflictWith: string | null
+    state: ReliabilityState
+    stateLabel: string
+    availabilityPct: number | null
+    previousAvailabilityPct: number | null
+    latencyPct: number | null
+    budgetConsumed: number | null
+    trustScore: number | null
+    previousTrustScore: number | null
+    slos: { valid: number; invalid: number }
+    routesBelowObjective: string[]
+    recurringRoutes: string[]
+    topFinding: { code: string; severity: string; message: string } | null
+  }>
+  journeysOwned: Array<{ journeyKey: string; name: string; tier: string | null; state: ReliabilityState }>
+  journeysDependingOnTeam: Array<{ journeyKey: string; name: string; ownerTeam: string | null; services: string[] }>
+  slos: { valid: number; invalid: number }
+  findings: Array<{ service: string; code: string; severity: string; message: string; priority: 'P0' | 'P1' | 'P2' }>
+  recurring: Array<{ service: string; resource: string }>
+  recommendations: string[]
+}
+
+// Resultado por aplicação (GET /v1/applications/:uid/outcome) — o que o cliente viveu, separado
+// da postura. Espelha titlis-api-ts/src/services/applicationOutcome.ts.
+export type ReliabilityState = 'healthy' | 'at_risk' | 'degraded' | 'not_measured'
+
+export interface FindingEvidence {
+  source: string
+  locator: string
+  window?: string
+  link?: string
+  detail?: string
+}
+
+export interface ApplicationOutcome {
+  uid: string
+  service: string
+  team: string | null
+  product: string | null
+  window: { from: string; to: string; days: number }
+  objectives: { availabilityPct: number; latencyPct: number; latencyThresholdMs: number }
+  state: ReliabilityState
+  stateLabel: string
+  reasons: string[]
+  result: {
+    requests: number
+    failures: number
+    availabilityPct: number | null
+    latencyPct: number | null
+    availabilityBudgetConsumed: number | null
+    latencyBudgetConsumed: number | null
+    lastDay: string | null
+  } | null
+  routes: Array<{
+    resource: string
+    requests: number
+    failures: number
+    client4xx: number
+    failurePct: number | null
+    availabilityPct: number | null
+    latencyPct: number | null
+    p95MsWorstDay: number | null
+    status: 'ok' | 'below_objective' | 'low_volume'
+  }>
+  daily: Array<{ day: string; requests: number; availabilityPct: number | null; latencyPct: number | null }>
+  dependencies: {
+    measured: boolean
+    isEntrypoint: boolean | null
+    upstreamCount: number | null
+    downstream: Array<{ target: string; external: boolean; calls: number; errorPct: number; status: 'ok' | 'degraded'; state: ReliabilityState | null }>
+    probableCause: string | null
+  }
+  posture: { trustScore: number | null; confidence: string | null; fragileDimensions: string[] }
+  actions: Array<{ code: string; severity: string; message: string; dimension: string | null; evidence: FindingEvidence[] }>
+  impact?: Array<{
+    key: string
+    name: string
+    tier: string | null
+    level: 'confirmed' | 'probable' | 'potential' | 'none' | 'unknown'
+    levelLabel: string
+    reasons: string[]
+    failedRequests: number | null
+    responsibleLink: string | null
+    isResponsible: boolean
+  }>
 }
 
 export interface CoverageGraph {

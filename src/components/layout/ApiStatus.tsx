@@ -36,15 +36,15 @@ export function ApiStatus() {
   }, [])
 
   const tone = status === 'ok'
-    ? 'bg-emerald-500/10 text-emerald-500'
+    ? 'bg-[var(--color-success-soft)] text-[var(--color-success)]'
     : status === 'error'
-      ? 'bg-red-500/10 text-red-500'
+      ? 'bg-[var(--color-danger-soft)] text-[var(--color-danger)]'
       : 'bg-slate-500/10 text-slate-500'
 
   const Icon = status === 'ok' ? Wifi : WifiOff
 
   return (
-    <div className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold ${tone}`} title={message}>
+    <div className={`inline-flex items-center gap-2 rounded-[8px] px-3 py-2 text-xs font-semibold ${tone}`} title={message}>
       <Icon size={13} />
       {message}
     </div>
